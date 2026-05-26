@@ -1,7 +1,5 @@
 <div align="center">
 
-<img src="images/banner.png" alt="VestGuard Banner" width="100%"/>
-
 # ⚡ VestGuard
 ### Intelligent Dual-Mode Fall Detection Wearable System
 
@@ -48,6 +46,16 @@ The dual-mode architecture ensures both sudden falls and gradual collapses are r
 
 ---
 
+## 🦺 The Prototype
+
+> The VestGuard prototype — front and back view. A torso-mounted wearable designed for stable, reliable body-motion capture with minimal interference from daily activity.
+
+<div align="center">
+<img src="images/prototype.png" width="85%" alt="VestGuard Prototype Front and Back View"/>
+</div>
+
+---
+
 ## 📊 Performance Results
 
 Evaluated across **135 experimental trials** covering falls, daily activities, and high-intensity movements:
@@ -71,26 +79,29 @@ Evaluated across **135 experimental trials** covering falls, daily activities, a
 
 > The vest was tested across situps, sleeping, sitting, walking and many more daily activities to ensure minimal false alarms during normal use.
 
-<!-- ADL IMAGE -->
-![ADL Activities](images/adl_activities.png)
+<div align="center">
+<img src="images/adl_activities.png" width="90%" alt="ADL Activities"/>
+</div>
 
 ---
 
 ### Simulated Fall Scenarios
 
-> Hard falls, sideward falls, backward falls, and soft collapses were evaluated under controlled conditions.
+> Hard falls, sideward falls, backward falls, and soft collapses were evaluated under controlled safety conditions.
 
-<!-- FALLS IMAGE -->
-![Fall Testing](images/falls.png)
+<div align="center">
+<img src="images/falls.png" width="90%" alt="Fall Testing Scenarios"/>
+</div>
 
 ---
 
 ### Live Research Dashboard
 
-> Real-time sensor visualisation, posture monitoring, threshold tuning, and session recording — all from a browser.
+> A browser-based research dashboard enabled real-time sensor visualisation, posture monitoring, and threshold tuning. The dashboard was also used to record complete experimental sessions — capturing raw motion data and derived features that were later analysed to identify the most separable detection parameters for the dual-mode algorithm.
 
-<!-- DASHBOARD IMAGE -->
-![Research Dashboard](images/dashboard.png)
+<div align="center">
+<img src="images/dashboard.png" width="90%" alt="Research Dashboard"/>
+</div>
 
 ---
 
@@ -142,20 +153,10 @@ Evaluated across **135 experimental trials** covering falls, daily activities, a
 
 ## 👥 Team
 
-<div align="center">
+**Arpit Awasthi · Abhishek Kumar · Ashutosh Sharma · Neelaksh Thakur · Yogit**
 
-| Name | Role |
-|------|------|
-| **Arpit Awasthi** | Team Lead · System Architecture · Algorithm Design |
-| Abhishek Kumar | Hardware Integration |
-| Ashutosh Sharma | Firmware Development |
-| Neelaksh Thakur | Dashboard & Communication |
-| Yogit | Testing & Evaluation |
-
-**Supervisor:** Er. Ravi Kumar, Assistant Professor  
-Government Hydro Engineering College, Bilaspur, HP
-
-</div>
+Supervised by **Er. Ravi Kumar**, Assistant Professor  
+Government Hydro Engineering College, Bilaspur, Himachal Pradesh
 
 ---
 
