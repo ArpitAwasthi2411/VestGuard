@@ -1,0 +1,13 @@
+{
+  "appId": "com.silvershield.vestguard",
+  "appName": "VestGuard",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "http",
+    "cleartext": true
+  },
+  "android": {
+    "allowMixedContent": true,
+    "backgroundColor": "#1D7A5FFF"
+  }
+}

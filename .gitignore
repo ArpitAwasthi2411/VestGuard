@@ -1,0 +1,7 @@
+node_modules/
+app/www/vendor/.cache
+*.log
+__pycache__/
+laptop/logs/
+laptop/data/
+laptop/.venv/

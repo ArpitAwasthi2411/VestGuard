@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">VestGuard</string>
+    <string name="title_activity_main">VestGuard</string>
+    <string name="package_name">com.silvershield.vestguard</string>
+    <string name="custom_url_scheme">com.silvershield.vestguard</string>
+</resources>

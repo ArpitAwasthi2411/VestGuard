@@ -1,0 +1,10 @@
+{
+  "name": "VestGuard Care",
+  "short_name": "VestGuard",
+  "start_url": "/care",
+  "scope": "/care",
+  "display": "standalone",
+  "background_color": "#EEF2F5",
+  "theme_color": "#1D7A5F",
+  "icons": [{ "src": "/care/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}
