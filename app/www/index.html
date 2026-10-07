@@ -501,7 +501,13 @@ async function drainNative() {
   if (!VN || S.mode !== 'vest') return;
   try {
     const r = await VN.drain();
-    (r.events || []).forEach(ev => getEngine().onLine(ev.line, ev.ts, ev));
+    S.draining = true;
+    try { (r.events || []).forEach(ev => getEngine().onLine(ev.line, ev.ts, ev)); } finally { S.draining = false; }
+    setTimeout(() => {
+      checkOverride();
+      const a = S.snap?.alerts.find(x => x.id === S.ovId);
+      if (a && a.status !== 'resolved' && !a.responders.some(x => x.name === S.me?.name)) startAlarm();
+    }, 50);
   } catch {}
 }
 function startNative() {
@@ -715,7 +721,7 @@ function openAlertSheet(id) {
   a.responders.forEach(r => ev.push([r.ts, t('ad_resp', { who: r.name })]));
   if (a.resolved_ts) ev.push([a.resolved_ts, alertStatusText(a)]);
   ev.sort((x, y) => x[0] - y[0]);
-  sheet(`<h3>${t('fall_sev', { sev: t('sev_' + a.severity) })}</h3><p class="muted" style="margin:0">${dayLabel(a.ts)}, ${hhmm(a.ts)} · ${esc(a.location.label)}</p>
+  sheet(`<h3>${t('fall_sev', { sev: t('sev_' + a.severity) })}</h3><p class="muted" style="margin:0">${dayLabel(a.ts)}, ${hhmm(a.ts)} · ${esc(locLabel(a))}</p>
     <div class="act-facts" style="margin:14px 0">
       <div class="fact"><div class="k">${t('ad_impact')}</div><div class="v num">${a.peak_g} g</div></div>
       <div class="fact"><div class="k">${t('ad_posture')}</div><div class="v num">${a.tilt_change}°</div></div>
@@ -917,7 +923,7 @@ function beep(freq, t0, d) {
 }
 function alarmOnce() { if (!audioCtx) return; const t0 = audioCtx.currentTime; [0, .35, .7].forEach((dt, i) => beep(i % 2 ? 660 : 880, t0 + dt, .3)); }
 function startAlarm() {
-  if (VN) { VN.raiseAlarm && S.ovId && ringNative(); return; }
+  if (VN) { if (!S.draining && S.ovId) ringNative(); return; }
   stopAlarm(); alarmOnce(); alarmTimer = setInterval(alarmOnce, 1600);
   if (navigator.vibrate) { navigator.vibrate([400, 200, 400, 200, 800]); vibTimer = setInterval(() => navigator.vibrate([400, 200, 400]), 2000); }
 }
@@ -938,6 +944,7 @@ function showOverride(id, alarm) {
   if (alarm && !a?.responders.some(r => r.name === S.me?.name)) startAlarm();
 }
 function closeOverride() { S.ovId = null; $('#ov').classList.remove('on'); document.body.style.overflow = ''; stopAlarm(); }
+const locLabel = a => a.location.source === 'phone' ? t('loc_phone') : a.location.label;
 function renderOverride() {
   const a = S.snap?.alerts.find(x => x.id === S.ovId); if (!a) return;
   const w = S.snap.profile.wearer, mine = a.responders.some(r => r.name === S.me?.name);
@@ -950,7 +957,7 @@ function renderOverride() {
   $('#ovAck').textContent = mine ? t('ov_ack_done') : t('ov_ack');
   $('#ovAck').classList.toggle('done', mine); $('#ovAck').disabled = mine;
   $('#ovCallW').href = 'tel:' + (w.phone || '').replace(/\s/g, ''); $('#ovCallWTxt').textContent = t('call_x', { name: first(w.name) });
-  $('#ovMapFb').innerHTML = `<b>${esc(a.location.label)}</b><span>${a.location.lat}, ${a.location.lon}</span><a href="https://maps.google.com/?q=${a.location.lat},${a.location.lon}" target="_blank" rel="noopener">${t('map_open')}</a><span style="font-size:13px;opacity:.85">${a.location.source === 'phone' ? t('loc_phone') : t('loc_home')}</span>`;
+  $('#ovMapFb').innerHTML = `<b>${esc(locLabel(a))}</b><span>${a.location.lat}, ${a.location.lon}</span><a href="https://maps.google.com/?q=${a.location.lat},${a.location.lon}" target="_blank" rel="noopener">${t('map_open')}</a><span style="font-size:13px;opacity:.85">${a.location.source === 'phone' ? (a.location.acc ? '± ' + Math.round(a.location.acc) + ' m' : '') : t('loc_home')}</span>`;
   if (map && marker) { marker.setLatLng([a.location.lat, a.location.lon]); map.setView([a.location.lat, a.location.lon], 16); }
 }
 function initMap() {

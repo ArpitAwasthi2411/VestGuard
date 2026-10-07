@@ -193,7 +193,7 @@
       const ta = parseFloat(p[5]);
       let loc = Object.assign({}, this.profile.home, { source: 'home' });
       if (extra && extra.lat != null && extra.lon != null) {
-        loc = { label: this.profile.home.label, lat: +extra.lat.toFixed(5), lon: +extra.lon.toFixed(5), source: 'phone', acc: extra.acc };
+        loc = { label: '', lat: +extra.lat.toFixed(5), lon: +extra.lon.toFixed(5), source: 'phone', acc: extra.acc };
       }
       this.createAlert(sev, parseFloat(p[3]), parseFloat(p[4]), ta >= 0 ? ta : null, false, p[1], ts, loc);
     }
@@ -218,14 +218,15 @@
 
     _ackFromNotification(id, ts) {
       const a = this.alerts.find(x => x.id === id);
-      if (!a || a.status === 'resolved' || !this.me) return;
-      this._respond(a, this.me, ts);
+      const me = this.me || load('vgc_me', null);     // the app may not have said hello yet on a cold start
+      if (!a || a.status === 'resolved' || !me) return;
+      this._respond(a, me, ts);
     }
     _respond(a, who, ts) {
       if (a.responders.some(r => r.name === who.name)) return;
       a.responders.push({ name: who.name, role: who.role, ts: ts || now() });
       if (a.status === 'active') a.status = 'acknowledged';
-      this.addFeed('alert', 'responding', `${who.name} is responding`, { who: who.name }, 'caregiver', who.name, a.id);
+      this.addFeed('alert', 'responding', `${who.name} is responding`, { who: who.name }, 'caregiver', who.name, a.id, ts || null);
       this.emit({ t: 'alert', alert: a });
     }
 
