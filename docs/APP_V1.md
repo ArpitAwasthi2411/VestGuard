@@ -38,6 +38,9 @@ Arduino IDE → open `firmware/vestguard_vest/vestguard_vest.ino` (keep `detecto
 4. "I'm responding" (in the notification or the app) stops the ringing. If nobody responds within 60 s, it rings again and the alert is marked escalated.
 5. Optional: SMS to every emergency contact, with the phone's GPS location (Profile → Text contacts on a fall).
 
+## Research mode (data collection without a laptop)
+Profile → Demo tools → **Research mode** opens the same data-collection dashboard as the laptop (Verify / Collect / Detect) inside the app. The phone asks the vest for its raw 50 Hz stream, and CSV/JSON exports are saved to **Downloads/VestGuard** on the phone. Fall alarms keep working while it's open. Tap **‹ App** to go back.
+
 ## Laptop / data collection still works
 `laptop/start.sh` and the dashboard are unchanged. A laptop on the same network finds the vest through its broadcast heartbeat and gets the raw 50 Hz stream, even while the phone is connected. In the app, Profile → Connect through → Laptop opens the laptop's caregiver page instead.
 
