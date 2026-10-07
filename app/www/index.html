@@ -359,6 +359,7 @@ nav.tabs button.on::before{content:"";position:absolute;top:0;width:36px;height:
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
+<script src="vendor/capacitor.js"></script>
 <script src="i18n.js"></script>
 <script src="engine.js"></script>
 <script src="vendor/leaflet.js" onerror="window.L=null"></script>
@@ -474,7 +475,8 @@ const svg = k => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" str
    ============================================================ */
 const CAP = window.Capacitor;
 const NATIVE = !!(CAP && CAP.isNativePlatform && CAP.isNativePlatform());
-const VN = NATIVE ? CAP.Plugins.VestNative : null;
+const regPlugin = name => { try { return CAP.Plugins[name] || (window.capacitorExports || CAP).registerPlugin(name); } catch { return null; } };
+const VN = NATIVE ? regPlugin('VestNative') : null;
 if (NATIVE) document.documentElement.classList.add('native');
 const FROM_SERVER = !NATIVE && /^https?:$/.test(location.protocol) && /\/care/.test(location.pathname);
 S.mode = NATIVE ? store.get('vgc_mode', 'vest') : FROM_SERVER ? 'laptop' : 'vest';
@@ -583,7 +585,7 @@ function renderConn() {
 let barsStyle = null;
 function setBars(style) {
   if (!NATIVE || style === barsStyle) return; barsStyle = style;
-  try { CAP.Plugins.SystemBars && CAP.Plugins.SystemBars.setStyle({ style }).catch(() => {}); } catch {}
+  try { const sb = regPlugin('SystemBars'); sb && sb.setStyle({ style }).catch(() => {}); } catch {}
 }
 function renderBand() {
   const b = $('#band'), st = S.live?.status, w = S.snap?.profile?.wearer;

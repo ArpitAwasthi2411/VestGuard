@@ -38,7 +38,9 @@ jobs:
 
       - name: Copy web app into the Android project
         working-directory: app
-        run: npx cap sync android
+        run: |
+          cp node_modules/@capacitor/core/dist/capacitor.js www/vendor/capacitor.js
+          npx cap sync android
 
       - name: Build APK
         working-directory: app/android
