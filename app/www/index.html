@@ -1,1 +1,1103 @@
-<!doctype html><title>x</title>
+<!doctype html>
+<html lang="en" data-theme="system" data-size="normal">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1D7A5F">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="vendor/leaflet.css">
+<title>VestGuard Care</title>
+<script>
+  // apply saved theme / size / language before first paint (no flash)
+  try {
+    const g = k => JSON.parse(localStorage.getItem(k));
+    const r = document.documentElement;
+    r.dataset.theme = g('vgc_theme') || 'system'; r.dataset.size = g('vgc_size') || 'normal'; r.lang = g('vgc_lang') || 'en';
+  } catch (e) {}
+</script>
+<style>
+@font-face{font-family:"Atkinson";src:url(vendor/fonts/atkinson-hyperlegible-latin-400-normal.woff2) format("woff2");font-weight:400;font-display:swap}
+@font-face{font-family:"Atkinson";src:url(vendor/fonts/atkinson-hyperlegible-latin-700-normal.woff2) format("woff2");font-weight:700;font-display:swap}
+@font-face{font-family:"NotoDeva";src:url(vendor/fonts/noto-sans-devanagari-devanagari-400-normal.woff2) format("woff2");font-weight:400;font-display:swap;unicode-range:U+0900-097F,U+1CD0-1CF9,U+200C-200D,U+20A8,U+20B9,U+25CC,U+A830-A839,U+A8E0-A8FF}
+@font-face{font-family:"NotoDeva";src:url(vendor/fonts/noto-sans-devanagari-devanagari-700-normal.woff2) format("woff2");font-weight:700;font-display:swap;unicode-range:U+0900-097F,U+1CD0-1CF9,U+200C-200D,U+20A8,U+20B9,U+25CC,U+A830-A839,U+A8E0-A8FF}
+:root{
+  --mist:#EEF2F5; --surface:#FFFFFF; --sunk:#F4F6F9; --ink:#16233A; --ink2:#4A5872; --ink3:#727F95; --line:#DCE2E9;
+  --pine:#1D7A5F; --pine-soft:#E2F1EB; --saffron:#D98E04; --saffron-ink:#8A5A00; --saffron-soft:#FBF0D8; --red:#D2263B; --red-soft:#FBE4E7;
+  --blue:#2F6FD0; --blue-soft:#E4EDFB; --shadow:0 1px 2px rgba(22,35,58,.06),0 6px 18px -10px rgba(22,35,58,.18);
+  --band:var(--pine); --band-ink:#FFFFFF;
+  --r-lg:22px; --r-md:16px; --r-sm:12px; --nav-h:68px;
+  --sat:max(env(safe-area-inset-top,0px),var(--safe-area-inset-top,0px)); --sab:max(env(safe-area-inset-bottom,0px),var(--safe-area-inset-bottom,0px));
+  --font:"Atkinson","NotoDeva",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  color-scheme:light;
+}
+:root[data-theme=dark]{
+  --mist:#0C1420; --surface:#141F31; --sunk:#101929; --ink:#E9EEF5; --ink2:#AEB9CA; --ink3:#8491A6; --line:#233149;
+  --pine-soft:#11342B; --saffron-ink:#F2B544; --saffron-soft:#372A0C; --red-soft:#3B1219; --blue-soft:#14284A;
+  --shadow:0 1px 2px rgba(0,0,0,.3); color-scheme:dark;
+}
+@media (prefers-color-scheme: dark){
+  :root[data-theme=system]{
+    --mist:#0C1420; --surface:#141F31; --sunk:#101929; --ink:#E9EEF5; --ink2:#AEB9CA; --ink3:#8491A6; --line:#233149;
+    --pine-soft:#11342B; --saffron-ink:#F2B544; --saffron-soft:#372A0C; --red-soft:#3B1219; --blue-soft:#14284A;
+    --shadow:0 1px 2px rgba(0,0,0,.3); color-scheme:dark;
+  }
+}
+:root[data-size=large] .app, :root[data-size=large] nav.tabs .in, :root[data-size=large] .override, :root[data-size=large] .sheet, :root[data-size=large] .onboard .in{zoom:1.14}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+.native body{overscroll-behavior:none;-webkit-user-select:none;user-select:none}
+.native input,.native textarea{-webkit-user-select:text;user-select:text}
+.checklist .row .d{font-size:14px}
+.okdot{display:inline-flex;align-items:center;gap:6px;font-weight:700;color:var(--pine);font-size:15px}
+.okdot::before{content:'';width:9px;height:9px;border-radius:50%;background:var(--pine)}
+.steps{list-style:none;margin:16px 0;padding:0;display:grid;gap:14px}
+.steps li{display:flex;gap:14px;align-items:flex-start}
+.steps .n{width:32px;height:32px;border-radius:50%;background:var(--pine-soft);color:var(--pine);font-weight:700;display:grid;place-items:center;flex:none}
+.steps .n.ok{background:var(--pine);color:#fff}
+.steps b{display:block}
+.steps span.d{font-size:15px;color:var(--ink2)}
+.btn[disabled]{opacity:.55}
+html,body{margin:0;background:var(--mist);color:var(--ink);font:400 17px/1.45 var(--font);-webkit-font-smoothing:antialiased}
+:root[lang=hi] body{line-height:1.6}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
+.app{max-width:520px;margin:0 auto;min-height:100vh;padding-bottom:calc(var(--nav-h) + var(--sab) + 12px)}
+.muted{color:var(--ink2)} .faint{color:var(--ink3)} .num{font-variant-numeric:tabular-nums}
+
+/* ---------- status band ---------- */
+.band{position:sticky;top:0;z-index:30;background:var(--band);color:var(--band-ink);padding:calc(var(--sat) + 14px) 20px 24px;transition:background .4s}
+.band::after{content:"";position:absolute;left:0;right:0;bottom:0;height:10px;opacity:.6;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='10'%3E%3Cpath d='M0 5 7 0l7 5-7 5z' fill='white' fill-opacity='.5'/%3E%3Cpath d='M14 5l7-5 7 5-7 5z' fill='white' fill-opacity='.22'/%3E%3Cpath d='M5 5l2-1.5L9 5 7 6.5z' fill='white'/%3E%3C/svg%3E");background-size:28px 10px}
+.band[data-level=clear]{--band:#1D7A5F}
+.band[data-level=attention]{--band:#D98E04;--band-ink:#1C1405}
+.band[data-level=emergency]{--band:#D2263B}
+.band[data-level=offline]{--band:#56627A}
+.band-top{display:flex;align-items:center;gap:10px;font-size:15px}
+.avatar{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-weight:700;background:rgba(255,255,255,.22);flex:none;font-size:14px}
+.band[data-level=attention] .avatar{background:rgba(0,0,0,.1)}
+.band-top .who{font-weight:700;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.conn{margin-left:auto;display:flex;align-items:center;gap:7px;font-size:14px;padding:5px 11px;border-radius:999px;background:rgba(0,0,0,.15);white-space:nowrap;flex:none}
+.conn i{width:8px;height:8px;border-radius:50%;background:currentColor}
+.conn.live i{animation:breathe 2.4s ease-in-out infinite}
+.conn.retry i{animation:blink .7s infinite}
+@keyframes breathe{50%{opacity:.35}} @keyframes blink{50%{opacity:0}}
+.band h1{margin:14px 0 2px;font-size:40px;line-height:1.08;font-weight:700;letter-spacing:-.5px}
+:root[lang=hi] .band h1{letter-spacing:0;font-size:36px}
+.band p{margin:0;font-size:17px;opacity:.94}
+.band .more{margin-top:6px;font-size:14px;opacity:.85}
+
+/* ---------- layout ---------- */
+main{padding:16px 16px 0}
+.sec{margin-bottom:22px}
+.sec-h{display:flex;align-items:center;gap:8px;margin:0 4px 10px;min-height:30px}
+.sec-h h2{font-size:19px;margin:0;font-weight:700}
+.sec-h .aside{margin-left:auto;font-size:14px;color:var(--ink3)}
+.panel{background:var(--surface);border-radius:var(--r-lg);border:1px solid var(--line);box-shadow:var(--shadow)}
+.tag{display:inline-flex;align-items:center;gap:5px;font-size:13px;padding:2px 9px;border-radius:999px;background:var(--sunk);color:var(--ink2);border:1px dashed var(--ink3);white-space:nowrap}
+.tag.solid{border-style:solid;border-color:var(--line)}
+
+.openalert{display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:var(--r-lg);background:var(--red);color:#fff;margin-bottom:18px;border:0;width:100%;text-align:left}
+.openalert svg{width:26px;height:26px;flex:none}
+.openalert b{display:block;font-size:18px}
+.openalert .go{margin-left:auto;font-weight:700;background:rgba(255,255,255,.2);padding:8px 14px;border-radius:999px;flex:none}
+
+/* movement — the real-data hero */
+.activity{padding:18px 18px 16px}
+.act-main{display:flex;align-items:center;gap:12px}
+.act-main .state{font-size:32px;font-weight:700;line-height:1.1}
+.act-main .since{color:var(--ink2);font-size:15px;margin-top:2px}
+.posture-fig{width:52px;height:52px;flex:none;color:var(--pine);background:var(--pine-soft);border-radius:16px;padding:8px}
+.act-facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:16px}
+.fact.loc{grid-column:1/-1;display:flex;align-items:center;gap:12px}
+.fact.loc>svg{width:22px;height:22px;color:var(--pine);flex:none}
+.fact.loc .grow{flex:1;min-width:0}
+.fact.loc .v{font-size:17px}
+.fact .ln{font-size:13px;color:var(--ink3)}
+#aFig{margin-left:auto;display:flex}
+.fact{background:var(--sunk);border-radius:var(--r-sm);padding:10px 11px;min-width:0}
+.fact .k{font-size:13px;color:var(--ink2);display:flex;gap:5px;align-items:center;flex-wrap:wrap}
+.fact .v{font-size:18px;font-weight:700;line-height:1.25;margin-top:2px;overflow-wrap:break-word}
+.fact .v small{display:block;font-size:13px;font-weight:400;color:var(--ink3)}
+:root[data-size=large] .fact .v{font-size:16px}
+:root[data-size=large] .act-facts{gap:6px}
+:root[data-size=large] .fact{padding:9px 10px}
+.cal-hint{margin-top:12px;padding:10px 12px;border-radius:var(--r-sm);background:var(--blue-soft);color:var(--blue);font-size:15px;border:0;width:100%;text-align:left}
+
+/* risk + device */
+.rows .row{display:flex;align-items:center;gap:14px;padding:15px 18px;border-top:1px solid var(--line)}
+.rows .row:first-child{border-top:0}
+.row .ic{width:42px;height:42px;border-radius:13px;display:grid;place-items:center;flex:none}
+.row .ic svg{width:22px;height:22px}
+.row .t{font-weight:700}
+.row .d{font-size:15px;color:var(--ink2)}
+.row .d2{font-size:13px;color:var(--ink3);margin-top:2px}
+.row .end{margin-left:auto;text-align:right;flex:none}
+.lvl{font-weight:700;font-size:15px;padding:4px 12px;border-radius:999px}
+.lvl.low{background:var(--pine-soft);color:var(--pine)}
+.lvl.moderate{background:var(--saffron-soft);color:var(--saffron-ink)}
+.lvl.high{background:var(--red-soft);color:var(--red)}
+.bars{display:inline-flex;gap:2px;align-items:flex-end;height:16px}
+.bars i{width:4px;background:var(--line);border-radius:1px}
+.bars i.on{background:var(--pine)}
+
+/* vitals strip (demo) */
+.vitals{display:grid;grid-template-columns:repeat(3,1fr);padding:16px 6px 12px;cursor:pointer;width:100%;text-align:left}
+.vital{padding:0 12px;border-left:1px solid var(--line);min-width:0}
+.vital:first-child{border-left:0}
+.vital .k{font-size:14px;color:var(--ink2);display:flex;align-items:center;gap:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vital .v{font-size:30px;font-weight:700;line-height:1.1;margin-top:4px}
+.vital .v small{font-size:14px;font-weight:400;color:var(--ink3);margin-left:2px}
+.heart{width:14px;height:14px;color:var(--red);flex:none}
+.heart.beat{animation:beat 1s ease-in-out infinite}
+@keyframes beat{0%,100%{transform:scale(1)}15%{transform:scale(1.22)}30%{transform:scale(1)}}
+.vitals-foot{grid-column:1/-1;padding:10px 12px 0;font-size:13px;color:var(--ink3)}
+
+/* buttons */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:48px;padding:0 18px;border-radius:var(--r-md);border:1px solid var(--line);background:var(--surface);font-weight:700;font-size:16px;white-space:nowrap;box-shadow:var(--shadow)}
+.btn svg{width:21px;height:21px;flex:none}
+a.btn{color:var(--ink);text-decoration:none}
+.fact.loc .btn{flex:none}
+.btn.sm{min-height:38px;padding:0 13px;font-size:15px;border-radius:12px;box-shadow:none}
+.btn.sm svg{width:17px;height:17px}
+.btn.primary{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+.btn.pine{background:var(--pine);color:#fff;border-color:var(--pine)}
+.btn.danger{background:var(--red);color:#fff;border-color:var(--red)}
+.quick{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+
+.seg{display:flex;background:var(--sunk);border:1px solid var(--line);border-radius:14px;padding:4px;gap:4px}
+.seg button{flex:1;border:0;background:transparent;min-height:40px;border-radius:10px;font-weight:700;color:var(--ink2);padding:0 8px}
+.seg button.on{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(22,35,58,.14)}
+.seg.sm{padding:3px;border-radius:12px}
+.seg.sm button{min-height:32px;font-size:14px}
+
+/* feed */
+.feed{list-style:none;margin:0;padding:6px 0}
+.feed li{display:grid;grid-template-columns:64px 26px 1fr;gap:0 10px;padding:9px 16px 9px 10px;align-items:start}
+.feed .tm{font-size:13px;color:var(--ink3);text-align:right;padding-top:3px;white-space:nowrap}
+.feed .dot{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:var(--sunk);position:relative;color:var(--ink2)}
+.feed .dot svg{width:14px;height:14px}
+.feed li:not(:last-child) .dot::after{content:"";position:absolute;top:28px;left:12px;width:2px;height:calc(100% + 4px);background:var(--line)}
+.feed .tx{font-size:16px}
+.feed .by{font-size:13px;color:var(--ink3)}
+.dot.alert{background:var(--red-soft);color:var(--red)} .dot.stumble{background:var(--saffron-soft);color:var(--saffron-ink)}
+.dot.meal,.dot.note,.dot.call{background:var(--blue-soft);color:var(--blue)} .dot.activity{background:var(--pine-soft);color:var(--pine)}
+.empty{padding:22px;text-align:center;color:var(--ink3)}
+
+.people{display:flex;gap:8px;flex-wrap:wrap}
+.person{display:flex;align-items:center;gap:8px;padding:6px 12px 6px 6px;border-radius:999px;background:var(--surface);border:1px solid var(--line);font-size:15px}
+.person .avatar{width:28px;height:28px;font-size:12px;background:var(--pine-soft);color:var(--pine)}
+.person.me .avatar{background:var(--ink);color:var(--surface)}
+
+/* alerts */
+.alist{display:flex;flex-direction:column;gap:10px;margin-top:14px}
+.aitem{display:flex;gap:14px;padding:15px 16px;border-radius:var(--r-lg);background:var(--surface);border:1px solid var(--line);text-align:left;width:100%;box-shadow:var(--shadow)}
+.aitem .sev{width:6px;border-radius:3px;flex:none;align-self:stretch}
+.sev.s1{background:var(--saffron)} .sev.s2{background:#E8601C} .sev.s3{background:var(--red)}
+.aitem .t{font-weight:700;font-size:17px}
+.aitem .d{font-size:15px;color:var(--ink2)}
+.aitem .st{margin-left:auto;align-self:center;font-size:15px;flex:none}
+.st.open{color:var(--red);font-weight:700} .st.ack{color:var(--saffron-ink);font-weight:700} .st.res{color:var(--pine)}
+
+/* trends */
+.chart{padding:16px 16px 12px;margin-bottom:12px}
+.chart-h{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.chart-h b{font-size:17px}
+.chart-h .now{margin-left:auto;font-size:26px;font-weight:700}
+.chart-h .now small{font-size:14px;font-weight:400;color:var(--ink3)}
+.chart svg{width:100%;height:150px;display:block;margin-top:6px;overflow:visible}
+.chart .stats{display:flex;gap:16px;font-size:14px;color:var(--ink2);margin-top:4px;flex-wrap:wrap}
+.sleep-row{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;align-items:end;height:120px;margin-top:10px}
+.sleep-row div{display:flex;flex-direction:column;align-items:center;gap:4px;height:100%;justify-content:flex-end;font-size:12px;color:var(--ink3)}
+.sleep-row span.b{width:100%;border-radius:8px 8px 4px 4px;background:var(--blue);opacity:.85}
+
+/* profile */
+.form{display:grid;gap:12px;padding:16px}
+.form label{display:grid;gap:5px;font-size:14px;color:var(--ink2)}
+.form input,.form select,.form textarea{width:100%;min-height:46px;border:1px solid var(--line);border-radius:12px;background:var(--sunk);padding:10px 12px;color:var(--ink);font-size:17px}
+.form textarea{min-height:76px;resize:vertical}
+.form .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.setting{padding:14px 18px;border-top:1px solid var(--line)}
+.setting:first-child{border-top:0}
+.setting .t{font-weight:700;margin-bottom:8px}
+.setting .d{font-size:14px;color:var(--ink2);margin:-4px 0 8px}
+.list-edit .li{display:flex;gap:10px;align-items:center;padding:12px 16px;border-top:1px solid var(--line)}
+.list-edit .li:first-child{border-top:0}
+.list-edit .li .grow{flex:1;min-width:0}
+.iconbtn{width:42px;height:42px;border-radius:12px;border:1px solid var(--line);background:var(--surface);display:grid;place-items:center;flex:none;color:var(--ink)}
+.iconbtn svg{width:18px;height:18px}
+.note{font-size:14px;color:var(--ink3);padding:0 6px;margin-top:8px}
+.switch{position:relative;width:52px;height:30px;border-radius:15px;border:0;background:var(--line);flex:none;transition:background .2s}
+.switch::after{content:"";position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:transform .2s}
+.switch[aria-checked=true]{background:var(--pine)}
+.switch[aria-checked=true]::after{transform:translateX(22px)}
+
+/* bottom nav */
+nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:40;background:var(--surface);border-top:1px solid var(--line);padding-bottom:var(--sab)}
+nav.tabs .in{max-width:520px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr);height:var(--nav-h)}
+nav.tabs button{border:0;background:transparent;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:13px;color:var(--ink3);position:relative;font-weight:700}
+nav.tabs button svg{width:25px;height:25px}
+nav.tabs button.on{color:var(--ink)}
+nav.tabs button.on::before{content:"";position:absolute;top:0;width:36px;height:3px;border-radius:0 0 3px 3px;background:var(--ink)}
+.badge[hidden]{display:none}
+.badge{position:absolute;top:8px;left:calc(50% + 6px);min-width:20px;height:20px;border-radius:10px;background:var(--red);color:#fff;font-size:12px;display:grid;place-items:center;padding:0 5px}
+
+/* full-screen fall override */
+.override{position:fixed;inset:0;z-index:100;background:#D2263B;color:#fff;display:none;flex-direction:column;overflow:auto;padding:calc(var(--sat) + 16px) 18px calc(var(--sab) + 18px)}
+.override.on{display:flex}
+.override .top{display:flex;align-items:center;gap:10px}
+.override .top button{margin-left:auto;background:rgba(255,255,255,.18);border:0;color:#fff;padding:9px 14px;border-radius:999px;font-weight:700;font-size:15px}
+.ring{width:88px;height:88px;border-radius:50%;margin:16px auto 6px;display:grid;place-items:center;background:rgba(255,255,255,.16);position:relative;flex:none}
+.ring::before,.ring::after{content:"";position:absolute;inset:0;border-radius:50%;border:3px solid rgba(255,255,255,.55);animation:ping 1.6s ease-out infinite}
+.ring::after{animation-delay:.8s}
+.ring svg{width:42px;height:42px}
+@keyframes ping{from{transform:scale(1);opacity:1}to{transform:scale(1.7);opacity:0}}
+.override h2{font-size:38px;margin:8px 0 0;text-align:center;line-height:1.1}
+.override .sub{text-align:center;font-size:18px;opacity:.95;margin-top:6px}
+.override .facts{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin-top:12px}
+.override .facts span{background:rgba(255,255,255,.16);padding:5px 12px;border-radius:999px;font-size:15px}
+.map{height:180px;border-radius:var(--r-lg);overflow:hidden;margin-top:16px;background:#B5182B;position:relative;flex:none}
+.map .fallback{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;gap:6px;text-align:center;padding:16px;background:#B5182B;z-index:500}
+.map.nomap .fallback{display:flex}
+.map a{color:#fff;font-weight:700}
+.responders{margin-top:14px;padding:12px 14px;border-radius:var(--r-md);background:rgba(0,0,0,.16);font-size:16px}
+.escalate{margin-top:12px;padding:12px 14px;border-radius:var(--r-md);background:#fff;color:#D2263B;font-weight:700;display:none}
+.escalate.on{display:block}
+.oactions{display:grid;gap:10px;margin-top:16px}
+.oactions .big{min-height:62px;font-size:20px;border-radius:18px;border:0;background:#fff;color:#D2263B;font-weight:700}
+.oactions .big.done{background:rgba(255,255,255,.25);color:#fff}
+.oactions .pair{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.oactions .call{min-height:56px;border-radius:16px;border:2px solid rgba(255,255,255,.7);background:transparent;color:#fff;font-weight:700;font-size:17px;display:flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;padding:0 8px;text-align:center}
+.oactions .call svg{width:20px;height:20px;flex:none}
+.oactions .resolve{background:transparent;border:0;color:#fff;text-decoration:underline;font-weight:700;min-height:44px;font-size:16px}
+
+/* sheets + onboarding */
+.scrim{position:fixed;inset:0;background:rgba(10,18,30,.5);z-index:120;display:none;align-items:flex-end;justify-content:center}
+.scrim.on{display:flex}
+.sheet{background:var(--surface);width:100%;max-width:520px;border-radius:26px 26px 0 0;padding:10px 18px calc(var(--sab) + 20px);max-height:88vh;overflow:auto}
+.sheet .grab{width:44px;height:5px;border-radius:3px;background:var(--line);margin:4px auto 12px}
+.sheet h3{margin:0 0 4px;font-size:22px}
+.choices{display:grid;gap:10px;margin:14px 0}
+.choice{display:flex;gap:12px;align-items:center;padding:14px;border-radius:var(--r-md);border:1.5px solid var(--line);background:var(--surface);text-align:left;width:100%}
+.choice.on{border-color:var(--ink);background:var(--sunk)}
+.choice b{display:block}
+.choice span{font-size:15px;color:var(--ink2)}
+.onboard{position:fixed;inset:0;z-index:150;background:var(--mist);display:none;overflow:auto}
+.onboard.on{display:block}
+.onboard .in{max-width:460px;margin:0 auto;padding:calc(var(--sat) + 28px) 22px 30px}
+.onboard .lang{display:flex;justify-content:space-between;align-items:center}
+.onboard h1{font-size:34px;line-height:1.15;margin:22px 0 8px}
+.toast{position:fixed;left:50%;bottom:calc(var(--nav-h) + var(--sab) + 14px);transform:translate(-50%,20px);opacity:0;background:var(--ink);color:var(--surface);padding:12px 18px;border-radius:14px;font-size:16px;z-index:200;transition:.25s;max-width:calc(100vw - 32px);pointer-events:none;text-align:center}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="band" id="band" data-level="offline" role="status" aria-live="polite">
+    <div class="band-top">
+      <span class="avatar" id="wAvatar">·</span><span class="who" id="wName"></span>
+      <span class="conn" id="conn"><i></i><span id="connTxt"></span></span>
+    </div>
+    <h1 id="sTitle"></h1>
+    <p id="sDetail"></p>
+    <div class="more" id="sMore"></div>
+  </header>
+  <main>
+    <section id="tab-home" class="tab"></section>
+    <section id="tab-alerts" class="tab" hidden></section>
+    <section id="tab-vitals" class="tab" hidden></section>
+    <section id="tab-profile" class="tab" hidden></section>
+  </main>
+</div>
+
+<nav class="tabs">
+  <div class="in">
+    <button data-tab="home" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg><span data-i18n="nav_home"></span></button>
+    <button data-tab="alerts"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/></svg><span data-i18n="nav_alerts"></span><span class="badge" id="badge" hidden></span></button>
+    <button data-tab="vitals"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg><span data-i18n="nav_trends"></span></button>
+    <button data-tab="profile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg><span data-i18n="nav_profile"></span></button>
+  </div>
+</nav>
+
+<div class="override" id="ov" role="alertdialog" aria-labelledby="ovTitle">
+  <div class="top"><span id="ovSev" style="font-weight:700"></span><button id="ovMin" data-i18n="ov_hide"></button></div>
+  <div class="ring"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg></div>
+  <h2 id="ovTitle" data-i18n="ov_title"></h2>
+  <div class="sub" id="ovSub"></div>
+  <div class="facts" id="ovFacts"></div>
+  <div class="map" id="ovMap"><div class="fallback" id="ovMapFb"></div></div>
+  <div class="responders" id="ovResp"></div>
+  <div class="escalate" id="ovEsc" data-i18n="ov_escalate"></div>
+  <div class="oactions">
+    <button class="big" id="ovAck"></button>
+    <div class="pair">
+      <a class="call" id="ovCall112" href="tel:112"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7l.7 2.7-1.8 3.4a16 16 0 0 0 6 6l3.4-1.8 2.7.7a2 2 0 0 1 1.7 2z"/></svg><span data-i18n="call_112"></span></a>
+      <a class="call" id="ovCallW" href="tel:"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7l.7 2.7-1.8 3.4a16 16 0 0 0 6 6l3.4-1.8 2.7.7a2 2 0 0 1 1.7 2z"/></svg><span id="ovCallWTxt"></span></a>
+    </div>
+    <button class="resolve" id="ovResolve" data-i18n="ov_resolve"></button>
+  </div>
+</div>
+
+<div class="scrim" id="scrim"><div class="sheet" id="sheet"></div></div>
+
+<div class="onboard" id="onboard"><div class="in">
+  <div class="lang">
+    <svg width="52" height="52" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="16" fill="#1D7A5F"/><path d="M32 13 17 19v11c0 10 6.4 17.2 15 20 8.6-2.8 15-10 15-20V19z" fill="none" stroke="#fff" stroke-width="3.5" stroke-linejoin="round"/><path d="M23 32h5l3-6 4 11 3-5h4" fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <div class="seg sm" style="width:170px"><button data-setlang="en">English</button><button data-setlang="hi">हिंदी</button></div>
+  </div>
+  <h1 data-i18n="ob_title"></h1>
+  <p class="muted" data-i18n="ob_sub"></p>
+  <div class="form" style="padding:16px 0">
+    <label><span data-i18n="ob_name"></span><input id="obName" autocomplete="name" data-i18n-ph="ob_name_ph"></label>
+    <label><span data-i18n="ob_role"></span><select id="obRole"><option value="family" data-i18n="role_family"></option><option value="nurse" data-i18n="role_nurse"></option><option value="doctor" data-i18n="role_doctor"></option><option value="neighbour" data-i18n="role_neighbour"></option></select></label>
+  </div>
+  <p class="muted" style="font-size:15px" data-i18n="ob_keep"></p>
+  <button class="btn pine" id="obGo" style="width:100%;margin-top:8px" data-i18n="ob_go"></button>
+</div></div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="i18n.js"></script>
+<script src="engine.js"></script>
+<script src="vendor/leaflet.js" onerror="window.L=null"></script>
+<script>
+"use strict";
+/* ============================================================
+   State + preferences
+   ============================================================ */
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
+};
+const S = {
+  me: store.get('vgc_me', null),
+  lang: store.get('vgc_lang', 'en'), theme: store.get('vgc_theme', 'system'), size: store.get('vgc_size', 'normal'),
+  showVitals: store.get('vgc_vitals', true), feedAll: false,
+  snap: null, live: null, tab: 'home',
+  ws: null, up: false, lastMsg: 0, tries: 0,
+  outbox: store.get('vgc_outbox', []), seenAlerts: store.get('vgc_seen', {}),
+  ovId: null, quiet: {}, alertFilter: 'all', range: '24h', series: null,
+};
+if (S.me && /^[A-Z]/.test(S.me.role || '')) S.me.role = S.me.role.toLowerCase();
+const cache = store.get('vgc_cache', null);
+if (cache) { S.snap = cache.snap; S.live = cache.snap?.live; S.cachedAt = cache.at; }
+
+/* ============================================================
+   i18n
+   ============================================================ */
+function t(k, p = {}) {
+  const d = I18N[S.lang] || I18N.en;
+  const s = (p.n === 1 && (d[k + '_1'] || I18N.en[k + '_1'])) || d[k] || I18N.en[k] || k;
+  return s.replace(/\{(\w+)\}/g, (_, x) => p[x] ?? '');
+}
+/* server messages arrive as {key, p}; translate the params that are themselves words */
+function tm(m) {
+  if (!m) return '';
+  if (!m.key) return m.text || '';
+  const p = { ...(m.p || {}) };
+  if (p.sev) p.sev = t('sevl_' + p.sev);
+  if (p.res) p.res = t('res_' + p.res);
+  if (p.s) p.s = t('s_' + p.s);
+  if (p.state) p.state = t('act_' + p.state).toLocaleLowerCase();
+  if (p.room) p.room = t('room_' + p.room);
+  if (p.target && /112/.test(p.target)) p.target = t('target_112');
+  if (m.key === 'st_clear_detail') {
+    if (!p.act) return t('st_clear_detail_none');
+    p.act = S.lang === 'en' ? t('act_' + p.act).toLowerCase() : t('act_' + p.act);
+  }
+  return t(m.key, p) + (p.demo ? t('demo_suffix') : '');
+}
+const role = r => t('role_' + (r || 'family').toLowerCase());
+const locale = () => S.lang === 'hi' ? 'hi-IN' : 'en-IN';
+function applyStatic() {
+  document.documentElement.lang = S.lang;
+  document.querySelectorAll('[data-i18n]').forEach(el => el.textContent = t(el.dataset.i18n));
+  document.querySelectorAll('[data-i18n-ph]').forEach(el => el.placeholder = t(el.dataset.i18nPh));
+  document.querySelectorAll('[data-setlang]').forEach(b => b.classList.toggle('on', b.dataset.setlang === S.lang));
+}
+function setPref(k, v) {
+  S[k] = v; store.set({ lang: 'vgc_lang', theme: 'vgc_theme', size: 'vgc_size', showVitals: 'vgc_vitals' }[k], v);
+  const r = document.documentElement; r.dataset.theme = S.theme; r.dataset.size = S.size;
+  applyStatic(); renderAll(); if (S.ovId) renderOverride();
+  if (k === 'lang' && engine) engine.pushConfig();
+}
+
+/* ============================================================
+   Formatting
+   ============================================================ */
+const hhmm = ts => new Date(ts * 1000).toLocaleTimeString(locale(), { hour: 'numeric', minute: '2-digit' });
+function dayLabel(ts) {
+  const d = new Date(ts * 1000), now = new Date(), y = new Date(); y.setDate(now.getDate() - 1);
+  if (d.toDateString() === now.toDateString()) return t('today');
+  if (d.toDateString() === y.toDateString()) return t('yesterday');
+  return d.toLocaleDateString(locale(), { day: 'numeric', month: 'short' });
+}
+function ago(ts) {
+  const s = Math.max(0, Date.now() / 1000 - ts);
+  if (s < 45) return t('ago_now');
+  if (s < 3600) return t('ago_min', { n: Math.round(s / 60) });
+  if (s < 86400) return t('ago_h', { h: Math.floor(s / 3600), m: Math.round((s % 3600) / 60) });
+  return `${dayLabel(ts)}, ${hhmm(ts)}`;
+}
+function dur(s) { s = Math.max(0, s); return s < 60 ? t('dur_s', { n: Math.round(s) }) : s < 3600 ? t('dur_min', { n: Math.round(s / 60) }) : t('dur_h', { h: Math.floor(s / 3600), m: Math.round((s % 3600) / 60) }); }
+const first = n => (n || '').split(' ')[0];
+const initials = n => (n || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+let toastT;
+function toast(msg) { const el = $('#toast'); el.textContent = msg; el.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => el.classList.remove('on'), 3200); }
+
+const ICON = {
+  alert: '<path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/>',
+  stumble: '<circle cx="13" cy="4" r="2"/><path d="M9 20l3-6 3 2v5M7 12l3-3 4 1 3 3"/>',
+  activity: '<circle cx="13" cy="4" r="2"/><path d="M9 21l2-7 3 3v5M8 11l3-3h3l3 4"/>',
+  meal: '<path d="M4 3v8a3 3 0 0 0 6 0V3M7 3v18M17 3c-2 2-3 5-3 8h3v10"/>',
+  note: '<path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9zM14 3v6h6M8 13h8M8 17h5"/>',
+  device: '<rect x="5" y="3" width="14" height="18" rx="3"/><path d="M12 17h.01"/>',
+  room: '<path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/>',
+  call: '<path d="M22 16.9v3a2 2 0 0 1-2.2 2A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7l.7 2.7-1.8 3.4a16 16 0 0 0 6 6l3.4-1.8 2.7.7a2 2 0 0 1 1.7 2z"/>',
+  shield: '<path d="M12 3 5 6v6c0 4.5 3 8 7 9 4-1 7-4.5 7-9V6z"/>',
+  trash: '<path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  pin: '<path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/>',
+};
+const svg = k => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[k] || ''}</svg>`;
+
+/* ============================================================
+   Connection
+   - Android app, "hotspot" mode: talks straight to the vest through the native service
+     (VestNative plugin) and the on-phone engine (engine.js)
+   - Android app, "laptop" mode, or a browser opened from the laptop server: WebSocket
+   Both speak the same messages, so everything below is shared.
+   ============================================================ */
+const CAP = window.Capacitor;
+const NATIVE = !!(CAP && CAP.isNativePlatform && CAP.isNativePlatform());
+const VN = NATIVE ? CAP.Plugins.VestNative : null;
+if (NATIVE) document.documentElement.classList.add('native');
+const FROM_SERVER = !NATIVE && /^https?:$/.test(location.protocol) && /\/care/.test(location.pathname);
+S.mode = NATIVE ? store.get('vgc_mode', 'vest') : FROM_SERVER ? 'laptop' : 'vest';
+S.laptop = store.get('vgc_laptop', '');
+S.perms = null;
+let engine = null;
+function getEngine() {
+  if (engine) return engine;
+  engine = new VGEngine({
+    native: VN,
+    sendVest: cmd => { if (VN) VN.send({ cmd }).catch(() => {}); else if (window.__vgSendVest) window.__vgSendVest(cmd); },
+  });
+  return engine;
+}
+/* a tiny object that behaves like a WebSocket but is wired to the on-phone engine */
+function localLink() {
+  const eng = getEngine();
+  const link = { readyState: 1, send: txt => setTimeout(() => eng.handle(JSON.parse(txt)), 0), close() {} };
+  eng.attach(m => link.onmessage && link.onmessage({ data: JSON.stringify(m) }));
+  setTimeout(() => link.onopen && link.onopen(), 0);
+  return link;
+}
+async function drainNative() {
+  if (!VN || S.mode !== 'vest') return;
+  try {
+    const r = await VN.drain();
+    (r.events || []).forEach(ev => getEngine().onLine(ev.line, ev.ts, ev));
+  } catch {}
+}
+function startNative() {
+  if (!VN) return;
+  VN.addListener('line', e => { if (S.mode === 'vest') getEngine().onLine(e.line, e.ts); });
+  VN.addListener('resume', () => { drainNative(); refreshPerms(); });
+  VN.start().catch(() => {});
+  drainNative();
+  setInterval(async () => { try { const st = await VN.getState(); if (engine) engine.vestIp = st.vestIp || null; } catch {} }, 3000);
+}
+async function refreshPerms() {
+  if (!VN) return;
+  try { S.perms = await VN.permissions(); } catch { S.perms = null; }
+  if (S.tab === 'profile') renderProfile();
+}
+function openExternal(url) {
+  if (VN) VN.openUrl({ url }).catch(() => {}); else window.open(url, '_blank', 'noopener');
+}
+function connect() {
+  let ws;
+  if (S.mode === 'vest') ws = localLink();
+  else {
+    const host = NATIVE ? S.laptop : location.host, proto = location.protocol === 'https:' ? 'wss' : 'ws';
+    if (!host) { S.up = false; renderConn(); return; }
+    try { ws = new WebSocket(`${proto}://${host}/care-ws`); } catch { return retry(); }
+  }
+  S.ws = ws;
+  ws.onopen = () => {
+    S.up = true; S.tries = 0; S.lastMsg = Date.now();
+    if (S.me) send({ t: 'hello', id: S.me.id, name: S.me.name, role: S.me.role }, false);
+    S.outbox.forEach(o => ws.send(JSON.stringify(o)));
+    if (S.wasDown) { toast(t('reconnected')); S.wasDown = false; }
+    renderConn();
+  };
+  ws.onmessage = e => { S.lastMsg = Date.now(); onMsg(JSON.parse(e.data)); };
+  ws.onclose = () => { if (S.up) S.wasDown = true; S.up = false; renderConn(); retry(); };
+  ws.onerror = () => {};
+}
+function retry() { if (S.mode === 'vest') return; setTimeout(connect, Math.min(5000, 500 * 2 ** S.tries++)); }
+function send(obj, queue = true) {
+  if (queue) obj.op_id = obj.op_id || (Date.now().toString(36) + Math.random().toString(36).slice(2, 7));
+  if (S.ws && S.ws.readyState === 1) S.ws.send(JSON.stringify(obj));
+  if (queue) { S.outbox.push(obj); store.set('vgc_outbox', S.outbox); if (!S.up) toast(t('offline_saved')); }
+}
+function onMsg(m) {
+  if (m.t === 'snapshot') {
+    S.snap = m; S.live = m.live; S.cachedAt = null;
+    store.set('vgc_cache', { at: Date.now(), snap: m });
+    renderAll(); checkOverride();
+  } else if (m.t === 'live') {
+    S.live = m; if (S.snap) S.snap.live = m; renderLive();
+  } else if (m.t === 'alert') {
+    if (S.snap) { const i = S.snap.alerts.findIndex(a => a.id === m.alert.id); if (i >= 0) S.snap.alerts[i] = m.alert; else S.snap.alerts.push(m.alert); }
+    renderAll(); checkOverride(m.alert);
+  } else if (m.t === 'ack_op') {
+    S.outbox = S.outbox.filter(o => o.op_id !== m.op_id); store.set('vgc_outbox', S.outbox);
+  } else if (m.t === 'toast') toast(m.key ? t(m.key, m.p || {}) : m.text);
+  else if (m.t === 'series') { S.series = m; if (S.tab === 'vitals') renderVitals(); }
+}
+
+/* ============================================================
+   Status band
+   ============================================================ */
+function renderConn() {
+  const c = $('#conn'), x = $('#connTxt');
+  const stale = S.up && Date.now() - S.lastMsg > 4000, dev = S.live?.device;
+  if (!S.up) { c.className = 'conn retry'; const at = S.cachedAt || S.lastMsg; x.textContent = at ? t('conn_offline', { ago: ago(at / 1000) }) : t('conn_retry'); }
+  else if (stale) { c.className = 'conn retry'; x.textContent = t('conn_wait'); }
+  else if (dev && !dev.online) { c.className = 'conn'; x.textContent = S.mode === 'vest' && !dev.ever ? t('conn_hotspot') : t('conn_vest_off'); }
+  else { c.className = 'conn live'; x.textContent = t('conn_live'); }
+  renderBand();
+}
+let barsStyle = null;
+function setBars(style) {
+  if (!NATIVE || style === barsStyle) return; barsStyle = style;
+  try { CAP.Plugins.SystemBars && CAP.Plugins.SystemBars.setStyle({ style }).catch(() => {}); } catch {}
+}
+function renderBand() {
+  const b = $('#band'), st = S.live?.status, w = S.snap?.profile?.wearer;
+  if (w) { $('#wName').textContent = w.name; $('#wAvatar').textContent = initials(w.name); }
+  let level = st?.level || 'offline', title = st ? t(st.title) : t('band_connecting'), detail = st ? tm(st.detail) : t('band_looking'), more = '';
+  if (st?.reasons?.length > 1) more = t('band_also', { list: st.reasons.slice(1).map(tm).join(', ') });
+  if (!S.up && S.snap) { if (level !== 'emergency') level = 'offline'; more = t('band_cached'); }
+  b.dataset.level = level;
+  $('#sTitle').textContent = title; $('#sDetail').textContent = detail; $('#sMore').textContent = more;
+  document.querySelector('meta[name=theme-color]').content = { clear: '#1D7A5F', attention: '#D98E04', emergency: '#D2263B', offline: '#56627A' }[level];
+  setBars(S.ovId ? 'DARK' : level === 'attention' ? 'LIGHT' : 'DARK');
+  const open = (S.snap?.alerts || []).filter(a => a.status !== 'resolved').length;
+  $('#badge').hidden = !open; $('#badge').textContent = open;
+}
+
+/* ============================================================
+   HOME — real vest data first, demo vitals after
+   ============================================================ */
+function postureSvg(p) {
+  const fig = p === 'lying' ? '<circle cx="7" cy="14" r="2.4"/><path d="M10 15h11M13 15l2-3"/>'
+    : p === 'bending' ? '<circle cx="15" cy="5" r="2.4"/><path d="M14 8 9 13l1 8M9 13l-4 2M10 14l5 7"/>'
+    : '<circle cx="12" cy="4.5" r="2.4"/><path d="M12 8v8M12 16l-3 5M12 16l3 5M8 11h8"/>';
+  return `<svg class="posture-fig" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${fig}</svg>`;
+}
+function isImportant(e) { return e.imp ?? ['alert', 'stumble', 'meal', 'note', 'call'].includes(e.kind); }
+function renderHome() {
+  const s = S.snap;
+  if (!s) { $('#tab-home').innerHTML = `<div class="empty">${t('waiting_first')}</div>`; return; }
+  const open = s.alerts.filter(a => a.status !== 'resolved'), last = open.at(-1);
+  const feed = s.feed.filter(e => e.kind !== 'medication' && e.kind !== 'room' && (S.feedAll || isImportant(e))).slice(-25).reverse();
+  const people = s.caregivers.map(c => `<span class="person${c.name === S.me?.name ? ' me' : ''}"><span class="avatar">${esc(initials(c.name))}</span>${esc(c.name)} <span class="faint">· ${esc(role(c.role))}</span></span>`).join('');
+  $('#tab-home').innerHTML = `
+    ${last ? `<button class="openalert" data-open-alert="${last.id}">${svg('alert')}<span><b>${t('open_alert_title')}</b>${esc(alertStatusText(last))}</span><span class="go">${t('open')}</span></button>` : ''}
+    <div class="sec">
+      <div class="sec-h"><h2>${t('movement')}</h2><span class="aside" id="actUpd"></span></div>
+      <div class="panel activity">
+        <div class="act-main"><div><div class="state" id="aState">—</div><div class="since" id="aSince"></div></div><span id="aFig"></span></div>
+        <div class="act-facts">
+          <div class="fact"><div class="k">${t('posture')}</div><div class="v" id="aPost">—</div></div>
+          <div class="fact"><div class="k">${t('steps_today')}</div><div class="v num" id="aSteps">—</div></div>
+          <div class="fact loc">${svg('pin')}<div class="grow"><div class="k">${t('location')}</div><div class="v">${esc(s.profile.home.label)}</div><div class="ln">${t('loc_note')}</div></div>
+            <a class="btn sm" href="https://maps.google.com/?q=${s.profile.home.lat},${s.profile.home.lon}" target="_blank" rel="noopener">${t('map_open')}</a></div>
+        </div>
+      </div>
+    </div>
+    <div class="sec panel rows">
+      <div class="row"><span class="ic" id="rIc">${svg('shield')}</span><div><div class="t">${t('fall_risk')}</div><div class="d" id="rWhy">—</div><div class="d2">${t('risk_note')}</div></div><span class="end"><span class="lvl" id="rLvl">—</span></span></div>
+      <div class="row" ${NATIVE && S.mode === 'vest' ? 'data-setup role="button" tabindex="0" style="cursor:pointer"' : ''}><span class="ic" style="background:var(--sunk);color:var(--ink2)">${svg('device')}</span><div><div class="t" id="dT"></div><div class="d" id="dD"></div></div><span class="end" id="dSig"></span></div>
+    </div>
+    ${S.showVitals ? `<div class="sec">
+      <div class="sec-h"><h2>${t('vitals')}</h2><span class="aside"><span class="tag">${t('sim')}</span></span></div>
+      <button class="panel vitals" data-goto="vitals">
+        <div class="vital"><div class="k"><svg class="heart" id="heart" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 21s-7.5-4.6-9.6-9.3C.9 8.3 3 4.5 6.7 4.5c2.1 0 3.6 1.2 5.3 3.1 1.7-1.9 3.2-3.1 5.3-3.1 3.7 0 5.8 3.8 4.3 7.2C19.5 16.4 12 21 12 21z"/></svg>${t('hr')}</div><div class="v num"><span id="vHr">—</span><small>${t('bpm')}</small></div></div>
+        <div class="vital"><div class="k">${t('spo2')}</div><div class="v num"><span id="vSp">—</span><small>%</small></div></div>
+        <div class="vital"><div class="k">${t('temp')}</div><div class="v num"><span id="vTp">—</span><small>°C</small></div></div>
+        <div class="vitals-foot">${t('sim_note')}</div>
+      </button></div>` : ''}
+    <div class="sec quick">
+      <button class="btn" data-log="meal">${svg('meal')}${t('log_meal')}</button>
+      <button class="btn" data-log="note">${svg('note')}${t('add_note')}</button>
+    </div>
+    <div class="sec">
+      <div class="sec-h"><h2>${t('activity_title')}</h2>
+        <span class="aside"><span class="seg sm"><button data-feed="imp" class="${S.feedAll ? '' : 'on'}">${t('f_important')}</button><button data-feed="all" class="${S.feedAll ? 'on' : ''}">${t('f_everything')}</button></span></span></div>
+      <div class="panel">${feedHtml(feed)}</div>
+    </div>
+    <div class="sec">
+      <div class="sec-h"><h2>${t('caregivers_online')}</h2></div>
+      <div class="people">${people || `<span class="faint">${t('only_you')}</span>`}</div>
+    </div>`;
+  renderLive();
+}
+function feedHtml(items) {
+  if (!items.length) return `<div class="empty">${t('feed_empty')}</div>`;
+  return `<ul class="feed">${items.map(e => {
+    const sub = [e.by ? t('feed_by', { who: e.by }) : e.source === 'simulated' ? t('feed_sim') : '', dayLabel(e.ts) !== t('today') ? dayLabel(e.ts) : ''].filter(Boolean).join(' · ');
+    return `<li><span class="tm num">${hhmm(e.ts)}</span><span class="dot ${e.kind}">${svg(e.kind in ICON ? e.kind : 'note')}</span>
+      <span><span class="tx">${esc(tm(e))}</span>${sub ? `<br><span class="by">${esc(sub)}</span>` : ''}</span></li>`;
+  }).join('')}</ul>`;
+}
+function renderLive() {
+  renderConn();
+  if (S.ovId) renderOverride();
+  const L = S.live; if (!L || S.tab !== 'home' || !$('#aState')) return;
+  if (S.showVitals && $('#vHr')) {
+    $('#vHr').textContent = L.vitals.hr; $('#vSp').textContent = L.vitals.spo2; $('#vTp').textContent = L.vitals.temp.toFixed(1);
+    $('#heart')?.classList.toggle('beat', !!L.device.online);
+  }
+  const a = L.activity, online = L.device.online;
+  $('#aState').textContent = online ? (a.state ? t('act_' + a.state) : t('act_starting')) : t('act_nodata');
+  $('#aSince').textContent = online && a.state ? t('for_dur', { d: dur(L.ts - a.since) }) : (L.device.last_rx ? t('last_seen', { ago: ago(L.device.last_rx) }) : t('r_not_connected'));
+  $('#aPost').innerHTML = a.posture ? `${esc(t('post_' + a.posture))}<small>${a.tilt}°</small>` : `—<small>${t('needs_cal_short')}</small>`;
+  $('#aFig').innerHTML = postureSvg(a.posture || 'upright');
+  $('#aSteps').textContent = a.steps.toLocaleString(locale());
+  const r = L.risk, col = { low: ['--pine-soft', '--pine'], moderate: ['--saffron-soft', '--saffron-ink'], high: ['--red-soft', '--red'] }[r.level];
+  $('#rLvl').className = 'lvl ' + r.level; $('#rLvl').textContent = t('risk_' + r.level);
+  $('#rWhy').textContent = r.reasons.map(tm).join(' · ');
+  $('#rIc').style.background = `var(${col[0]})`; $('#rIc').style.color = `var(${col[1]})`;
+  const d = L.device, okN = d.sensors.filter(Boolean).length;
+  $('#dT').textContent = online ? t('dev_connected') : d.ever ? t('dev_offline') : t('dev_never');
+  $('#dD').textContent = online ? t('dev_sensors', { n: okN }) + (okN < 2 ? ' — ' + t('dev_check') : '') : d.last_rx ? t('dev_last', { ago: ago(d.last_rx) }) : t('dev_hint');
+  const lv = !online ? 0 : !d.rssi ? 4 : d.rssi > -55 ? 4 : d.rssi > -67 ? 3 : d.rssi > -78 ? 2 : 1;
+  $('#dSig').innerHTML = `<span class="bars" aria-label="WiFi ${lv}/4">${[1, 2, 3, 4].map(i => `<i class="${i <= lv ? 'on' : ''}" style="height:${i * 4}px"></i>`).join('')}</span>`;
+  $('#actUpd').textContent = online ? t('live') : '';
+}
+
+/* ============================================================
+   ALERTS
+   ============================================================ */
+function alertStatusText(a) {
+  if (a.status === 'resolved') return t('a_resolved', { who: a.resolved_by, res: t('res_' + a.resolution) });
+  if (a.responders.length) return t('a_resp', { who: a.responders.map(r => r.name).join(', ') });
+  return a.escalated ? t('a_esc') : t('a_wait');
+}
+function renderAlerts() {
+  const all = (S.snap?.alerts || []).slice().reverse(), f = S.alertFilter;
+  const list = all.filter(a => f === 'all' || (f === 'open' ? a.status !== 'resolved' : a.status === 'resolved'));
+  $('#tab-alerts').innerHTML = `
+    <div class="sec-h"><h2>${t('alerts_title')}</h2><span class="aside">${t('total', { n: all.length })}</span></div>
+    <div class="seg">${['all', 'open', 'resolved'].map(k => `<button data-filter="${k}" class="${f === k ? 'on' : ''}">${t('f_' + k)}</button>`).join('')}</div>
+    <div class="alist">${list.length ? list.map(a => {
+      const resp = a.responders[0] ? Math.round(a.responders[0].ts - a.ts) : null;
+      const cls = a.status === 'resolved' ? 'res' : a.responders.length ? 'ack' : 'open';
+      return `<button class="aitem" data-alert="${a.id}"><span class="sev s${a.severity}"></span>
+        <span><div class="t">${t('fall_sev', { sev: t('sev_' + a.severity) })}${a.demo ? ` <span class="tag">${t('demo')}</span>` : ''}</div>
+        <div class="d">${dayLabel(a.ts)}, ${hhmm(a.ts)} · ${t('a_impact', { g: a.peak_g })}${resp !== null ? ' · ' + t('a_resp_in', { d: dur(resp) }) : ''}</div>
+        <div class="d">${esc(alertStatusText(a))}</div></span>
+        <span class="st ${cls}">${t(cls === 'res' ? 'st_closed' : cls === 'ack' ? 'st_handling' : 'st_open')}</span></button>`;
+    }).join('') : `<div class="empty panel">${f === 'open' ? t('alerts_empty_open') : t('alerts_empty')}</div>`}</div>`;
+}
+function openAlertSheet(id) {
+  const a = S.snap?.alerts.find(x => x.id === id); if (!a) return;
+  const ev = [[a.ts, t('ad_detected')]];
+  if (a.escalated) ev.push([a.ts + 60, t('ad_esc')]);
+  a.responders.forEach(r => ev.push([r.ts, t('ad_resp', { who: r.name })]));
+  if (a.resolved_ts) ev.push([a.resolved_ts, alertStatusText(a)]);
+  ev.sort((x, y) => x[0] - y[0]);
+  sheet(`<h3>${t('fall_sev', { sev: t('sev_' + a.severity) })}</h3><p class="muted" style="margin:0">${dayLabel(a.ts)}, ${hhmm(a.ts)} · ${esc(a.location.label)}</p>
+    <div class="act-facts" style="margin:14px 0">
+      <div class="fact"><div class="k">${t('ad_impact')}</div><div class="v num">${a.peak_g} g</div></div>
+      <div class="fact"><div class="k">${t('ad_posture')}</div><div class="v num">${a.tilt_change}°</div></div>
+      <div class="fact"><div class="k">${t('ad_tilt')}</div><div class="v num">${a.tilt_after != null ? a.tilt_after + '°' : '—'}</div></div>
+    </div>
+    <ul class="feed" style="padding:0">${ev.map(e => `<li><span class="tm num">${hhmm(e[0])}</span><span class="dot alert">${svg('alert')}</span><span class="tx">${esc(e[1])}</span></li>`).join('')}</ul>
+    ${a.note ? `<p><b>${t('note_label')}:</b> ${esc(a.note)}</p>` : ''}
+    <div style="display:grid;gap:10px;margin-top:12px">
+      ${a.status !== 'resolved' ? `<button class="btn danger" data-showov="${a.id}">${t('open_alert_screen')}</button>` : ''}
+      <button class="btn" data-close>${t('close')}</button></div>`);
+}
+
+/* ============================================================
+   TRENDS
+   ============================================================ */
+function lineChart(points, { lo, hi, band, color, fmt = v => v }) {
+  if (!points.length) return `<div class="empty">${t('no_data')}</div>`;
+  const W = 320, H = 150, P = { l: 32, r: 6, t: 8, b: 20 };
+  const xs = points.map(p => p[0]), ys = points.map(p => p[1]);
+  const x0 = Math.min(...xs), x1 = Math.max(...xs);
+  const ymin = Math.min(lo, ...ys), ymax = Math.max(hi, ...ys);
+  const X = x => P.l + (x - x0) / ((x1 - x0) || 1) * (W - P.l - P.r);
+  const Y = y => H - P.b - (y - ymin) / ((ymax - ymin) || 1) * (H - P.t - P.b);
+  const d = points.map((p, i) => `${i ? 'L' : 'M'}${X(p[0]).toFixed(1)},${Y(p[1]).toFixed(1)}`).join('');
+  const ticks = [ymin, (ymin + ymax) / 2, ymax];
+  const tl = [x0, (x0 + x1) / 2, x1].map(v => S.range === '7d' ? new Date(v * 1000).toLocaleDateString(locale(), { weekday: 'short' }) : hhmm(v));
+  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img">
+    ${band ? `<rect x="${P.l}" y="${Y(band[1])}" width="${W - P.l - P.r}" height="${Math.max(0, Y(band[0]) - Y(band[1]))}" fill="${color}" opacity=".08"/>` : ''}
+    ${ticks.map(v => `<line x1="${P.l}" x2="${W - P.r}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--line)"/><text x="${P.l - 5}" y="${Y(v) + 4}" text-anchor="end" font-size="10" fill="var(--ink3)">${fmt(v)}</text>`).join('')}
+    <path d="${d}L${X(x1)},${H - P.b}L${X(x0)},${H - P.b}Z" fill="${color}" opacity=".10"/>
+    <path d="${d}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>
+    ${tl.map((v, i) => `<text x="${[P.l, (W + P.l) / 2, W - P.r][i]}" y="${H - 4}" text-anchor="${['start', 'middle', 'end'][i]}" font-size="10" fill="var(--ink3)">${v}</text>`).join('')}
+  </svg>`;
+}
+function stats(ys, f = v => v) { if (!ys.length) return ''; const av = ys.reduce((a, b) => a + b, 0) / ys.length; return `<div class="stats"><span>${t('st_low', { v: f(Math.min(...ys)) })}</span><span>${t('st_avg', { v: f(av) })}</span><span>${t('st_high', { v: f(Math.max(...ys)) })}</span></div>`; }
+function renderVitals() {
+  const L = S.live, sr = S.series && S.series.range === S.range ? S.series : null;
+  const v = sr ? sr.vitals : [], sleep = S.snap?.sleep || [], am = sr ? sr.active_minutes : [];
+  const amMax = Math.max(30, ...am.map(x => x[1]));
+  const activeChart = `<div class="panel chart"><div class="chart-h"><b>${t('active_min')}</b><span class="tag solid" style="margin-left:auto">${t('from_vest')}</span></div>
+    ${am.length ? `<svg viewBox="0 0 320 110" preserveAspectRatio="none">${am.map((x, i) => { const w = 300 / am.length, h = x[1] / amMax * 88; return `<rect x="${10 + i * w + 2}" y="${96 - h}" width="${Math.max(2, w - 4)}" height="${h}" rx="3" fill="var(--pine)"/><text x="${10 + i * w + w / 2}" y="108" text-anchor="middle" font-size="9" fill="var(--ink3)">${new Date(x[0] * 1000).getHours()}</text>`; }).join('')}</svg>`
+      : `<div class="empty">${t('active_empty')}</div>`}</div>`;
+  $('#tab-vitals').innerHTML = `
+    <div class="sec-h"><h2>${t('trends')}</h2>${S.showVitals ? `<span class="aside"><span class="tag">${t('sim')}</span></span>` : ''}</div>
+    <div class="seg" style="margin-bottom:14px">${['1h', '24h', '7d'].map(k => `<button data-range="${k}" class="${S.range === k ? 'on' : ''}">${t('r_' + k)}</button>`).join('')}</div>
+    ${activeChart}
+    ${!S.showVitals ? `<div class="empty panel">${t('vitals_off')}</div>` : !sr ? `<div class="empty panel">${t('loading')}</div>` : `
+    <div class="panel chart"><div class="chart-h"><b>${t('hr')}</b><span class="now num">${L?.vitals.hr ?? '—'}<small> ${t('bpm')}</small></span></div>
+      ${lineChart(v.map(p => [p[0], p[1]]), { lo: 50, hi: 110, band: [60, 100], color: 'var(--red)', fmt: Math.round })}${stats(v.map(p => p[1]), Math.round)}</div>
+    <div class="panel chart"><div class="chart-h"><b>${t('spo2')}</b><span class="now num">${L?.vitals.spo2 ?? '—'}<small> %</small></span></div>
+      ${lineChart(v.map(p => [p[0], p[2]]), { lo: 92, hi: 100, band: [95, 100], color: 'var(--blue)', fmt: x => x.toFixed(0) })}${stats(v.map(p => p[2]), x => x.toFixed(1))}</div>
+    <div class="panel chart"><div class="chart-h"><b>${t('temp')}</b><span class="now num">${L?.vitals.temp?.toFixed(1) ?? '—'}<small> °C</small></span></div>
+      ${lineChart(v.map(p => [p[0], p[3]]), { lo: 33, hi: 35.5, color: '#C46A12', fmt: x => x.toFixed(1) })}${stats(v.map(p => p[3]), x => x.toFixed(1))}</div>
+    <div class="panel chart"><div class="chart-h"><b>${t('sleep')}</b><span class="now num">${sleep.at(-1)?.score ?? '—'}<small> ${t('sleep_score')}</small></span></div>
+      <div class="sleep-row">${sleep.map(d => `<div><span class="num">${d.hours}${t('h_short')}</span><span class="b" style="height:${d.score}%"></span>${new Date(d.date).toLocaleDateString(locale(), { weekday: 'short' })}</div>`).join('')}</div>
+      <div class="stats"><span>${sleep.at(-1) ? t('sleep_line', { h: sleep.at(-1).hours, w: sleep.at(-1).wakeups }) : ''}</span></div></div>`}`;
+}
+
+/* ============================================================
+   PROFILE + SETTINGS
+   ============================================================ */
+const seg = (name, opts, cur) => `<div class="seg sm">${opts.map(([v, label]) => `<button data-pref="${name}" data-val="${v}" class="${cur === v ? 'on' : ''}">${label}</button>`).join('')}</div>`;
+function renderProfile() {
+  const p = S.snap?.profile, L = S.live;
+  const settings = `
+    <div class="sec"><div class="sec-h"><h2>${t('app_settings')}</h2></div>
+      <div class="panel">
+        <div class="setting"><div class="t">${t('language')}</div>${seg('lang', [['en', 'English'], ['hi', 'हिंदी']], S.lang)}</div>
+        <div class="setting"><div class="t">${t('theme')}</div>${seg('theme', [['system', t('th_system')], ['light', t('th_light')], ['dark', t('th_dark')]], S.theme)}</div>
+        <div class="setting"><div class="t">${t('text_size')}</div>${seg('size', [['normal', t('ts_normal')], ['large', t('ts_large')]], S.size)}</div>
+        <div class="setting" style="display:flex;gap:14px;align-items:center"><div style="flex:1"><div class="t" style="margin-bottom:2px">${t('show_vitals')}</div><div class="d" style="margin:0">${t('show_vitals_d')}</div></div>
+          <button class="switch" role="switch" aria-checked="${S.showVitals}" aria-label="${t('show_vitals')}" id="pVit"></button></div>
+      </div></div>`;
+  if (!p) { $('#tab-profile').innerHTML = settings + `<div class="empty">${t('connect_first')}</div>`; return; }
+  const w = p.wearer;
+  $('#tab-profile').innerHTML = `
+    <div class="sec"><div class="sec-h"><h2>${t('you')}</h2></div>
+      <div class="panel rows"><div class="row"><span class="avatar" style="background:var(--ink);color:var(--surface)">${esc(initials(S.me?.name))}</span>
+      <div><div class="t">${esc(S.me?.name)}</div><div class="d">${t('this_phone', { role: role(S.me?.role) })}</div></div><span class="end"><button class="btn sm" id="pMe">${t('change')}</button></span></div></div></div>
+    <div class="sec"><div class="sec-h"><h2>${t('vest')}</h2></div>
+      <div class="panel rows">
+        <div class="row"><div><div class="t">${t('cal_title')}</div><div class="d">${S.snap.calib ? t('cal_done') : t('cal_not')} ${t('cal_how')}</div></div>
+          <span class="end"><button class="btn sm pine" id="pCal" ${L?.activity?.calibrating ? 'disabled' : ''}>${L?.activity?.calibrating ? t('calibrating') : t('calibrate')}</button></span></div>
+        ${vestRows(L)}
+      </div></div>
+    ${protectionHtml()}
+    ${settings}
+    <div class="sec"><div class="sec-h"><h2>${t('wearer_title')}</h2></div>
+      <div class="panel form" id="pWearer">
+        <label>${t('name')}<input name="name" value="${esc(w.name)}"></label>
+        <div class="two"><label>${t('age')}<input name="age" inputmode="numeric" value="${esc(w.age)}"></label><label>${t('phone')}<input name="phone" inputmode="tel" value="${esc(w.phone)}"></label></div>
+        <label>${t('notes_cg')}<textarea name="notes">${esc(w.notes)}</textarea></label>
+        <label>${t('home_addr')}<input name="label" value="${esc(p.home.label)}"></label>
+        <div class="two"><label>${t('lat')}<input name="lat" inputmode="decimal" value="${esc(p.home.lat)}"></label><label>${t('lon')}<input name="lon" inputmode="decimal" value="${esc(p.home.lon)}"></label></div>
+        <button class="btn primary" id="pSaveW">${t('save_details')}</button>
+      </div>
+      <p class="note">${t('gps_note')}</p></div>
+    <div class="sec"><div class="sec-h"><h2>${t('contacts')}</h2><span class="aside"><button class="btn sm" id="pAddC">${svg('plus')}${t('add')}</button></span></div>
+      <div class="panel list-edit">${p.contacts.map((c, i) => `<div class="li"><div class="grow"><b>${esc(c.name)}</b><div class="muted" style="font-size:15px">${esc(c.relation)} · ${esc(c.phone)}</div></div>
+        <a class="iconbtn" href="tel:${esc(c.phone.replace(/\s/g, ''))}" aria-label="${esc(t('call_x', { name: c.name }))}" data-callname="${esc(c.name)}">${svg('call')}</a>
+        <button class="iconbtn" data-delc="${i}" aria-label="${esc(t('remove', { name: c.name }))}">${svg('trash')}</button></div>`).join('') || `<div class="empty">${t('no_contacts')}</div>`}</div></div>
+    <div class="sec"><div class="sec-h"><h2>${t('alerts_phone')}</h2></div>
+      <div class="panel rows"><div class="row"><div><div class="t">${t('test_alarm')}</div><div class="d">${t('test_alarm_d')}</div></div><span class="end"><button class="btn sm" id="pTest">${t('play')}</button></span></div></div>
+      <p class="note">${t('bg_note')}</p></div>
+    <div class="sec"><div class="sec-h"><h2>${t('demo_tools')}</h2></div>
+      <div class="panel rows">
+        <div class="row"><div><div class="t">${t('sim_fall')}</div><div class="d">${t('sim_fall_d')}</div></div><span class="end"><button class="btn sm danger" id="pSimF">${t('simulate')}</button></span></div>
+        <div class="row"><div><div class="t">${t('sim_stumble')}</div><div class="d">${t('sim_stumble_d')}</div></div><span class="end"><button class="btn sm" id="pSimS">${t('simulate')}</button></span></div>
+      </div>
+      <p class="note">${t('real_vs_sim')}</p></div>`;
+}
+function vestRows(L) {
+  const d = L?.device || {}, on = d.online;
+  if (S.mode !== 'vest') {
+    const host = NATIVE ? S.laptop : location.host;
+    return `<div class="row"><div><div class="t">${t('connection')}</div><div class="d">${on ? t('conn_stream') : t('dev_offline')} · ${t('server', { h: esc(host || '—') })}</div></div></div>` + modeRow();
+  }
+  const bits = [on ? t('conn_stream') : d.ever ? t('dev_offline') : t('dev_hint')];
+  if (on && d.ip) bits.push(t('vest_ip', { ip: d.ip }));
+  if (d.fw) bits.push(t('fw_v', { v: d.fw }));
+  return `<div class="row"><div><div class="t">${t('connection')}</div><div class="d">${esc(bits.join(' · '))}</div><div class="d2">${t('hotspot_help')}</div></div>
+      ${NATIVE ? `<span class="end"><button class="btn sm" data-perm="hotspot">${t('open_hotspot')}</button></span>` : ''}</div>
+    <div class="row"><div><div class="t">${t('vest_wifi')}</div><div class="d">${d.wifi ? esc(t('vest_wifi_d', { ssid: d.wifi })) : t('vest_wifi_unknown')}</div></div>
+      <span class="end"><button class="btn sm" id="pWifi">${t('wifi_change')}</button></span></div>` + modeRow();
+}
+function modeRow() {
+  if (!NATIVE) return '';
+  return `<div class="setting"><div class="t">${t('conn_mode')}</div>
+    <div class="seg sm">${[['vest', t('mode_vest')], ['laptop', t('mode_laptop')]].map(([v, l]) => `<button data-mode="${v}" class="${S.mode === v ? 'on' : ''}">${l}</button>`).join('')}</div>
+    ${S.mode === 'laptop' ? `<div class="form" style="padding:12px 0 0"><label>${t('laptop_addr')}<input id="pLaptop" inputmode="url" placeholder="${t('laptop_ph')}" value="${esc(S.laptop)}"></label><button class="btn primary" id="pLaptopGo">${t('save_details')}</button></div>` : ''}
+    <div class="d" style="margin:8px 0 0">${t('mode_note')}</div></div>`;
+}
+function protectionHtml() {
+  if (!NATIVE || S.mode !== 'vest') return '';
+  const P = S.perms;
+  if (!P) { refreshPerms(); return ''; }
+  const items = [['notifications', 'p_notif', P.notifications], ...(P.sdk >= 34 ? [['fullScreen', 'p_fs', P.fullScreen]] : []),
+    ['battery', 'p_batt', P.battery], ['location', 'p_loc', P.location]];
+  const allOk = items.every(i => i[2]);
+  const sms = !!S.snap?.autoSms;
+  return `<div class="sec"><div class="sec-h"><h2>${t('protect_title')}</h2></div>
+    <div class="panel rows checklist">
+      <div class="row"><div class="d" style="color:${allOk ? 'var(--pine)' : 'var(--saffron-ink)'};font-weight:700">${allOk ? t('protect_ok') : t('protect_todo')}</div></div>
+      ${items.map(([k, key, ok]) => `<div class="row"><div><div class="t">${t(key)}</div><div class="d">${t(key + '_d')}</div></div>
+        <span class="end">${ok ? `<span class="okdot">${t('on')}</span>` : `<button class="btn sm pine" data-perm="${k}">${t('allow')}</button>`}</span></div>`).join('')}
+      <div class="row"><div style="flex:1"><div class="t">${t('p_sms')}</div><div class="d">${t('p_sms_d')}</div></div>
+        <button class="switch" role="switch" aria-checked="${sms && P.sms}" aria-label="${t('p_sms')}" id="pSms"></button></div>
+    </div></div>`;
+}
+function wifiSheet() {
+  const d = S.live?.device || {};
+  sheet(`<h3>${t('wifi_sheet_t')}</h3><p class="muted" style="margin:0">${t('wifi_sheet_d')}</p>
+    <div class="form" style="padding:12px 0 0"><label>${t('wifi_name')}<input id="wSsid" value="${esc(d.wifi || '')}" autocapitalize="off" autocomplete="off"></label>
+      <label>${t('wifi_pass')}<input id="wPass" autocapitalize="off" autocomplete="off"></label></div>
+    <div style="display:grid;gap:10px;margin-top:14px"><button class="btn primary" id="wGo">${t('wifi_send')}</button>
+      <button class="btn" id="wReset">${t('wifi_default')}</button><button class="btn" data-close>${t('cancel')}</button></div>`);
+  $('#wGo').onclick = () => {
+    const ssid = $('#wSsid').value.trim(), pass = $('#wPass').value;
+    if (!ssid || ssid.length > 32 || /[\t\n]/.test(ssid + pass) || (pass && (pass.length < 8 || pass.length > 63))) return toast(t('wifi_bad'));
+    if (!S.live?.device?.online) return toast(t('wifi_need_vest'));
+    send({ t: 'wifi', ssid, pass }, false); closeSheet(); toast(t('wifi_sent', { ssid }));
+  };
+  $('#wReset').onclick = () => { if (!S.live?.device?.online) return toast(t('wifi_need_vest')); send({ t: 'wifi', reset: true }, false); closeSheet(); toast(t('wifi_sent', { ssid: 'VestGuard' })); };
+}
+let setupOpen = false;
+function setupSheet() {
+  if (!NATIVE || S.mode !== 'vest') return;
+  setupOpen = true; refreshPerms(); renderSetup();
+}
+function renderSetup() {
+  if (!setupOpen) return;
+  if (!$('#scrim').classList.contains('on') && $('#setupBox') === null) { /* first open */ }
+  const on = !!S.live?.device?.online, notif = !!S.perms?.notifications;
+  const html = `<div id="setupBox"><h3>${t('setup_t')}</h3>
+    <ol class="steps">
+      <li><span class="n${on ? ' ok' : ''}">${on ? '✓' : 1}</span><span><b>${t('setup_1')}</b><span class="d">${t('setup_1d')}</span><br>
+        <button class="btn sm" data-perm="hotspot" style="margin-top:8px">${t('open_hotspot')}</button></span></li>
+      <li><span class="n${on ? ' ok' : ''}">${on ? '✓' : 2}</span><span><b>${t('setup_2')}</b><span class="d">${t('setup_2d')}</span><br>
+        <span class="${on ? 'okdot' : 'faint'}" style="display:inline-flex;margin-top:6px">${on ? t('setup_ok') : t('setup_wait')}</span></span></li>
+      <li><span class="n${notif ? ' ok' : ''}">${notif ? '✓' : 3}</span><span><b>${t('setup_3')}</b><span class="d">${t('setup_3d')}</span><br>
+        ${notif ? `<span class="okdot" style="margin-top:6px">${t('on')}</span>` : `<button class="btn sm pine" data-perm="notifications" style="margin-top:8px">${t('allow')}</button>`}</span></li>
+    </ol>
+    <button class="btn ${on && notif ? 'pine' : ''}" id="setupDone" style="width:100%">${on && notif ? t('setup_done') : t('setup_later')}</button></div>`;
+  if ($('#setupBox')) $('#setupBox').outerHTML = html; else sheet(html);
+  $('#setupDone').onclick = () => { setupOpen = false; store.set('vgc_setup_seen', true); closeSheet(); renderAll(); };
+}
+function saveProfile(patch) { Object.assign(S.snap.profile, JSON.parse(JSON.stringify(patch))); send({ t: 'profile', profile: patch }); renderAll(); }
+
+/* ============================================================
+   Full-screen fall alert
+   ============================================================ */
+let audioCtx = null, alarmTimer = null, vibTimer = null, map = null, marker = null;
+function unlockAudio() { try { audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)(); audioCtx.resume(); } catch {} }
+function beep(freq, t0, d) {
+  const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+  o.type = 'square'; o.frequency.value = freq; o.connect(g); g.connect(audioCtx.destination);
+  g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.25, t0 + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t0 + d);
+  o.start(t0); o.stop(t0 + d + 0.02);
+}
+function alarmOnce() { if (!audioCtx) return; const t0 = audioCtx.currentTime; [0, .35, .7].forEach((dt, i) => beep(i % 2 ? 660 : 880, t0 + dt, .3)); }
+function startAlarm() {
+  if (VN) { VN.raiseAlarm && S.ovId && ringNative(); return; }
+  stopAlarm(); alarmOnce(); alarmTimer = setInterval(alarmOnce, 1600);
+  if (navigator.vibrate) { navigator.vibrate([400, 200, 400, 200, 800]); vibTimer = setInterval(() => navigator.vibrate([400, 200, 400]), 2000); }
+}
+function ringNative() { const a = S.snap?.alerts.find(x => x.id === S.ovId); VN.raiseAlarm({ id: S.ovId, sev: a?.severity || 3, demo: !!a?.demo, ringOnly: true }).catch(() => {}); }
+function stopAlarm() { if (VN) VN.stopAlarm().catch(() => {}); clearInterval(alarmTimer); clearInterval(vibTimer); alarmTimer = vibTimer = null; if (navigator.vibrate) navigator.vibrate(0); }
+function checkOverride(changed) {
+  const open = (S.snap?.alerts || []).filter(a => a.status !== 'resolved');
+  if (S.ovId && !open.find(a => a.id === S.ovId)) { closeOverride(); if (changed?.status === 'resolved') toast(alertStatusText(changed)); return; }
+  const fresh = open.filter(a => !S.seenAlerts[a.id]).at(-1);
+  if (fresh && S.ovId !== fresh.id) showOverride(fresh.id, true);
+  else if (S.ovId) renderOverride();
+  if (changed && changed.escalated && changed.status === 'active' && S.seenAlerts[changed.id] && !S.ovId) showOverride(changed.id, true);
+}
+function showOverride(id, alarm) {
+  S.ovId = id; $('#ov').classList.add('on'); document.body.style.overflow = 'hidden';
+  renderOverride(); initMap();
+  const a = S.snap.alerts.find(x => x.id === id);
+  if (alarm && !a?.responders.some(r => r.name === S.me?.name)) startAlarm();
+}
+function closeOverride() { S.ovId = null; $('#ov').classList.remove('on'); document.body.style.overflow = ''; stopAlarm(); }
+function renderOverride() {
+  const a = S.snap?.alerts.find(x => x.id === S.ovId); if (!a) return;
+  const w = S.snap.profile.wearer, mine = a.responders.some(r => r.name === S.me?.name);
+  if (mine && !S.quiet[a.id]) { S.quiet[a.id] = 1; stopAlarm(); }
+  $('#ovSev').textContent = t('ov_sev', { sev: t('sev_' + a.severity) }) + (a.demo ? ' · ' + t('ov_demo') : '');
+  $('#ovSub').textContent = `${w.name} · ${ago(a.ts)}`;
+  $('#ovFacts').innerHTML = `<span>${t('ov_impact', { g: a.peak_g })}</span><span>${t('ov_posture', { d: a.tilt_change })}</span>${a.tilt_after != null && a.tilt_after >= 60 ? `<span>${t('ov_floor')}</span>` : ''}`;
+  $('#ovResp').innerHTML = a.responders.length ? a.responders.map(r => esc(t('ov_resp_line', { who: r.name, role: role(r.role), time: hhmm(r.ts) }))).join('<br>') : esc(t('ov_none'));
+  $('#ovEsc').classList.toggle('on', a.escalated && !a.responders.length);
+  $('#ovAck').textContent = mine ? t('ov_ack_done') : t('ov_ack');
+  $('#ovAck').classList.toggle('done', mine); $('#ovAck').disabled = mine;
+  $('#ovCallW').href = 'tel:' + (w.phone || '').replace(/\s/g, ''); $('#ovCallWTxt').textContent = t('call_x', { name: first(w.name) });
+  $('#ovMapFb').innerHTML = `<b>${esc(a.location.label)}</b><span>${a.location.lat}, ${a.location.lon}</span><a href="https://maps.google.com/?q=${a.location.lat},${a.location.lon}" target="_blank" rel="noopener">${t('map_open')}</a><span style="font-size:13px;opacity:.85">${a.location.source === 'phone' ? t('loc_phone') : t('loc_home')}</span>`;
+  if (map && marker) { marker.setLatLng([a.location.lat, a.location.lon]); map.setView([a.location.lat, a.location.lon], 16); }
+}
+function initMap() {
+  const a = S.snap.alerts.find(x => x.id === S.ovId); if (!a) return;
+  const el = $('#ovMap');
+  if (!window.L) { el.classList.add('nomap'); return; }
+  if (!map) {
+    el.classList.add('nomap');            // show the address until map tiles actually load
+    map = L.map(el, { zoomControl: false }).setView([a.location.lat, a.location.lon], 16);
+    const tiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(map);
+    tiles.on('tileload', () => el.classList.remove('nomap'));
+    marker = L.circleMarker([a.location.lat, a.location.lon], { radius: 11, color: '#fff', weight: 3, fillColor: '#D2263B', fillOpacity: 1 }).addTo(map);
+  }
+  setTimeout(() => map.invalidateSize(), 60);
+}
+$('#ovAck').onclick = () => {
+  const a = S.snap.alerts.find(x => x.id === S.ovId); if (!a) return;
+  S.seenAlerts[a.id] = true; store.set('vgc_seen', S.seenAlerts);
+  a.responders.push({ name: S.me.name, role: S.me.role, ts: Date.now() / 1000 }); if (a.status === 'active') a.status = 'acknowledged';
+  send({ t: 'ack', alert: a.id }); stopAlarm(); renderOverride(); renderBand();
+};
+$('#ovMin').onclick = () => { if (S.ovId) { S.seenAlerts[S.ovId] = true; store.set('vgc_seen', S.seenAlerts); } closeOverride(); renderAll(); };
+$('#ovCall112').onclick = () => send({ t: 'call', target: 'emergency services (112)', alert: S.ovId });
+$('#ovCallW').onclick = () => send({ t: 'call', target: S.snap.profile.wearer.name, alert: S.ovId });
+$('#ovResolve').onclick = () => resolveSheet(S.ovId);
+function resolveSheet(id) {
+  let pick = 'assisted';
+  const opt = (v, k) => `<button class="choice${v === pick ? ' on' : ''}" data-res="${v}"><span><b>${t(k + '_t')}</b><span>${t(k + '_d')}</span></span></button>`;
+  sheet(`<h3>${t('res_title')}</h3><p class="muted" style="margin:0">${t('res_sub')}</p>
+    <div class="choices">${opt('assisted', 'res_assisted')}${opt('ems', 'res_ems')}${opt('false_alarm', 'res_false')}</div>
+    <div class="form" style="padding:0"><label>${t('note_opt')}<textarea id="resNote" placeholder="${esc(t('note_ph'))}"></textarea></label></div>
+    <div style="display:grid;gap:10px;margin-top:14px"><button class="btn primary" id="resGo">${t('res_go')}</button><button class="btn" data-close>${t('cancel')}</button></div>`);
+  document.querySelectorAll('[data-res]').forEach(b => b.onclick = () => { pick = b.dataset.res; document.querySelectorAll('[data-res]').forEach(x => x.classList.toggle('on', x === b)); });
+  $('#resGo').onclick = () => {
+    const a = S.snap.alerts.find(x => x.id === id);
+    if (a) Object.assign(a, { status: 'resolved', resolution: pick, resolved_by: S.me.name, resolved_ts: Date.now() / 1000 });
+    send({ t: 'resolve', alert: id, resolution: pick, note: $('#resNote').value });
+    S.seenAlerts[id] = true; store.set('vgc_seen', S.seenAlerts);
+    closeSheet(); closeOverride(); renderAll(); toast(t('toast_resolved'));
+  };
+}
+
+/* ============================================================
+   Sheets
+   ============================================================ */
+function sheet(html) { $('#sheet').innerHTML = '<div class="grab"></div>' + html; $('#scrim').classList.add('on'); }
+function closeSheet() { $('#scrim').classList.remove('on'); }
+$('#scrim').addEventListener('click', e => { if (e.target.id === 'scrim' || e.target.closest('[data-close]')) { setupOpen = false; closeSheet(); } });
+function formSheet(title, fields, onSave, saveLabel) {
+  sheet(`<h3>${title}</h3><div class="form" style="padding:12px 0 0">${fields.map(f => f.type === 'textarea'
+    ? `<label>${f.label}<textarea id="f_${f.k}" placeholder="${esc(f.ph || '')}"></textarea></label>`
+    : `<label>${f.label}<input id="f_${f.k}" type="${f.type || 'text'}" ${f.mode ? `inputmode="${f.mode}"` : ''} placeholder="${esc(f.ph || '')}" value="${esc(f.v || '')}"></label>`).join('')}</div>
+    <div style="display:grid;gap:10px;margin-top:14px"><button class="btn primary" id="fSave">${saveLabel}</button><button class="btn" data-close>${t('cancel')}</button></div>`);
+  setTimeout(() => $(`#f_${fields[0].k}`)?.focus(), 50);
+  $('#fSave').onclick = () => { const v = {}; fields.forEach(f => v[f.k] = $(`#f_${f.k}`).value.trim()); if (onSave(v) !== false) closeSheet(); };
+}
+
+/* ============================================================
+   Events
+   ============================================================ */
+document.addEventListener('click', e => {
+  const b = e.target.closest('button, a, [data-setup]'); if (!b) return;
+  unlockAudio();
+  const d = b.dataset;
+  if (NATIVE && b.tagName === 'A') {
+    const h = b.getAttribute('href') || '';
+    if (/^(https?:|tel:|geo:)/.test(h)) { e.preventDefault(); openExternal(h); }
+  }
+  if (d.perm) { VN && VN.requestPermission({ name: d.perm }).catch(() => {}); setTimeout(refreshPerms, 1500); return; }
+  if (d.mode) { store.set('vgc_mode', d.mode); if (d.mode === 'vest' || S.laptop) location.reload(); else { S.mode = d.mode; renderProfile(); } return; }
+  if (d.setup !== undefined) return setupSheet();
+  if (d.setlang) return setPref('lang', d.setlang);
+  if (d.pref) return setPref(d.pref, d.val);
+  if (d.goto) return go(d.goto);
+  if (d.openAlert) return showOverride(d.openAlert, false);
+  if (d.showov) { closeSheet(); return showOverride(d.showov, false); }
+  if (d.alert) return openAlertSheet(d.alert);
+  if (d.filter) { S.alertFilter = d.filter; return renderAlerts(); }
+  if (d.feed) { S.feedAll = d.feed === 'all'; return renderHome(); }
+  if (d.range) { S.range = d.range; S.series = null; renderVitals(); return send({ t: 'series', range: S.range }, false); }
+  if (d.log === 'meal') return formSheet(t('log_meal'), [{ k: 'text', label: t('meal_q'), ph: t('meal_ph') }], v => { send({ t: 'log', kind: 'meal', text: v.text }); toast(t('meal_done')); }, t('meal_btn'));
+  if (d.log === 'note') return formSheet(t('add_note'), [{ k: 'text', label: t('note_q'), type: 'textarea', ph: t('note_ph2') }], v => { if (!v.text) return false; send({ t: 'log', kind: 'note', text: v.text }); toast(t('note_done')); }, t('note_btn'));
+  if (d.delc !== undefined) { const c = S.snap.profile.contacts.slice(); c.splice(+d.delc, 1); return saveProfile({ contacts: c }); }
+  if (d.callname) send({ t: 'call', target: d.callname });
+  switch (b.id) {
+    case 'pVit': return setPref('showVitals', !S.showVitals);
+    case 'pMe': return onboard();
+    case 'pSaveW': {
+      const f = n => $(`#pWearer [name=${n}]`).value.trim();
+      saveProfile({ wearer: { name: f('name'), age: +f('age') || f('age'), phone: f('phone'), notes: f('notes') }, home: { label: f('label'), lat: +f('lat'), lon: +f('lon') } });
+      return toast(t('saved'));
+    }
+    case 'pAddC': return formSheet(t('add_contact'), [{ k: 'name', label: t('name') }, { k: 'relation', label: t('relation'), ph: t('relation_ph') }, { k: 'phone', label: t('phone'), type: 'tel', mode: 'tel' }],
+      v => { if (!v.name || !v.phone) { toast(t('need_name_phone')); return false; } saveProfile({ contacts: [...S.snap.profile.contacts, v] }); toast(t('contact_added')); }, t('add'));
+    case 'pCal': return send({ t: 'calibrate' }, false);
+    case 'pWifi': return wifiSheet();
+    case 'pLaptopGo': { const v = $('#pLaptop').value.trim().replace(/^\w+:\/\//, '').replace(/\/.*$/, ''); if (!v) return; store.set('vgc_laptop', v); store.set('vgc_mode', 'laptop'); return location.reload(); }
+    case 'pSms': {
+      const want = b.getAttribute('aria-checked') !== 'true';
+      if (want && S.perms && !S.perms.sms) { VN.requestPermission({ name: 'sms' }).catch(() => {}); setTimeout(refreshPerms, 1500); }
+      send({ t: 'settings', autoSms: want }, false); if (S.snap) S.snap.autoSms = want; b.setAttribute('aria-checked', want && (!S.perms || S.perms.sms));
+      return;
+    }
+    case 'pTest': if (VN) { VN.testAlarm().catch(() => {}); return; } unlockAudio(); alarmOnce(); if (navigator.vibrate) navigator.vibrate([300, 150, 300]); return;
+    case 'pSimF': return send({ t: 'simulate', kind: 'fall', severity: 3 });
+    case 'pSimS': send({ t: 'simulate', kind: 'stumble' }); return toast(t('stumble_done'));
+  }
+});
+document.querySelectorAll('nav.tabs button').forEach(b => b.onclick = () => { unlockAudio(); go(b.dataset.tab); });
+function go(tab) {
+  S.tab = tab;
+  document.querySelectorAll('nav.tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
+  document.querySelectorAll('.tab').forEach(s => s.hidden = s.id !== 'tab-' + tab);
+  if (tab === 'vitals') send({ t: 'series', range: S.range }, false);
+  renderAll(); window.scrollTo(0, 0);
+}
+function renderAll() {
+  renderBand();
+  ({ home: renderHome, alerts: renderAlerts, vitals: renderVitals, profile: renderProfile })[S.tab]();
+  renderConn();
+}
+
+/* ============================================================
+   Onboarding
+   ============================================================ */
+function onboard() {
+  $('#obName').value = S.me?.name || ''; $('#obRole').value = S.me?.role || 'family';
+  applyStatic(); $('#onboard').classList.add('on'); setTimeout(() => $('#obName').focus(), 50);
+}
+$('#obGo').onclick = () => {
+  const name = $('#obName').value.trim(); if (!name) { $('#obName').focus(); return toast(t('ob_need')); }
+  S.me = { id: S.me?.id || Math.random().toString(36).slice(2, 10), name, role: $('#obRole').value };
+  store.set('vgc_me', S.me); unlockAudio(); $('#onboard').classList.remove('on');
+  if (S.up) send({ t: 'hello', id: S.me.id, name: S.me.name, role: S.me.role }, false);
+  renderAll();
+  if (NATIVE && S.mode === 'vest' && !store.get('vgc_setup_seen', false)) setTimeout(setupSheet, 300);
+};
+
+async function wake() { try { if (navigator.wakeLock && document.visibilityState === 'visible') await navigator.wakeLock.request('screen'); } catch {} }
+document.addEventListener('visibilitychange', wake);
+setInterval(() => { renderConn(); if (S.ovId) renderOverride(); renderSetup(); }, 1000);
+applyStatic();
+if (!S.me) onboard();
+startNative();
+renderAll(); connect(); wake();
+if (NATIVE && S.me && S.mode === 'vest' && !store.get('vgc_setup_seen', false)) setTimeout(setupSheet, 800);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { drainNative(); refreshPerms(); } });
+</script>
+</body>
+</html>

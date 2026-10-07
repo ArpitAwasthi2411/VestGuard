@@ -128,6 +128,11 @@ public class VestPlugin extends Plugin {
         String id = call.getString("id", "demo");
         int sev = call.getInt("sev", 3);
         boolean demo = Boolean.TRUE.equals(call.getBoolean("demo", true));
+        if (Boolean.TRUE.equals(call.getBoolean("ringOnly", false))) {   // the alert already exists; just make noise
+            Alarm.start(ctx(), 0);
+            call.resolve();
+            return;
+        }
         VestService s = VestService.instance;
         if (s != null) s.raiseAlarm(id, sev, demo, System.currentTimeMillis(), null);
         else Alarm.start(ctx(), 0);

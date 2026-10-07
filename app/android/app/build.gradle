@@ -1,5 +1,7 @@
 apply plugin: 'com.android.application'
 
+def buildNo = (System.getenv('GITHUB_RUN_NUMBER') ?: '1') as Integer
+
 android {
     namespace = "com.silvershield.vestguard"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -7,8 +9,8 @@ android {
         applicationId "com.silvershield.vestguard"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode (System.getenv("GITHUB_RUN_NUMBER") ?: "1").toInteger()
-        versionName "1.0." + (System.getenv("GITHUB_RUN_NUMBER") ?: "0")
+        versionCode buildNo
+        versionName "1.0.${buildNo}"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
