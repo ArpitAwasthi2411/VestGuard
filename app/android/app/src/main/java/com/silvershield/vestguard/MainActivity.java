@@ -21,6 +21,16 @@ public class MainActivity extends BridgeActivity {
         showOverLockIfAlert(intent);
     }
 
+    /** After the alarm is handled, the app no longer shows over the lock screen. */
+    void releaseLockScreen() {
+        if (Build.VERSION.SDK_INT >= 27) {
+            setShowWhenLocked(false);
+            setTurnScreenOn(false);
+        } else {
+            getWindow().clearFlags(WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED | WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON);
+        }
+    }
+
     /** When opened from a fall alarm, show over the lock screen and turn the screen on. */
     private void showOverLockIfAlert(Intent intent) {
         boolean alert = intent != null && intent.hasExtra("vg_alert");

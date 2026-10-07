@@ -522,7 +522,9 @@ function startNative() {
 }
 async function refreshPerms() {
   if (!VN) return;
+  const had = S.perms?.location;
   try { S.perms = await VN.permissions(); } catch { S.perms = null; }
+  if (S.perms?.location && had === false) VN.start().catch(() => {});   // restart so the service may use location
   if (S.tab === 'profile') renderProfile();
 }
 function openExternal(url) {
@@ -946,7 +948,7 @@ function showOverride(id, alarm) {
   const a = S.snap.alerts.find(x => x.id === id);
   if (alarm && !a?.responders.some(r => r.name === S.me?.name)) startAlarm();
 }
-function closeOverride() { S.ovId = null; $('#ov').classList.remove('on'); document.body.style.overflow = ''; stopAlarm(); }
+function closeOverride(silence = true) { S.ovId = null; $('#ov').classList.remove('on'); document.body.style.overflow = ''; if (silence) stopAlarm(); }
 const locLabel = a => a.location.source === 'phone' ? t('loc_phone') : a.location.label;
 function renderOverride() {
   const a = S.snap?.alerts.find(x => x.id === S.ovId); if (!a) return;
@@ -982,7 +984,13 @@ $('#ovAck').onclick = () => {
   a.responders.push({ name: S.me.name, role: S.me.role, ts: Date.now() / 1000 }); if (a.status === 'active') a.status = 'acknowledged';
   send({ t: 'ack', alert: a.id }); stopAlarm(); renderOverride(); renderBand();
 };
-$('#ovMin').onclick = () => { if (S.ovId) { S.seenAlerts[S.ovId] = true; store.set('vgc_seen', S.seenAlerts); } closeOverride(); renderAll(); };
+$('#ovMin').onclick = () => {
+  const a = S.snap?.alerts.find(x => x.id === S.ovId);
+  const handled = !a || a.status === 'resolved' || a.responders.some(r => r.name === S.me?.name);
+  if (S.ovId) { S.seenAlerts[S.ovId] = true; store.set('vgc_seen', S.seenAlerts); }
+  closeOverride(handled || !NATIVE);      // in the app an unanswered fall keeps ringing until someone responds
+  renderAll();
+};
 $('#ovCall112').onclick = () => send({ t: 'call', target: 'emergency services (112)', alert: S.ovId });
 $('#ovCallW').onclick = () => send({ t: 'call', target: S.snap.profile.wearer.name, alert: S.ovId });
 $('#ovResolve').onclick = () => resolveSheet(S.ovId);

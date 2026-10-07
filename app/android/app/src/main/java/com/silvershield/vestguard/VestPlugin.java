@@ -155,6 +155,7 @@ public class VestPlugin extends Plugin {
         VestService s = VestService.instance;
         if (s != null) s.acknowledge(id, false);
         else Alarm.stop();
+        releaseLockScreen();
         call.resolve();
     }
 
@@ -164,7 +165,12 @@ public class VestPlugin extends Plugin {
         VestService s = VestService.instance;
         if (s != null) s.clearAlert(id);
         else Alarm.stop();
+        releaseLockScreen();
         call.resolve();
+    }
+
+    private void releaseLockScreen() {
+        if (getActivity() instanceof MainActivity) getActivity().runOnUiThread(() -> ((MainActivity) getActivity()).releaseLockScreen());
     }
 
     @PluginMethod
@@ -175,7 +181,7 @@ public class VestPlugin extends Plugin {
 
     @PluginMethod
     public void testAlarm(PluginCall call) {
-        Alarm.start(ctx(), 3000);
+        Alarm.test(ctx());
         call.resolve();
     }
 
@@ -212,17 +218,17 @@ public class VestPlugin extends Plugin {
             switch (name) {
                 case "notifications":
                     if (Build.VERSION.SDK_INT >= 33 && !granted(Manifest.permission.POST_NOTIFICATIONS)) {
-                        ActivityCompat.requestPermissions(getActivity(), new String[]{Manifest.permission.POST_NOTIFICATIONS}, 701);
+                        ask(new String[]{Manifest.permission.POST_NOTIFICATIONS}, 701);
                     } else {
+                        // permission granted but notifications switched off for the app -> its notification settings
                         openSettings(new Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, pkg));
                     }
                     break;
                 case "location":
-                    ActivityCompat.requestPermissions(getActivity(), new String[]{
-                            Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION}, 702);
+                    ask(new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION}, 702);
                     break;
                 case "sms":
-                    ActivityCompat.requestPermissions(getActivity(), new String[]{Manifest.permission.SEND_SMS}, 703);
+                    ask(new String[]{Manifest.permission.SEND_SMS, Manifest.permission.READ_PHONE_STATE}, 703);
                     break;
                 case "fullScreen":
                     if (Build.VERSION.SDK_INT >= 34) {
@@ -247,6 +253,21 @@ public class VestPlugin extends Plugin {
             return;
         }
         call.resolve();
+    }
+
+    /** Ask for permissions; if Android won't show the dialog any more (denied twice), open the app's settings page. */
+    private void ask(String[] perms, int code) {
+        android.content.SharedPreferences sp = VestService.prefs(ctx());
+        String key = "asked_" + code;
+        boolean askedBefore = sp.getBoolean(key, false);
+        boolean canShow = false;
+        for (String p : perms) if (ActivityCompat.shouldShowRequestPermissionRationale(getActivity(), p)) canShow = true;
+        if (askedBefore && !canShow) {
+            openSettings(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + ctx().getPackageName())));
+            return;
+        }
+        sp.edit().putBoolean(key, true).apply();
+        ActivityCompat.requestPermissions(getActivity(), perms, code);
     }
 
     private void openSettings(Intent... options) {

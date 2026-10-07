@@ -27,10 +27,17 @@ final class Alarm {
     private static final Handler main = new Handler(Looper.getMainLooper());
     private static final Runnable autoStop = Alarm::stopNow;
     private static Context appCtx;
+    private static boolean ringing = false;
 
     private Alarm() {}
 
-    static synchronized boolean isRinging() { return player != null; }
+    static synchronized boolean isRinging() { return ringing; }
+
+    /** a short test ring; never shortens a real alarm that is already ringing */
+    static void test(Context ctx) {
+        appCtx = ctx.getApplicationContext();
+        main.post(() -> { synchronized (Alarm.class) { if (ringing) return; } startNow(3000); });
+    }
 
     static void start(Context ctx, long durationMs) {
         appCtx = ctx.getApplicationContext();
@@ -42,7 +49,7 @@ final class Alarm {
     private static synchronized void startNow(long durationMs) {
         main.removeCallbacks(autoStop);
         main.postDelayed(autoStop, durationMs);
-        if (player != null) return;
+        if (ringing) return;
         Context ctx = appCtx;
         try {
             AudioManager am = (AudioManager) ctx.getSystemService(Context.AUDIO_SERVICE);
@@ -58,24 +65,12 @@ final class Alarm {
         } catch (Exception e) {
             Log.w(TAG, "volume", e);
         }
-        try {
-            Uri uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM);
-            if (uri == null) uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE);
-            if (uri == null) uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
-            MediaPlayer mp = new MediaPlayer();
-            mp.setAudioAttributes(new AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_ALARM)
-                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                    .build());
-            mp.setDataSource(ctx, uri);
-            mp.setLooping(true);
-            mp.prepare();
-            mp.start();
-            player = mp;
-        } catch (Exception e) {
-            Log.w(TAG, "player", e);
-            player = null;
-        }
+        // 1) the phone's alarm sound  2) its ringtone  3) our own bundled sound (always works)
+        Uri sys = RingtoneManager.getActualDefaultRingtoneUri(ctx, RingtoneManager.TYPE_ALARM);
+        if (sys == null) sys = RingtoneManager.getActualDefaultRingtoneUri(ctx, RingtoneManager.TYPE_RINGTONE);
+        player = sys != null ? tryPlay(ctx, sys, 0) : null;
+        if (player == null) player = tryPlay(ctx, null, R.raw.vg_alarm);
+        ringing = true;
         try {
             if (Build.VERSION.SDK_INT >= 31) {
                 VibratorManager vm = (VibratorManager) ctx.getSystemService(Context.VIBRATOR_MANAGER_SERVICE);
@@ -95,12 +90,36 @@ final class Alarm {
         } catch (Exception e) {
             Log.w(TAG, "vibrate", e);
         }
-        // if the player could not start, still mark as ringing so stop() cleans up vibration
-        if (player == null) player = new MediaPlayer();
+    }
+
+    private static MediaPlayer tryPlay(Context ctx, Uri uri, int rawRes) {
+        MediaPlayer mp = new MediaPlayer();
+        try {
+            mp.setAudioAttributes(new AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_ALARM)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                    .build());
+            if (uri != null) {
+                mp.setDataSource(ctx, uri);
+            } else {
+                android.content.res.AssetFileDescriptor fd = ctx.getResources().openRawResourceFd(rawRes);
+                mp.setDataSource(fd.getFileDescriptor(), fd.getStartOffset(), fd.getLength());
+                fd.close();
+            }
+            mp.setLooping(true);
+            mp.prepare();
+            mp.start();
+            return mp;
+        } catch (Exception e) {
+            Log.w(TAG, "player " + uri, e);
+            try { mp.release(); } catch (Exception ignored) { }
+            return null;
+        }
     }
 
     private static synchronized void stopNow() {
         main.removeCallbacks(autoStop);
+        ringing = false;
         if (player != null) {
             try { player.stop(); } catch (Exception ignored) { }
             try { player.release(); } catch (Exception ignored) { }

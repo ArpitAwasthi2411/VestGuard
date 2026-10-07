@@ -38,6 +38,10 @@ final class Strings {
         EN.put("act_-", "Starting up");
         EN.put("sms", "VestGuard ALERT: possible fall for {name} at {time} ({sev}). Location: {map} Please check on them now.");
         EN.put("wearer", "the wearer");
+        EN.put("paused_title", "VestGuard protection paused");
+        EN.put("paused_body", "Android stopped the vest connection. Tap to open VestGuard and resume.");
+        EN.put("loc_old", "(location from {n} min ago)");
+        EN.put("loc_home", "(home address)");
 
         HI.put("ch_alert", "गिरने के अलार्म");
         HI.put("ch_status", "वेस्ट कनेक्शन");
@@ -66,6 +70,10 @@ final class Strings {
         HI.put("act_-", "शुरू हो रहा है");
         HI.put("sms", "VestGuard चेतावनी: {name} शायद गिर गए हैं, समय {time} ({sev})। जगह: {map} कृपया तुरंत देखें।");
         HI.put("wearer", "पहनने वाले");
+        HI.put("paused_title", "VestGuard सुरक्षा रुकी हुई है");
+        HI.put("paused_body", "Android ने वेस्ट कनेक्शन रोक दिया। फिर शुरू करने के लिए टैप करें।");
+        HI.put("loc_old", "({n} मिनट पुरानी जगह)");
+        HI.put("loc_home", "(घर का पता)");
     }
 
     static String t(String lang, String key, String... kv) {

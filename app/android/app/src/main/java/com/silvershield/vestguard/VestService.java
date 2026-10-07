@@ -108,7 +108,14 @@ public class VestService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         String action = intent != null && intent.getAction() != null ? intent.getAction() : ACTION_START;
-        startInForeground();
+        if (!foregroundStarted || ACTION_START.equals(action)) {
+            if (!startInForeground()) {
+                showPaused();
+                stopSelf();
+                return START_NOT_STICKY;
+            }
+            foregroundStarted = true;
+        }
         switch (action) {
             case ACTION_STOP:
                 prefs(this).edit().putBoolean("enabled", false).apply();
@@ -131,6 +138,10 @@ public class VestService extends Service {
     @Override
     public void onDestroy() {
         instance = null;
+        try {
+            LocationManager lm = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+            if (lm != null && locListener != null) lm.removeUpdates(locListener);
+        } catch (Exception ignored) { }
         if (exec != null) exec.shutdownNow();
         if (sock != null) sock.close();
         sock = null;
@@ -143,16 +154,83 @@ public class VestService extends Service {
     @Override
     public IBinder onBind(Intent intent) { return null; }
 
-    private void startInForeground() {
+    private boolean hasLocationPermission() {
+        return ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+                || ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED;
+    }
+
+    /** @return false if Android refused to run us in the foreground (then we stop and say so) */
+    private boolean startInForeground() {
         Notification n = statusNotification();
-        try {
-            if (Build.VERSION.SDK_INT >= 29) {
-                startForeground(NID_STATUS, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE);
-            } else {
-                startForeground(NID_STATUS, n);
+        if (Build.VERSION.SDK_INT >= 29) {
+            // with the "location" type we may read the location while the app is closed (fall location in alerts / SMS)
+            if (hasLocationPermission()) {
+                try {
+                    startForeground(NID_STATUS, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE | ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION);
+                    startLocationUpdates();
+                    return true;
+                } catch (Exception e) {
+                    Log.w(TAG, "foreground with location refused, trying without", e);
+                }
             }
+            try {
+                startForeground(NID_STATUS, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE);
+                return true;
+            } catch (Exception e) {
+                Log.e(TAG, "startForeground failed", e);
+                return false;
+            }
+        }
+        try {
+            startForeground(NID_STATUS, n);
+            startLocationUpdates();
+            return true;
         } catch (Exception e) {
             Log.e(TAG, "startForeground failed", e);
+            return false;
+        }
+    }
+
+    private void showPaused() {
+        Intent open = new Intent(this, MainActivity.class).setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        PendingIntent pi = PendingIntent.getActivity(this, 3, open, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        notifySafe(NID_INFO, new NotificationCompat.Builder(this, CH_INFO)
+                .setSmallIcon(R.drawable.ic_stat_vest)
+                .setColor(Color.rgb(0xD2, 0x26, 0x3B))
+                .setContentTitle(Strings.t(lang(), "paused_title"))
+                .setContentText(Strings.t(lang(), "paused_body"))
+                .setAutoCancel(true)
+                .setContentIntent(pi)
+                .build());
+    }
+
+    // ------------------------------------------------------------------ location (kept fresh while running)
+    private volatile Location freshLoc;
+    private boolean foregroundStarted = false;
+    private android.location.LocationListener locListener;
+
+    private void startLocationUpdates() {
+        if (locListener != null || !hasLocationPermission()) return;
+        LocationManager lm = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+        if (lm == null) return;
+        locListener = new android.location.LocationListener() {      // all four methods: older Android calls them
+            @Override public void onLocationChanged(Location loc) { freshLoc = loc; }
+            @Override public void onStatusChanged(String p, int st, android.os.Bundle b) { }
+            @Override public void onProviderEnabled(String p) { }
+            @Override public void onProviderDisabled(String p) { }
+        };
+        String[] providers = Build.VERSION.SDK_INT >= 31
+                ? new String[]{"fused", LocationManager.NETWORK_PROVIDER}
+                : new String[]{LocationManager.NETWORK_PROVIDER, LocationManager.GPS_PROVIDER};
+        for (String prov : providers) {
+            try {
+                if (lm.getAllProviders().contains(prov)) {
+                    lm.requestLocationUpdates(prov, 120000L, 25f, locListener, android.os.Looper.getMainLooper());
+                    break;
+                }
+            } catch (Exception e) {
+                Log.w(TAG, "location updates " + prov, e);
+            }
         }
     }
 
@@ -277,7 +355,7 @@ public class VestService extends Service {
             } catch (Exception e) {
                 Log.w(TAG, "event", e);
             }
-            storePending(ev);
+            if (!line.contains(",ACT,")) storePending(ev);
         } else if (line.startsWith("S,")) {
             String[] p = line.split(",");
             if (p.length > 3) lastAct = p[3];
@@ -287,6 +365,14 @@ public class VestService extends Service {
     }
 
     private void everySecond() {
+        try {
+            tick();
+        } catch (Throwable t) {
+            Log.w(TAG, "tick", t);
+        }
+    }
+
+    private void tick() {
         long now = System.currentTimeMillis();
         sendToVest(research ? "P" : "PH");
         boolean online = lastRx > 0 && now - lastRx < ONLINE_MS;
@@ -305,15 +391,17 @@ public class VestService extends Service {
         wasOnline = online;
         updateStatus(false);
 
-        if (alertId != null && !alertAcked && !alertEscalated && now - alertTs > ESCALATE_MS) {
-            alertEscalated = true;
-            postAlert();
-            Alarm.start(this, 0);
+        synchronized (this) {
+            if (alertId != null && !alertAcked && !alertEscalated && now - alertTs > ESCALATE_MS) {
+                alertEscalated = true;
+                postAlert();
+                Alarm.start(this, 0);
+            }
         }
     }
 
     // ------------------------------------------------------------------ alarm
-    void raiseAlarm(String id, int sev, boolean demo, long ts, Location loc) {
+    synchronized void raiseAlarm(String id, int sev, boolean demo, long ts, Location loc) {
         alertId = id;
         alertSev = sev;
         alertTs = ts;
@@ -325,7 +413,7 @@ public class VestService extends Service {
         if (!demo) sendSms(sev, ts, loc);
     }
 
-    void acknowledge(String id, boolean fromNotification) {
+    synchronized void acknowledge(String id, boolean fromNotification) {
         Alarm.stop();
         if (id != null && id.equals(alertId)) {
             alertAcked = true;
@@ -343,7 +431,7 @@ public class VestService extends Service {
         }
     }
 
-    void clearAlert(String id) {
+    synchronized void clearAlert(String id) {
         if (id == null || id.equals(alertId)) {
             Alarm.stop();
             alertId = null;
@@ -408,10 +496,16 @@ public class VestService extends Service {
             if (loc != null) { lat = loc.getLatitude(); lon = loc.getLongitude(); }
             else { lat = cfg.optDouble("lat", 0); lon = cfg.optDouble("lon", 0); }
             String map = (lat == 0 && lon == 0) ? cfg.optString("homeLabel", "") : String.format(Locale.US, "https://maps.google.com/?q=%.5f,%.5f", lat, lon);
+            if (loc != null) {
+                long ageMin = (System.currentTimeMillis() - loc.getTime()) / 60000;
+                if (ageMin >= 10) map = map + " " + Strings.t(lang(), "loc_old", "n", String.valueOf(ageMin));
+            } else if (lat != 0 || lon != 0) {
+                map = map + " " + Strings.t(lang(), "loc_home");
+            }
             String time = new SimpleDateFormat("HH:mm", Locale.US).format(new Date(ts));
             String msg = Strings.t(lang, "sms", "name", cfg.optString("wearer", Strings.t(lang, "wearer")),
                     "time", time, "sev", Strings.t(lang, "sev_" + sev), "map", map);
-            SmsManager sms = Build.VERSION.SDK_INT >= 31 ? getSystemService(SmsManager.class) : SmsManager.getDefault();
+            SmsManager sms = smsManager();
             if (sms == null) return;
             ArrayList<String> parts = sms.divideMessage(msg);
             for (int i = 0; i < contacts.length(); i++) {
@@ -429,13 +523,36 @@ public class VestService extends Service {
         }
     }
 
+    /** Dual-SIM phones set to "ask every time" have no default SIM; then use the first active one. */
+    private SmsManager smsManager() {
+        int sub = SmsManager.getDefaultSmsSubscriptionId();
+        if (sub == android.telephony.SubscriptionManager.INVALID_SUBSCRIPTION_ID
+                && ContextCompat.checkSelfPermission(this, Manifest.permission.READ_PHONE_STATE) == PackageManager.PERMISSION_GRANTED) {
+            try {
+                android.telephony.SubscriptionManager sm = (android.telephony.SubscriptionManager) getSystemService(Context.TELEPHONY_SUBSCRIPTION_SERVICE);
+                java.util.List<android.telephony.SubscriptionInfo> subs = sm != null ? sm.getActiveSubscriptionInfoList() : null;
+                if (subs != null && !subs.isEmpty()) sub = subs.get(0).getSubscriptionId();
+            } catch (SecurityException e) {
+                Log.w(TAG, "subscriptions", e);
+            }
+        }
+        if (sub != android.telephony.SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
+            if (Build.VERSION.SDK_INT >= 31) {
+                SmsManager base = getSystemService(SmsManager.class);
+                if (base != null) return base.createForSubscriptionId(sub);
+            }
+            return SmsManager.getSmsManagerForSubscriptionId(sub);
+        }
+        return Build.VERSION.SDK_INT >= 31 ? getSystemService(SmsManager.class) : SmsManager.getDefault();
+    }
+
     Location lastLocation() {
         boolean fine = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED;
         boolean coarse = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED;
         if (!fine && !coarse) return null;
         LocationManager lm = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
         if (lm == null) return null;
-        Location best = null;
+        Location best = freshLoc;
         for (String prov : lm.getProviders(true)) {
             try {
                 Location l = lm.getLastKnownLocation(prov);
@@ -543,7 +660,10 @@ public class VestService extends Service {
             JSONArray arr;
             try { arr = new JSONArray(sp.getString("pending", "[]")); } catch (Exception e) { arr = new JSONArray(); }
             arr.put(ev);
-            while (arr.length() > 300) arr.remove(0);
+            for (int i = 0; arr.length() > 300 && i < arr.length(); ) {       // trim oldest, but keep falls and acks
+                String l = arr.optJSONObject(i) != null ? arr.optJSONObject(i).optString("line", "") : "";
+                if (l.startsWith("F,") || l.startsWith("ACK,")) i++; else arr.remove(i);
+            }
             sp.edit().putString("pending", arr.toString()).apply();
         }
     }
