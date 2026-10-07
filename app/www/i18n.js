@@ -199,6 +199,7 @@ Object.assign(window.I18N.en, {
   mode_note: 'Use the laptop only for data-collection sessions. Alarms with the app closed work in hotspot mode.',
   vest_ip: 'vest {ip}', fw_v: 'firmware {v}', calibrating: 'Calibrating…', test_alarm_d: 'Rings the real alarm for 3 seconds.',
   sim_fall_d: 'Rings the alarm and opens the alert screen, exactly like a real fall.', ob_go: 'Continue',
+  research: 'Research mode', research_d: 'Live raw sensor data, trial recording and CSV export, for the team.',
 });
 Object.assign(window.I18N.hi, {
   band_looking: 'वेस्ट खोजी जा रही है', waiting_first: 'शुरू हो रहा है…', conn_wait: 'इंतज़ार…', conn_hotspot: 'वेस्ट नहीं मिली',
@@ -226,4 +227,5 @@ Object.assign(window.I18N.hi, {
   mode_note: 'लैपटॉप सिर्फ़ डेटा इकट्ठा करते समय इस्तेमाल करें। ऐप बंद होने पर अलार्म हॉटस्पॉट मोड में ही बजता है।',
   vest_ip: 'वेस्ट {ip}', fw_v: 'फ़र्मवेयर {v}', calibrating: 'कैलिब्रेट हो रहा है…', test_alarm_d: 'असली अलार्म 3 सेकंड बजाता है।',
   sim_fall_d: 'असली गिरने की तरह अलार्म बजाता है और अलर्ट स्क्रीन खोलता है।', ob_go: 'आगे बढ़ें',
+  research: 'रिसर्च मोड', research_d: 'लाइव सेंसर डेटा, ट्रायल रिकॉर्डिंग और CSV, टीम के लिए।',
 });

@@ -66,9 +66,12 @@ public class VestService extends Service {
     static final long ONLINE_MS = 5000, LOST_MS = 20000, ESCALATE_MS = 60000;
 
     interface Listener { void onLine(String line, long ts); }
+    interface DataListener { void onData(String lines); }
 
     static volatile VestService instance;
     static volatile Listener listener;
+    static volatile DataListener dataListener;     // Research mode: raw D lines, batched per packet
+    static volatile boolean research = false;
 
     private DatagramSocket sock;
     private Thread rxThread;
@@ -197,10 +200,22 @@ public class VestService extends Service {
                 s.receive(p);
                 String text = new String(p.getData(), 0, p.getLength(), StandardCharsets.UTF_8);
                 InetAddress from = p.getAddress();
+                StringBuilder raw = null;
                 for (String line : text.split("\n")) {
                     line = line.trim();
-                    if (!line.isEmpty()) handleLine(line, from);
+                    if (line.isEmpty()) continue;
+                    if (line.startsWith("D,")) {
+                        if (research && dataListener != null) {
+                            if (raw == null) raw = new StringBuilder();
+                            raw.append(line).append('\n');
+                        }
+                        lastRx = System.currentTimeMillis();
+                        continue;
+                    }
+                    handleLine(line, from);
                 }
+                DataListener dl = dataListener;
+                if (raw != null && dl != null) dl.onData(raw.toString());
             } catch (Exception e) {
                 if (s.isClosed()) break;
                 Log.w(TAG, "rx", e);
@@ -228,13 +243,10 @@ public class VestService extends Service {
 
     private void handleLine(String line, InetAddress from) {
         long now = System.currentTimeMillis();
-        if (line.startsWith("D,")) {          // raw data is not meant for the phone
-            return;
-        }
         boolean first = vestAddr == null || !from.equals(vestAddr);
         vestAddr = from;
         lastRx = now;
-        if (first) sendToVest("PH");
+        if (first) sendToVest(research ? "P" : "PH");
 
         if (line.startsWith("F,") || line.startsWith("E,")) {
             String[] p = line.split(",");
@@ -276,7 +288,7 @@ public class VestService extends Service {
 
     private void everySecond() {
         long now = System.currentTimeMillis();
-        sendToVest("PH");
+        sendToVest(research ? "P" : "PH");
         boolean online = lastRx > 0 && now - lastRx < ONLINE_MS;
         if (online && !wasOnline) {
             onlineSince = now;

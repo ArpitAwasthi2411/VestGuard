@@ -42,6 +42,14 @@ public class VestPlugin extends Plugin {
         });
     }
 
+    private void attachData() {
+        VestService.dataListener = lines -> main.post(() -> {
+            JSObject o = new JSObject();
+            o.put("lines", lines);
+            notifyListeners("data", o);
+        });
+    }
+
     @Override
     protected void handleOnResume() {
         main.post(() -> notifyListeners("resume", new JSObject()));
@@ -50,6 +58,8 @@ public class VestPlugin extends Plugin {
     @Override
     protected void handleOnDestroy() {
         VestService.listener = null;
+        VestService.dataListener = null;
+        VestService.research = false;
     }
 
     private Context ctx() { return getContext(); }
@@ -249,6 +259,62 @@ public class VestPlugin extends Plugin {
         }
         Intent fallback = new Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         try { getActivity().startActivity(fallback); } catch (Exception ignored) { }
+    }
+
+    // ------------------------------------------------------------ research mode
+    @PluginMethod
+    public void setResearch(PluginCall call) {
+        boolean on = Boolean.TRUE.equals(call.getBoolean("on", false));
+        VestService.research = on;
+        if (on) attachData(); else VestService.dataListener = null;
+        VestService s = VestService.instance;
+        if (s != null) s.sendAsync(on ? "P" : "PH");
+        call.resolve();
+    }
+
+    /** Save a text file (CSV / JSON) to Downloads/VestGuard, optionally open the share sheet. */
+    @PluginMethod
+    public void saveFile(PluginCall call) {
+        String name = call.getString("name", "vestguard.csv").replaceAll("[^A-Za-z0-9._-]", "_");
+        String text = call.getString("text", "");
+        String mime = call.getString("mime", "text/csv");
+        boolean share = Boolean.TRUE.equals(call.getBoolean("share", false));
+        try {
+            Uri uri;
+            String where;
+            byte[] bytes = text.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+            if (Build.VERSION.SDK_INT >= 29) {
+                android.content.ContentValues v = new android.content.ContentValues();
+                v.put(android.provider.MediaStore.MediaColumns.DISPLAY_NAME, name);
+                v.put(android.provider.MediaStore.MediaColumns.MIME_TYPE, mime);
+                v.put(android.provider.MediaStore.MediaColumns.RELATIVE_PATH, android.os.Environment.DIRECTORY_DOWNLOADS + "/VestGuard");
+                uri = ctx().getContentResolver().insert(android.provider.MediaStore.Downloads.EXTERNAL_CONTENT_URI, v);
+                if (uri == null) throw new java.io.IOException("could not create file");
+                try (java.io.OutputStream os = ctx().getContentResolver().openOutputStream(uri)) {
+                    if (os == null) throw new java.io.IOException("could not open file");
+                    os.write(bytes);
+                }
+                where = "Downloads/VestGuard/" + name;
+            } else {
+                java.io.File dir = new java.io.File(ctx().getExternalFilesDir(android.os.Environment.DIRECTORY_DOWNLOADS), "VestGuard");
+                if (!dir.exists() && !dir.mkdirs()) throw new java.io.IOException("could not create folder");
+                java.io.File f = new java.io.File(dir, name);
+                try (java.io.FileOutputStream os = new java.io.FileOutputStream(f)) { os.write(bytes); }
+                uri = androidx.core.content.FileProvider.getUriForFile(ctx(), ctx().getPackageName() + ".fileprovider", f);
+                where = f.getAbsolutePath();
+            }
+            if (share) {
+                Intent send = new Intent(Intent.ACTION_SEND).setType(mime).putExtra(Intent.EXTRA_STREAM, uri)
+                        .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                Intent chooser = Intent.createChooser(send, name).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                getActivity().startActivity(chooser);
+            }
+            JSObject r = new JSObject();
+            r.put("path", where);
+            call.resolve(r);
+        } catch (Exception e) {
+            call.reject("Save failed: " + e.getMessage());
+        }
     }
 
     // ------------------------------------------------------------ links (tel:, maps)

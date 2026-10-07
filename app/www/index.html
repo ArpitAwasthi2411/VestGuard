@@ -832,6 +832,7 @@ function renderProfile() {
       <div class="panel rows">
         <div class="row"><div><div class="t">${t('sim_fall')}</div><div class="d">${t('sim_fall_d')}</div></div><span class="end"><button class="btn sm danger" id="pSimF">${t('simulate')}</button></span></div>
         <div class="row"><div><div class="t">${t('sim_stumble')}</div><div class="d">${t('sim_stumble_d')}</div></div><span class="end"><button class="btn sm" id="pSimS">${t('simulate')}</button></span></div>
+        ${NATIVE ? `<div class="row"><div><div class="t">${t('research')}</div><div class="d">${t('research_d')}</div></div><span class="end"><button class="btn sm" id="pResearch">${t('open')}</button></span></div>` : ''}
       </div>
       <p class="note">${t('real_vs_sim')}</p></div>`;
 }
@@ -1056,6 +1057,7 @@ document.addEventListener('click', e => {
       v => { if (!v.name || !v.phone) { toast(t('need_name_phone')); return false; } saveProfile({ contacts: [...S.snap.profile.contacts, v] }); toast(t('contact_added')); }, t('add'));
     case 'pCal': return send({ t: 'calibrate' }, false);
     case 'pWifi': return wifiSheet();
+    case 'pResearch': location.href = 'research.html'; return;
     case 'pLaptopGo': { const v = $('#pLaptop').value.trim().replace(/^\w+:\/\//, '').replace(/\/.*$/, ''); if (!v) return; store.set('vgc_laptop', v); store.set('vgc_mode', 'laptop'); return location.reload(); }
     case 'pSms': {
       const want = b.getAttribute('aria-checked') !== 'true';

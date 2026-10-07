@@ -104,7 +104,8 @@ bool peerAlive(const Peer& p) { return p.used && millis() - p.lastHeard < PEER_T
 int alivePeers() { int n = 0; for (auto& p : peers) if (peerAlive(p)) n++; return n; }
 bool anyPhone() { for (auto& p : peers) if (peerAlive(p) && p.phone) return true; return false; }
 
-void touchPeer(IPAddress ip, bool phone) {
+// kind: 1 = phone keep-alive (PH), 0 = laptop keep-alive (P / HELLO / ?), -1 = other command (keep as is)
+void touchPeer(IPAddress ip, int kind) {
   Peer* slot = nullptr;
   for (auto& p : peers) if (p.used && p.ip == ip) { slot = &p; break; }
   bool isNew = false;
@@ -113,7 +114,7 @@ void touchPeer(IPAddress ip, bool phone) {
     if (!slot) { slot = &peers[0]; for (auto& p : peers) if (p.lastHeard < slot->lastHeard) slot = &p; }
     slot->ip = ip; slot->used = true; slot->phone = false; isNew = true;
   } else if (!peerAlive(*slot)) isNew = true;
-  if (phone) slot->phone = true;
+  if (kind >= 0) slot->phone = kind == 1;      // a phone in Research mode sends "P" and then gets raw data too
   slot->lastHeard = millis();
   if (isNew) {
     char b[64]; snprintf(b, sizeof b, "I,LINK,%s,%s", ip.toString().c_str(), slot->phone ? "phone" : "laptop");
@@ -464,8 +465,16 @@ void readUdpCommands() {
     int n = udp.read(b, sizeof b - 1);
     if (n < 0) n = 0;
     b[n] = 0;
-    bool phone = strstr(b, "PH") == b || strstr(b, "\nPH") != nullptr;
-    touchPeer(udp.remoteIP(), phone);
+    int kind = -1;
+    {
+      char tmp[256]; memcpy(tmp, b, n + 1);
+      char* sv = nullptr;
+      for (char* l = strtok_r(tmp, "\r\n", &sv); l; l = strtok_r(nullptr, "\r\n", &sv)) {
+        if (!strcmp(l, "PH")) kind = 1;
+        else if (!strcmp(l, "P") || !strcmp(l, "HELLO") || !strcmp(l, "?")) kind = 0;
+      }
+    }
+    touchPeer(udp.remoteIP(), kind);
     char* save = nullptr;
     for (char* tok = strtok_r(b, "\r\n", &save); tok; tok = strtok_r(nullptr, "\r\n", &save)) handleCommand(String(tok));
     sz = udp.parsePacket();

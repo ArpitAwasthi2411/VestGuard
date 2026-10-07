@@ -1,0 +1,1256 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VestGuard Console</title>
+<style>
+:root{
+  --bg:#0c0e11; --panel:#14171c; --panel2:#1a1e24; --line:#252a32; --line2:#2f353f;
+  --text:#e7e9ec; --muted:#8a929e; --faint:#5b636f;
+  --accent:#3ecf8e; --accent-dim:rgba(62,207,142,.14);
+  --warn:#f5a524; --warn-dim:rgba(245,165,36,.14);
+  --danger:#f2555a; --danger-dim:rgba(242,85,90,.14);
+  --info:#5aa9ff;
+  --x:#ff6b6b; --y:#4fd18b; --z:#5aa9ff; --s1:#3ecf8e; --s2:#c59bff;
+  --grid:rgba(255,255,255,.05); --zero:rgba(255,255,255,.14);
+  --mono:ui-monospace,SFMono-Regular,"JetBrains Mono",Menlo,Consolas,monospace;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,Inter,sans-serif;
+  --r:12px;
+}
+@media (prefers-color-scheme: light){
+  :root{
+    --bg:#f4f5f7; --panel:#ffffff; --panel2:#f7f8fa; --line:#e3e6ea; --line2:#d5d9df;
+    --text:#14171c; --muted:#5f6773; --faint:#9aa1ab;
+    --accent:#14a86b; --accent-dim:rgba(20,168,107,.12);
+    --warn:#c97f00; --warn-dim:rgba(201,127,0,.12);
+    --danger:#d93a40; --danger-dim:rgba(217,58,64,.10);
+    --x:#e5484d; --y:#1f9e5a; --z:#2f7fe0; --s1:#14a86b; --s2:#8a5cf0;
+    --grid:rgba(0,0,0,.05); --zero:rgba(0,0,0,.16);
+  }
+}
+*{box-sizing:border-box}
+html,body{margin:0;overflow-x:hidden;background:var(--bg);color:var(--text);font:14px/1.45 var(--sans)}
+button,input,select,textarea{font:inherit;color:inherit}
+.mono{font-family:var(--mono)}
+.muted{color:var(--muted)}
+
+/* ---------- top bar ---------- */
+.top{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:16px;padding:12px 20px;
+  background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:10px;min-width:0}
+.brand svg{flex:none}
+.brand b{font-size:15px;letter-spacing:.2px}
+.brand span{color:var(--muted);font-size:12px;white-space:nowrap}
+.stats{display:flex;gap:6px;margin-left:auto;flex-wrap:wrap}
+.pill{display:flex;align-items:center;gap:7px;padding:5px 10px;border:1px solid var(--line);border-radius:999px;background:var(--panel);font-size:12px;white-space:nowrap}
+.pill .k{color:var(--muted)}
+.pill .v{font-family:var(--mono)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--faint);flex:none}
+.dot.ok{background:var(--accent);box-shadow:0 0 0 3px var(--accent-dim)}
+.dot.warn{background:var(--warn);box-shadow:0 0 0 3px var(--warn-dim)}
+.dot.bad{background:var(--danger);box-shadow:0 0 0 3px var(--danger-dim)}
+.controls{display:flex;gap:8px;align-items:center}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:7px 13px;border-radius:9px;border:1px solid var(--line2);
+  background:var(--panel2);cursor:pointer;font-weight:500;font-size:13px;transition:.15s;white-space:nowrap}
+.btn:hover{border-color:var(--faint)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#06140d}
+.btn.primary:hover{filter:brightness(1.07)}
+.btn.danger{background:var(--danger);border-color:var(--danger);color:#fff}
+.btn.ghost{background:transparent}
+.btn.sm{padding:5px 9px;font-size:12px;border-radius:7px}
+select,input[type=text],input[type=number],textarea{background:var(--panel2);border:1px solid var(--line2);border-radius:8px;padding:6px 9px;outline:none}
+select:focus,input:focus,textarea:focus{border-color:var(--accent)}
+
+/* ---------- layout ---------- */
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 420px;gap:16px;padding:16px 20px 28px;max-width:1700px;margin:0 auto}
+@media (max-width:1100px){.layout{grid-template-columns:minmax(0,1fr);padding:12px 16px}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r)}
+.sensors{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;margin-bottom:12px}
+@media (max-width:640px){.sensors{grid-template-columns:minmax(0,1fr)}}
+.sensor{padding:14px 16px}
+.sensor-h{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.sensor-h .tag{width:4px;height:18px;border-radius:2px}
+.sensor-h b{font-size:14px}
+.badge{font-family:var(--mono);font-size:11px;padding:2px 7px;border-radius:6px;background:var(--panel2);border:1px solid var(--line);color:var(--muted)}
+.sensor-h .st{margin-left:auto;white-space:nowrap;display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
+.metrics{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
+@media (max-width:640px){.metrics{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.m{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:8px 10px;min-width:0}
+.m .l{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+.m .n{font-family:var(--mono);font-size:16px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.m .n small{font-size:11px;color:var(--muted)}
+
+.charts{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
+@media (max-width:760px){.charts{grid-template-columns:minmax(0,1fr)}}
+.chart{padding:10px 12px 8px}
+.chart.wide{grid-column:1/-1}
+.chart-h{display:flex;align-items:center;gap:10px;font-size:12.5px;margin-bottom:4px}
+.chart-h b{font-weight:600}
+.legend{margin-left:auto;display:flex;gap:10px;color:var(--muted);font-size:11.5px}
+.legend i{display:inline-block;width:10px;height:2px;border-radius:1px;margin-right:4px;vertical-align:middle}
+.chart canvas{width:100%;height:150px;display:block}
+.chart.wide canvas{height:130px}
+
+/* ---------- side panel ---------- */
+.side{display:flex;flex-direction:column;min-height:0}
+.tabs{display:flex;padding:5px;gap:4px;border-bottom:1px solid var(--line)}
+.tab{flex:1;padding:8px 6px;border-radius:8px;border:0;background:transparent;cursor:pointer;color:var(--muted);font-weight:500;font-size:13px;display:flex;align-items:center;justify-content:center;gap:7px}
+.tab .num{font-family:var(--mono);font-size:11px;width:18px;height:18px;border-radius:50%;display:grid;place-items:center;border:1px solid var(--line2)}
+.tab.on{background:var(--panel2);color:var(--text)}
+.tab.on .num{background:var(--accent);border-color:var(--accent);color:#06140d}
+.pane{display:none;padding:16px}
+.pane.on{display:block}
+.sec{margin-bottom:18px}
+.sec:last-child{margin-bottom:0}
+.sec-h{font-size:11px;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);margin:0 0 9px;display:flex;align-items:center;gap:8px}
+.sec-h .r{margin-left:auto;text-transform:none;letter-spacing:0}
+.hint{font-size:12.5px;color:var(--muted);margin:6px 0 0}
+
+.checks{list-style:none;margin:0;padding:0;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.checks li{display:flex;gap:10px;padding:9px 12px;border-bottom:1px solid var(--line);align-items:flex-start}
+.checks li:last-child{border-bottom:0}
+.ic{width:18px;height:18px;border-radius:50%;flex:none;display:grid;place-items:center;font-size:11px;font-weight:700;margin-top:1px;border:1.5px solid var(--line2);color:transparent}
+.ic.pass{background:var(--accent);border-color:var(--accent);color:#06140d}
+.ic.fail{background:var(--danger);border-color:var(--danger);color:#fff}
+.ic.warn{background:var(--warn);border-color:var(--warn);color:#1a1100}
+.ic.run{border-color:var(--info);border-top-color:transparent;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.checks .t{font-size:13px}
+.checks .d{font-size:12px;color:var(--muted);font-family:var(--mono)}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.row>*{flex:none}
+.grow{flex:1 1 auto !important}
+
+table.res{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:10px}
+table.res th,table.res td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:right;font-family:var(--mono)}
+table.res th{color:var(--muted);font-weight:500;font-family:var(--sans);font-size:11.5px}
+table.res td:first-child,table.res th:first-child{text-align:left;font-family:var(--sans)}
+.ok-t{color:var(--accent)} .warn-t{color:var(--warn)} .bad-t{color:var(--danger)}
+
+.log{background:var(--panel2);border:1px solid var(--line);border-radius:9px;height:130px;overflow:auto;padding:8px 10px;font:11.5px/1.55 var(--mono);color:var(--muted);white-space:pre-wrap;word-break:break-all}
+
+/* collect */
+.form{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.form label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)}
+.form .full{grid-column:1/-1}
+.form select,.form input{width:100%;color:var(--text)}
+.checkrow{display:flex;gap:16px;flex-wrap:wrap;font-size:12.5px;color:var(--muted);margin-top:10px}
+.checkrow label{display:flex;gap:6px;align-items:center;cursor:pointer}
+.rec{display:flex;align-items:center;gap:14px;margin-top:14px;padding:14px;border:1px solid var(--line);border-radius:12px;background:var(--panel2)}
+.recbtn{width:58px;height:58px;border-radius:50%;border:3px solid var(--line2);background:transparent;cursor:pointer;display:grid;place-items:center;flex:none;transition:.15s}
+.recbtn i{width:24px;height:24px;border-radius:50%;background:var(--danger);transition:.2s}
+.recbtn.on i{border-radius:5px;width:20px;height:20px}
+.recbtn.on{border-color:var(--danger);animation:pulse 1.2s ease-in-out infinite}
+@keyframes pulse{50%{box-shadow:0 0 0 7px var(--danger-dim)}}
+.rec .info b{display:block;font-size:15px}
+.rec .timer{margin-left:auto;font-family:var(--mono);font-size:24px;text-align:right}
+.rec .timer small{display:block;font-size:11px;color:var(--muted)}
+.chips{display:flex;flex-wrap:wrap;gap:5px}
+.chip{font-size:11.5px;padding:4px 8px;border-radius:7px;background:var(--panel2);border:1px solid var(--line);cursor:pointer;display:flex;gap:6px;align-items:center}
+.chip .c{font-family:var(--mono);color:var(--muted)}
+.chip.fall{border-left:3px solid var(--danger)}
+.chip.adl{border-left:3px solid var(--info)}
+.chip.done .c{color:var(--accent)}
+.chip.sel{outline:1.5px solid var(--accent);outline-offset:1px}
+.trials{max-height:220px;overflow:auto;border:1px solid var(--line);border-radius:10px}
+.trials table{width:100%;border-collapse:collapse;font-size:12px}
+.trials th,.trials td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
+.trials th{position:sticky;top:0;background:var(--panel);color:var(--muted);font-weight:500;font-size:11px}
+.trials tr.bad td{opacity:.4;text-decoration:line-through}
+.trials .lb{font-size:10.5px;padding:1px 6px;border-radius:5px}
+.lb.fall{background:var(--danger-dim);color:var(--danger)}
+.lb.adl{background:rgba(90,169,255,.14);color:var(--info)}
+.empty{padding:18px;text-align:center;color:var(--faint);font-size:12.5px}
+details summary{cursor:pointer;color:var(--muted);font-size:12.5px}
+details textarea{width:100%;height:160px;margin-top:8px;font:12px/1.5 var(--mono)}
+
+/* detect */
+.status{display:flex;align-items:center;gap:12px;padding:14px;border-radius:12px;border:1px solid var(--line);background:var(--panel2)}
+.status .big{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;flex:none;background:var(--accent-dim)}
+.status .big i{width:14px;height:14px;border-radius:50%;background:var(--accent)}
+.status.analyzing .big{background:var(--warn-dim)} .status.analyzing .big i{background:var(--warn);animation:blink .5s infinite}
+.status.fall{border-color:var(--danger);background:var(--danger-dim)} .status.fall .big{background:var(--danger)} .status.fall .big i{background:#fff}
+@keyframes blink{50%{opacity:.25}}
+.status b{display:block;font-size:15px}
+.status span{font-size:12px;color:var(--muted)}
+.slider{display:grid;grid-template-columns:1fr auto;gap:2px 10px;margin-bottom:10px;font-size:12.5px}
+.slider input{grid-column:1/-1;width:100%;accent-color:var(--accent)}
+.slider .v{font-family:var(--mono);color:var(--muted)}
+.alert{display:none;margin-top:12px;border-radius:12px;border:1px solid var(--danger);overflow:hidden}
+.alert.on{display:block}
+.alert-h{background:var(--danger);color:#fff;padding:10px 14px;display:flex;align-items:center;gap:10px}
+.alert-h b{font-size:14px}
+.alert-h .cd{margin-left:auto;font-family:var(--mono);font-size:20px}
+.alert-b{padding:12px 14px;background:var(--panel2)}
+.alert-b .acts{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
+.act{font-size:11.5px;padding:3px 8px;border-radius:6px;border:1px solid var(--line2);color:var(--muted)}
+.act.done{border-color:var(--accent);color:var(--accent);background:var(--accent-dim)}
+.sms{font:12px/1.5 var(--mono);background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:9px 11px;white-space:pre-wrap;margin-top:6px}
+.events{max-height:200px;overflow:auto;border:1px solid var(--line);border-radius:10px}
+.ev{display:grid;grid-template-columns:auto 1fr auto;gap:2px 10px;padding:8px 11px;border-bottom:1px solid var(--line);font-size:12.5px}
+.ev:last-child{border-bottom:0}
+.ev .tm{font-family:var(--mono);color:var(--faint);font-size:11.5px}
+.ev .dd{grid-column:2/-1;font-family:var(--mono);font-size:11.5px;color:var(--muted)}
+.sev{font-size:10.5px;padding:1px 7px;border-radius:5px;font-weight:600}
+.sev.l1{background:var(--warn-dim);color:var(--warn)}
+.sev.l2{background:rgba(255,130,60,.16);color:#ff8a3d}
+.sev.l3{background:var(--danger-dim);color:var(--danger)}
+.sev.no{background:var(--panel);color:var(--muted);border:1px solid var(--line)}
+.demo-only{display:none}
+body.demo .demo-only{display:flex}
+
+/* overlays */
+.countdown{position:fixed;inset:0;display:none;place-items:center;background:rgba(0,0,0,.55);z-index:50;backdrop-filter:blur(3px)}
+.countdown.on{display:grid}
+.countdown div{font:700 120px/1 var(--mono);color:#fff}
+.countdown p{color:#ddd;text-align:center;margin:8px 0 0;font-size:16px}
+#toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(20px);opacity:0;background:var(--text);color:var(--bg);padding:9px 16px;border-radius:9px;font-size:13px;z-index:60;transition:.25s;pointer-events:none;max-width:90vw}
+#toast.on{opacity:1;transform:translateX(-50%)}
+.kbd{font-family:var(--mono);font-size:11px;padding:1px 5px;border:1px solid var(--line2);border-radius:4px;color:var(--muted)}
+.nosupport{display:none;margin:12px 20px 0;padding:10px 14px;border-radius:10px;background:var(--warn-dim);color:var(--warn);font-size:13px;border:1px solid var(--warn)}
+@media (max-width:980px){.top{flex-wrap:wrap}.stats{order:3;width:100%;margin-left:0}.controls{margin-left:auto;flex-wrap:wrap}.brand span{display:none}}
+.calrow{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--panel2);font-size:12.5px;margin-bottom:12px}
+.calrow .grow{color:var(--muted)}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="brand">
+    <svg width="28" height="28" viewBox="0 0 32 32" aria-hidden="true">
+      <path d="M16 3 5 7v8c0 7 4.7 12.3 11 14 6.3-1.7 11-7 11-14V7L16 3Z" fill="var(--accent-dim)" stroke="var(--accent)" stroke-width="1.8"/>
+      <path d="M9.5 17h3.2l2-4.5 3 8 2-3.5h2.8" fill="none" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <div><b>VestGuard</b> <span>Sensor Console · V2 · dual BMI323</span></div>
+  </div>
+  <div class="stats">
+    <div class="pill"><span class="dot" id="linkDot"></span><span class="v" id="linkTxt">Disconnected</span></div>
+    <div class="pill"><span class="k">Rate</span><span class="v" id="rateTxt">—</span></div>
+    <div class="pill"><span class="k">Dropped</span><span class="v" id="dropTxt">0</span></div>
+    <div class="pill"><span class="k">Samples</span><span class="v" id="sampTxt">0</span></div>
+  </div>
+  <div class="controls">
+    <select id="rateSel" title="Sample rate">
+      <option value="25">25 Hz</option><option value="50" selected>50 Hz</option><option value="100">100 Hz</option>
+    </select>
+    <input type="text" id="hostIn" class="mono" value="localhost:8000" spellcheck="false" title="Laptop server address" style="width:136px">
+    <button class="btn primary" id="connBtn">Connect</button>
+    <button class="btn ghost" id="usbBtn" title="Fallback: USB cable (Chrome/Edge)">USB</button>
+    <button class="btn ghost" id="demoBtn" title="Run with simulated data, no hardware">Demo</button>
+  </div>
+</header>
+<div class="nosupport" id="noSupport">USB mode needs desktop <b>Chrome</b> or <b>Edge</b>. WiFi and Demo work in any browser.</div>
+
+<main class="layout">
+  <section>
+    <div class="sensors">
+      <div class="card sensor" id="card1"></div>
+      <div class="card sensor" id="card2"></div>
+    </div>
+    <div class="charts">
+      <div class="card chart"><div class="chart-h"><b>Thoracic · accel</b><span class="muted mono" id="r0"></span><div class="legend"><span><i style="background:var(--x)"></i>X</span><span><i style="background:var(--y)"></i>Y</span><span><i style="background:var(--z)"></i>Z</span></div></div><canvas id="c0"></canvas></div>
+      <div class="card chart"><div class="chart-h"><b>Lumbar · accel</b><span class="muted mono" id="r1"></span><div class="legend"><span><i style="background:var(--x)"></i>X</span><span><i style="background:var(--y)"></i>Y</span><span><i style="background:var(--z)"></i>Z</span></div></div><canvas id="c1"></canvas></div>
+      <div class="card chart"><div class="chart-h"><b>Thoracic · gyro</b><span class="muted mono" id="r2"></span><div class="legend"><span><i style="background:var(--x)"></i>X</span><span><i style="background:var(--y)"></i>Y</span><span><i style="background:var(--z)"></i>Z</span></div></div><canvas id="c2"></canvas></div>
+      <div class="card chart"><div class="chart-h"><b>Lumbar · gyro</b><span class="muted mono" id="r3"></span><div class="legend"><span><i style="background:var(--x)"></i>X</span><span><i style="background:var(--y)"></i>Y</span><span><i style="background:var(--z)"></i>Z</span></div></div><canvas id="c3"></canvas></div>
+      <div class="card chart wide"><div class="chart-h"><b>Acceleration magnitude |a|</b><span class="muted">dashed = impact threshold</span><div class="legend"><span><i style="background:var(--s1)"></i>Thoracic</span><span><i style="background:var(--s2)"></i>Lumbar</span></div></div><canvas id="c4"></canvas></div>
+    </div>
+  </section>
+
+  <aside class="card side">
+    <nav class="tabs">
+      <button class="tab on" data-tab="verify"><span class="num">1</span>Verify</button>
+      <button class="tab" data-tab="collect"><span class="num">2</span>Collect</button>
+      <button class="tab" data-tab="detect"><span class="num">3</span>Detect</button>
+    </nav>
+
+    <!-- ============ VERIFY ============ -->
+    <div class="pane on" id="pane-verify">
+      <div class="sec">
+        <div class="sec-h">Hardware checklist</div>
+        <ul class="checks" id="checks"></ul>
+      </div>
+      <div class="sec">
+        <div class="sec-h">Tests</div>
+        <div class="row">
+          <button class="btn primary" id="calBtn">Calibrate upright (3 s)</button>
+          <button class="btn" id="stillBtn">Still test (5 s)</button>
+          <button class="btn" id="tap1Btn">Tap thoracic</button>
+          <button class="btn" id="tap2Btn">Tap lumbar</button>
+        </div>
+        <p class="hint"><b>Calibrate upright:</b> wearer puts the vest on and stands straight and still. This records which way is "up" for each sensor, so the exact board orientation doesn't need to be known. Redo it for every new wearer or after re-mounting.<br>Still test: vest lying still on a table. Tap test: flick only the named sensor — confirms they aren't swapped.</p>
+        <div id="stillRes"></div>
+      </div>
+      <div class="sec">
+        <div class="sec-h">Orientation</div>
+        <p class="hint" style="margin-top:0"><b>Up axis</b> = the board axis that points up when the wearer stands (from calibration). <b>Tilt</b> = how far the trunk has leaned from that upright pose (0° standing, ~90° lying). <b>Gravity now</b> = which axis currently carries gravity. Since both boards are mounted the same way, both should show the same up axis.</p>
+      </div>
+      <div class="sec">
+        <div class="sec-h">Device log <span class="r"><button class="btn sm ghost" id="reinitBtn">Re-init sensors</button></span></div>
+        <div class="log" id="log"></div>
+      </div>
+    </div>
+
+    <!-- ============ COLLECT ============ -->
+    <div class="pane" id="pane-collect">
+      <div class="sec">
+        <div class="calrow"><span class="dot" id="calDot"></span><span class="grow" id="calTxt">Not calibrated</span><button class="btn sm" id="calBtn2">Calibrate</button></div>
+        <div class="form">
+          <label>Subject ID<input type="text" id="subj" value="S01" maxlength="12"></label>
+          <label>Auto-stop (s, 0 = manual)<input type="number" id="dur" value="10" min="0" max="120"></label>
+          <label class="full">Activity<select id="act"></select></label>
+        </div>
+        <div class="checkrow">
+          <label><input type="checkbox" id="cdChk" checked> 3 s countdown</label>
+          <label><input type="checkbox" id="autoDl"> Auto-download each trial</label>
+        </div>
+        <div class="rec">
+          <button class="recbtn" id="recBtn" title="Record (Space)"><i></i></button>
+          <div class="info"><b id="recTitle">Ready</b><span class="muted" id="recSub">Press <span class="kbd">Space</span> to record</span></div>
+          <div class="timer" id="recTimer">0.0<small id="recN">0 samples</small></div>
+        </div>
+      </div>
+      <div class="sec">
+        <div class="sec-h">Coverage <span class="r muted" id="covTxt"></span></div>
+        <div class="chips" id="chips"></div>
+      </div>
+      <div class="sec">
+        <div class="sec-h">Trials <span class="r row"><button class="btn sm" id="expCsv">Export CSV</button><button class="btn sm ghost" id="expJson">Metadata</button></span></div>
+        <div class="trials" id="trials"></div>
+      </div>
+      <div class="sec">
+        <details><summary>Edit activity list</summary>
+          <textarea id="actEdit" spellcheck="false"></textarea>
+          <div class="row" style="margin-top:6px"><button class="btn sm" id="actSave">Save list</button><button class="btn sm ghost" id="actReset">Reset to default</button></div>
+          <p class="hint">One per line. Prefix <span class="mono">F:</span> for falls, <span class="mono">A:</span> for ADLs. Match your existing dataset labels so old and new data merge cleanly.</p>
+        </details>
+      </div>
+    </div>
+
+    <!-- ============ DETECT ============ -->
+    <div class="pane" id="pane-detect">
+      <div class="sec">
+        <div class="status" id="detStatus"><div class="big"><i></i></div><div><b id="detTitle">Monitoring</b><span id="detSub">Waiting for an impact above threshold</span></div></div>
+        <div class="row demo-only" style="margin-top:10px">
+          <button class="btn sm" id="simFall">Simulate fall</button>
+          <button class="btn sm" id="simHard">Simulate hard fall</button>
+          <button class="btn sm" id="simStumble">Simulate stumble</button>
+          <button class="btn sm" id="simSit">Simulate sit-down</button>
+        </div>
+        <div class="alert" id="alertBox">
+          <div class="alert-h"><b id="alertTitle">Fall detected</b><span class="sev" id="alertSev"></span><span class="cd" id="alertCd">10</span></div>
+          <div class="alert-b">
+            <div class="row"><span class="muted" style="font-size:12.5px" id="alertMsg">Alert goes out when the countdown ends.</span><button class="btn sm" id="okBtn" style="margin-left:auto">I'm OK — cancel</button></div>
+            <div class="acts" id="alertActs"></div>
+            <div class="sms" id="smsPrev"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sec">
+        <div class="sec-h">Rule-based detector <span class="r muted">placeholder until ML model is on-device</span></div>
+        <div class="slider"><span>Impact threshold</span><span class="v" id="vImp"></span><input type="range" id="pImp" min="1.5" max="6" step="0.1" value="2.5"></div>
+        <div class="slider"><span>Min orientation change</span><span class="v" id="vAng"></span><input type="range" id="pAng" min="20" max="90" step="1" value="45"></div>
+        <div class="slider"><span>Post-impact window</span><span class="v" id="vWin"></span><input type="range" id="pWin" min="0.8" max="4" step="0.1" value="1.5"></div>
+        <div class="slider"><span>Cancel window</span><span class="v" id="vCan"></span><input type="range" id="pCan" min="3" max="30" step="1" value="10"></div>
+        <div class="checkrow" style="margin-top:0">
+          <label><input type="checkbox" id="pDual" checked> Require dual-sensor agreement</label>
+          <label><input type="checkbox" id="pBuzz" checked> Buzzer on ESP32</label>
+        </div>
+      </div>
+      <div class="sec">
+        <div class="form">
+          <label>Caregiver (simulated)<input type="text" id="contact" value="+91 98XXX XXXXX"></label>
+          <label>Location (simulated GPS)<input type="text" id="gps" value="31.3260, 76.7590"></label>
+        </div>
+        <p class="hint">Alert cascade — Low: buzzer + SMS · Medium: SMS · High: SMS + emergency call. SMS/call are simulated until the SIM808 is fitted.</p>
+      </div>
+      <div class="sec">
+        <div class="sec-h">Event log <span class="r"><button class="btn sm ghost" id="clrEv">Clear</button></span></div>
+        <div class="events" id="events"><div class="empty">No events yet</div></div>
+      </div>
+    </div>
+  </aside>
+</main>
+
+<div class="countdown" id="cdOverlay"><div><div id="cdNum">3</div><p id="cdAct"></p></div></div>
+<div id="toast"></div>
+
+<script>
+"use strict";
+/* =========================================================
+   Helpers
+   ========================================================= */
+const $ = s => document.querySelector(s);
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const fmt = (x, d = 2) => Number.isFinite(x) ? x.toFixed(d) : '—';
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
+};
+let toastT;
+function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('on'), 2600); }
+function download(name, text, type = 'text/csv') {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([text], { type }));
+  a.download = name; document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+}
+const stamp = () => new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+
+/* =========================================================
+   State + ring buffer
+   ========================================================= */
+// channel layout: 0-5 thoracic ax ay az gx gy gz | 6-11 lumbar | 12 |a|1 | 13 |a|2 | 14 |w|1 | 15 |w|2
+const CAP = 3000;
+const ring = { t: new Float64Array(CAP), v: Array.from({ length: 16 }, () => new Float32Array(CAP)), head: 0, n: 0 };
+const ri = back => (ring.head - 1 - back + CAP * 2) % CAP;
+function ringPush(t, v) { const i = ring.head; ring.t[i] = t; for (let k = 0; k < 16; k++) ring.v[k][i] = v[k]; ring.head = (i + 1) % CAP; ring.n = Math.min(ring.n + 1, CAP); }
+function ringClear() { ring.head = 0; ring.n = 0; }
+
+const S = {
+  mode: 'off',            // off | serial | demo
+  target: 50,
+  sensors: [{ name: 'Thoracic', addr: '0x68', st: null, err: 0 }, { name: 'Lumbar', addr: '0x69', st: null, err: 0 }],
+  fw: null, lastSeq: null, lastT: null, drops: 0, total: 0,
+  rate: 0, rateCnt: 0, rateT0: performance.now(),
+  latest: null, windowMs: 10000, frozen: [0, 0], prevV: null,
+};
+
+/* =========================================================
+   Line parser (shared by serial + demo)
+   ========================================================= */
+function handleLine(line) {
+  line = line.trim(); if (!line) return;
+  const c = line[0];
+  if (c === 'D') {
+    const p = line.split(',');
+    if (p.length < 15) return;
+    const seq = +p[1], t = +p[2];
+    const v = new Array(16);
+    for (let k = 0; k < 12; k++) v[k] = parseFloat(p[3 + k]);
+    v[12] = Math.hypot(v[0], v[1], v[2]); v[13] = Math.hypot(v[6], v[7], v[8]);
+    v[14] = Math.hypot(v[3], v[4], v[5]); v[15] = Math.hypot(v[9], v[10], v[11]);
+    onSample(seq, t, v);
+  } else if (c === 'H') {
+    const p = line.split(',');
+    S.sensors[0].st = p[1] === '1' ? 'OK' : 'OFFLINE'; S.sensors[1].st = p[2] === '1' ? 'OK' : 'OFFLINE';
+    S.sensors[0].err = +p[3]; S.sensors[1].err = +p[4]; S.rssi = +p[5] || 0;
+  } else if (c === 'I') {
+    logLine(line);
+    const p = line.split(',');
+    if (p[1] === 'SENSOR') { const s = S.sensors[+p[2] - 1]; if (s) { s.addr = p[3]; s.st = p[5]; } }
+    else if (p[1] === 'FW') S.fw = p[2] + ' ' + p[3];
+    else if (p[1] === 'FROZEN') toast(`⚠ ${p[2]} sensor froze (${p[4]}) — auto re-initialising`);
+    else if (p[1] === 'RATE') { S.target = +p[2]; $('#rateSel').value = String(S.target); }
+  } else logLine(line);
+}
+
+function onSample(seq, t, v) {
+  if (S.lastT !== null && t < S.lastT - 1000) { ringClear(); S.lastSeq = null; logLine('# device restarted, buffers cleared'); }
+  if (S.lastSeq !== null && seq > S.lastSeq + 1) S.drops += seq - S.lastSeq - 1;
+  for (let i = 0; i < 2; i++) {        // frozen-data guard: identical 6 values sample after sample
+    const o = i * 6, p = S.prevV;
+    const same = p && Number.isFinite(v[o]) && [0, 1, 2, 3, 4, 5].every(k => v[o + k] === p[o + k]);
+    S.frozen[i] = same ? S.frozen[i] + 1 : 0;
+  }
+  S.prevV = v;
+  if (S.rateDevT0 == null) S.rateDevT0 = t;
+  S.lastSeq = seq; S.lastT = t; S.total++; S.rateCnt++; S.lastWall = performance.now();
+  S.latest = { seq, t, v };
+  ringPush(t, v);
+  Verify.onSample(t, v);
+  Cal.onSample(t, v);
+  Collect.onSample(seq, t, v);
+  Detect.onSample(t, v);
+}
+
+const logBuf = [];
+function logLine(s) {
+  logBuf.push(new Date().toLocaleTimeString() + '  ' + s);
+  if (logBuf.length > 120) logBuf.shift();
+  const el = $('#log'); el.textContent = logBuf.join('\n'); el.scrollTop = el.scrollHeight;
+}
+
+/* =========================================================
+   Sources
+   ========================================================= */
+class SerialSource {
+  async open() {
+    this.port = await navigator.serial.requestPort();
+    await this.port.open({ baudRate: 921600, bufferSize: 65536 });
+    this.alive = true;
+    this.writer = this.port.writable.getWriter();
+    this.loop();
+    setTimeout(() => { this.send('?'); this.send('R' + $('#rateSel').value); }, 1800);
+  }
+  async loop() {
+    const dec = new TextDecoder(); let buf = '';
+    while (this.alive && this.port.readable) {
+      this.reader = this.port.readable.getReader();
+      try {
+        for (;;) {
+          const { value, done } = await this.reader.read();
+          if (done) break;
+          buf += dec.decode(value, { stream: true });
+          let i; while ((i = buf.indexOf('\n')) >= 0) { handleLine(buf.slice(0, i)); buf = buf.slice(i + 1); }
+          if (buf.length > 20000) buf = '';
+        }
+      } catch (e) { logLine('# read error: ' + e.message); }
+      finally { try { this.reader.releaseLock(); } catch {} }
+    }
+  }
+  send(s) { if (!this.writer) return; this.writer.write(new TextEncoder().encode(s + '\n')).catch(() => {}); }
+  async close() {
+    this.alive = false;
+    try { await this.reader?.cancel(); } catch {}
+    try { this.writer?.releaseLock(); } catch {}
+    try { await this.port?.close(); } catch {}
+  }
+}
+
+class WsSource {
+  constructor(host) { this.host = host; this.alive = true; this.tries = 0; }
+  open() { return new Promise((res, rej) => this.connect(res, rej)); }
+  connect(res, rej) {
+    let ws;
+    const url = /:\d+$/.test(this.host) ? `ws://${this.host}/ws` : `ws://${this.host}:81/`;
+    try { ws = new WebSocket(url); } catch (e) { rej?.(e); return; }
+    this.ws = ws; let opened = false;
+    const to = setTimeout(() => { if (!opened) ws.close(); }, 4000);
+    ws.onopen = () => {
+      opened = true; clearTimeout(to); this.tries = 0; S.linkUp = true;
+      logLine('# connected to ' + this.host);
+      this.send('?'); this.send('R' + $('#rateSel').value);
+      res?.(); res = rej = null;
+    };
+    ws.onmessage = e => { const t = e.data; let i = 0, j; while ((j = t.indexOf('\n', i)) >= 0) { handleLine(t.slice(i, j)); i = j + 1; } if (i < t.length) handleLine(t.slice(i)); };
+    ws.onclose = () => {
+      clearTimeout(to); S.linkUp = false;
+      if (rej) { rej(new Error('no answer')); res = rej = null; return; }
+      if (!this.alive) return;
+      const d = Math.min(4000, 400 * 2 ** this.tries++);
+      logLine('# WiFi link lost — retrying');
+      this.retry = setTimeout(() => this.connect(), d);
+    };
+    ws.onerror = () => {};
+  }
+  send(s) { if (this.ws?.readyState === 1) this.ws.send(s); }
+  close() { this.alive = false; clearTimeout(this.retry); try { this.ws?.close(); } catch {} }
+}
+
+class DemoSource {
+  open() {
+    this.seq = 0; this.ms = 0; this.queue = []; this.walk = 0;
+    this.rate = +$('#rateSel').value;
+    ['I,FW,VestGuard-DAQ,demo', 'I,SCAN,0x68,0x69', 'I,SENSOR,1,0x68,THORACIC,OK,0x43', 'I,SENSOR,2,0x69,LUMBAR,OK,0x43', 'I,RATE,' + this.rate, 'I,READY'].forEach(handleLine);
+    this.last = performance.now();
+    this.timer = setInterval(() => this.pump(), 20);
+  }
+  send(s) {
+    if (s[0] === 'R') { const hz = +s.slice(1); if (hz >= 10) { this.rate = hz; handleLine('I,RATE,' + hz); } }
+    if (s[0] === 'A') handleLine('I,ALERT,' + s.slice(1));
+    if (s[0] === '?') handleLine('I,READY');
+  }
+  close() { clearInterval(this.timer); }
+  play(kind) {
+    const T = { fall: 7, hard: 7, stumble: 2.5, sit: 4 }[kind];
+    this.event = { kind, t: 0, T };
+  }
+  pump() {
+    const now = performance.now(), dt = 1000 / this.rate;
+    while (now - this.last >= dt) { this.last += dt; this.ms += dt; this.emit(dt / 1000); }
+  }
+  emit(h) {
+    const n = s => (Math.random() - .5) * s;
+    // standing upright: gravity on +X (X along the spine, pointing up)
+    let g1 = [1, 0, 0], g2 = [1, 0, 0], w1 = [0, 0, 0], w2 = [0, 0, 0], spike1 = 0, spike2 = 0;
+    this.walk += h;
+    const sway = Math.sin(this.walk * 2 * Math.PI * .25) * .03;
+    g1 = [Math.cos(sway), 0, Math.sin(sway)]; g2 = [...g1];
+    const e = this.event;
+    if (e) {
+      e.t += h; const t = e.t;
+      if (e.kind === 'fall' || e.kind === 'hard') {
+        const hard = e.kind === 'hard';
+        if (t < .45) {               // falling: rotate forward, partial free-fall
+          const th = (t / .45) * Math.PI / 2;
+          const ff = 1 - .65 * Math.sin(Math.PI * t / .45);
+          g1 = [Math.cos(th) * ff, 0, Math.sin(th) * ff]; g2 = [Math.cos(th * .9) * ff, 0, Math.sin(th * .9) * ff];
+          w1 = [n(20), 200 + n(30), n(20)]; w2 = [n(20), 170 + n(30), n(20)];
+        } else if (t < .58) {        // impact
+          const k = Math.sin(Math.PI * (t - .45) / .13);
+          spike1 = (hard ? 5.2 : 3.4) * k; spike2 = (hard ? 4.1 : 2.6) * k;
+          g1 = [0.1, 0, 1]; g2 = [0.1, 0, 1]; w1 = [n(120), n(120), n(80)]; w2 = [n(90), n(90), n(60)];
+        } else if (t < e.T - .9) {  // lying (prone): gravity on +Z
+          g1 = [0.05, 0, 1]; g2 = [0.08, 0, 1];
+          if (!hard && t > 3) { w1 = [n(15), n(15), n(15)]; }
+        } else {                     // getting back up
+          const th = (1 - (t - (e.T - .9)) / .9) * Math.PI / 2;
+          g1 = [Math.cos(th), 0, Math.sin(th)]; g2 = [...g1]; w1 = [0, -110, 0]; w2 = [0, -100, 0];
+        }
+      } else if (e.kind === 'stumble') { // jolt, stays upright
+        if (t > .3 && t < .45) { const k = Math.sin(Math.PI * (t - .3) / .15); spike1 = 2.0 * k; spike2 = 1.8 * k; w1 = [n(80), n(80), n(60)]; }
+      } else if (e.kind === 'sit') {   // sit down: lumbar tilts back a bit, thoracic stays upright
+        if (t > .5 && t < 1.4) { const k = Math.sin(Math.PI * (t - .5) / .9); spike2 = .7 * k; spike1 = .4 * k; g2 = [Math.cos(.35 * k), 0, -Math.sin(.35 * k)]; w2 = [0, -40 * k, 0]; }
+        else if (t >= 1.4 && t < 3.2) { g2 = [Math.cos(.25), 0, -Math.sin(.25)]; }
+      }
+      if (t >= e.T) this.event = null;
+    }
+    const a1 = g1.map((x, i) => x + (i === 2 ? spike1 : spike1 * .25) + n(.012));
+    const a2 = g2.map((x, i) => x + (i === 2 ? spike2 : spike2 * .25) + n(.012));
+    const gy1 = w1.map(x => x + n(.6) + .15), gy2 = w2.map(x => x + n(.6) - .1);
+    handleLine(`D,${this.seq++},${Math.round(this.ms)},${a1.map(x => x.toFixed(4))},${gy1.map(x => x.toFixed(2))},${a2.map(x => x.toFixed(4))},${gy2.map(x => x.toFixed(2))}`);
+  }
+}
+
+let src = null;
+async function connectWifi() {
+  const host = $('#hostIn').value.trim().replace(/^\w+:\/\//, '').replace(/\/.*$/, '');
+  if (!host) return toast('Enter the server address, e.g. localhost:8000');
+  await disconnect();
+  const s = new WsSource(host);
+  $('#connBtn').disabled = true; $('#connBtn').textContent = 'Connecting…';
+  try {
+    await s.open();
+    src = s; S.mode = 'wifi'; resetCounters(); store.set('vg_host', host);
+    toast('Connected to laptop server');
+  } catch {
+    s.close(); toast(`Can't reach ${host} — is vestguard_server.py running?`);
+  }
+  $('#connBtn').disabled = false; syncHeader();
+}
+async function connectSerial() {
+  if (!('serial' in navigator)) { $('#noSupport').style.display = 'block'; toast('USB needs desktop Chrome or Edge'); return; }
+  try {
+    await disconnect();
+    const s = new SerialSource(); await s.open();
+    src = s; S.mode = 'serial'; resetCounters(); logLine('# serial port opened @ 921600');
+    toast('Connected — waiting for data…');
+  } catch (e) { if (e.name !== 'NotFoundError') toast('Could not open port: ' + e.message); }
+  syncHeader();
+}
+async function startDemo() {
+  await disconnect();
+  src = new DemoSource(); S.mode = 'demo'; resetCounters(); src.open();
+  document.body.classList.add('demo'); syncHeader(); toast('Demo mode — simulated sensors');
+}
+async function disconnect() {
+  if (src) { await src.close(); src = null; }
+  S.mode = 'off'; document.body.classList.remove('demo');
+  S.sensors.forEach(s => s.st = null); syncHeader();
+}
+function resetCounters() { S.lastSeq = null; S.lastT = null; S.drops = 0; S.total = 0; S.latest = null; ringClear(); }
+function send(cmd) { src?.send(cmd); }
+if ('serial' in navigator) navigator.serial.addEventListener('disconnect', () => { if (S.mode === 'serial') { disconnect(); toast('ESP32 disconnected'); logLine('# port disconnected'); } });
+
+function syncHeader() {
+  $('#connBtn').textContent = S.mode === 'wifi' ? 'Disconnect' : 'Connect';
+  $('#connBtn').className = 'btn ' + (S.mode === 'wifi' ? '' : 'primary');
+  $('#usbBtn').textContent = S.mode === 'serial' ? 'Close USB' : 'USB';
+  $('#demoBtn').textContent = S.mode === 'demo' ? 'Stop demo' : 'Demo';
+}
+$('#connBtn').onclick = () => S.mode === 'wifi' ? disconnect() : connectWifi();
+$('#hostIn').onkeydown = e => { if (e.key === 'Enter') connectWifi(); };
+$('#usbBtn').onclick = () => S.mode === 'serial' ? disconnect() : connectSerial();
+$('#demoBtn').onclick = () => S.mode === 'demo' ? disconnect() : startDemo();
+$('#rateSel').onchange = e => { send('R' + e.target.value); S.target = +e.target.value; };
+$('#reinitBtn').onclick = () => { send('I'); logLine('> I (re-init)'); };
+
+/* =========================================================
+   Sensor cards
+   ========================================================= */
+function cardHTML(i) {
+  const tag = i === 0 ? 'var(--s1)' : 'var(--s2)';
+  return `<div class="sensor-h"><span class="tag" style="background:${tag}"></span><b>${i === 0 ? 'S1 · Thoracic' : 'S2 · Lumbar'}</b>
+  <span class="badge" id="ad${i}">${i === 0 ? '0x68' : '0x69'}</span><span class="st"><span class="dot" id="sd${i}"></span><span id="st${i}">—</span></span></div>
+  <div class="metrics">
+    <div class="m"><div class="l">|a|</div><div class="n" id="ma${i}">—</div></div>
+    <div class="m"><div class="l">Tilt</div><div class="n" id="mt${i}">—</div></div>
+    <div class="m"><div class="l">Up axis</div><div class="n" id="mu${i}">—</div></div>
+    <div class="m"><div class="l">Gravity now</div><div class="n" id="mg${i}">—</div></div>
+    <div class="m"><div class="l">|ω|</div><div class="n" id="mw${i}">—</div></div>
+  </div>`;
+}
+$('#card1').innerHTML = cardHTML(0); $('#card2').innerHTML = cardHTML(1);
+
+function gravityAxis(ax, ay, az) {
+  const a = [ax, ay, az], k = [0, 1, 2].reduce((m, i) => Math.abs(a[i]) > Math.abs(a[m]) ? i : m, 0);
+  return (a[k] >= 0 ? '+' : '−') + 'XYZ'[k];
+}
+function updateCards() {
+  const live = S.latest && performance.now() - S.lastWall < 1500;
+  for (let i = 0; i < 2; i++) {
+    const s = S.sensors[i], o = i * 6;
+    let cls = '', txt = 'No link';
+    if (S.mode !== 'off') {
+      if (live && S.frozen[i] >= 50) { cls = 'bad'; txt = 'DATA FROZEN'; }
+      else if (s.st === 'OK' && live) { cls = 'ok'; txt = 'Streaming'; }
+      else if (s.st === 'OK') { cls = 'warn'; txt = 'No data'; }
+      else if (s.st) { cls = 'bad'; txt = s.st.replace('_', ' ').toLowerCase(); }
+      else { cls = 'warn'; txt = 'Waiting'; }
+    }
+    $('#sd' + i).className = 'dot ' + cls; $('#st' + i).textContent = txt + (s.err ? ` · ${s.err} err` : '');
+    $('#ad' + i).textContent = s.addr;
+    if (!S.latest) continue;
+    const v = S.latest.v, ax = v[o], ay = v[o + 1], az = v[o + 2];
+    const ok = Number.isFinite(ax);
+    $('#ma' + i).innerHTML = ok ? `${fmt(v[12 + i], 3)}<small> g</small>` : '—';
+    $('#mg' + i).textContent = ok ? gravityAxis(ax, ay, az) : '—';
+    const tl = Cal.tilt(i, v);
+    $('#mt' + i).innerHTML = ok && Number.isFinite(tl) ? `${fmt(tl, 0)}<small>°</small>` : '<small>calibrate</small>';
+    $('#mu' + i).textContent = Cal.u ? gravityAxis(...Cal.u['u' + (i + 1)]) : '—';
+    $('#mw' + i).innerHTML = ok ? `${fmt(v[14 + i], 1)}<small> °/s</small>` : '—';
+  }
+  const now = performance.now();
+  if (now - S.rateT0 >= 1000) {
+    if (S.rateCnt > 1 && S.lastT > S.rateDevT0) S.rate = (S.rateCnt - 1) * 1000 / (S.lastT - S.rateDevT0); else if (!S.rateCnt) S.rate = 0;
+    S.rateCnt = 0; S.rateT0 = now; S.rateDevT0 = null;
+  }
+  const linkCls = S.mode === 'off' ? '' : (live ? 'ok' : 'warn');
+  $('#linkDot').className = 'dot ' + linkCls;
+  $('#linkTxt').textContent = S.mode === 'off' ? 'Disconnected' : S.mode === 'demo' ? 'Demo'
+    : S.mode === 'wifi' ? (live ? 'ESP32 live' + (S.rssi ? ` · ${S.rssi} dBm` : '') : (S.linkUp ? 'Waiting for ESP32' : 'Server lost — retrying'))
+    : (live ? 'USB live' : 'Port open');
+  $('#rateTxt').textContent = S.mode === 'off' ? '—' : `${S.rate.toFixed(1)} / ${S.target} Hz`;
+  $('#dropTxt').textContent = S.drops; $('#sampTxt').textContent = S.total.toLocaleString();
+}
+
+/* =========================================================
+   Charts (canvas, no libraries)
+   ========================================================= */
+const charts = [
+  { el: $('#c0'), ch: [0, 1, 2], col: ['--x', '--y', '--z'], min: 1.5, unit: 'g', lab: '#r0' },
+  { el: $('#c1'), ch: [6, 7, 8], col: ['--x', '--y', '--z'], min: 1.5, unit: 'g', lab: '#r1' },
+  { el: $('#c2'), ch: [3, 4, 5], col: ['--x', '--y', '--z'], min: 60, unit: '°/s', lab: '#r2' },
+  { el: $('#c3'), ch: [9, 10, 11], col: ['--x', '--y', '--z'], min: 60, unit: '°/s', lab: '#r3' },
+  { el: $('#c4'), ch: [12, 13], col: ['--s1', '--s2'], min: 3, unit: 'g', positive: true, thr: () => Detect.p.imp },
+];
+charts.forEach(c => c.range = c.min);
+let colors = {};
+function readColors() { ['--x', '--y', '--z', '--s1', '--s2', '--grid', '--zero', '--faint', '--warn', '--danger'].forEach(k => colors[k] = css(k)); }
+readColors(); matchMedia('(prefers-color-scheme: light)').addEventListener('change', readColors);
+
+function sizeCanvas(c) {
+  const r = c.el.getBoundingClientRect(), d = devicePixelRatio || 1;
+  const w = Math.round(r.width * d), h = Math.round(r.height * d);
+  if (c.el.width !== w || c.el.height !== h) { c.el.width = w; c.el.height = h; }
+}
+function drawChart(c) {
+  sizeCanvas(c);
+  const ctx = c.el.getContext('2d'), W = c.el.width, H = c.el.height, d = devicePixelRatio || 1;
+  ctx.clearRect(0, 0, W, H);
+  const padL = 34 * d, pw = W - padL, win = S.windowMs;
+  const tEnd = ring.n ? ring.t[ri(0)] : 0;
+  // autoscale over visible window
+  let mx = 0;
+  for (let k = 0; k < ring.n; k++) { const i = ri(k); if (tEnd - ring.t[i] > win) break; for (const ch of c.ch) { const a = Math.abs(ring.v[ch][i]); if (a > mx && Number.isFinite(a)) mx = a; } }
+  const target = Math.max(c.min, mx * 1.15);
+  c.range += (target - c.range) * (target > c.range ? .5 : .04);
+  const R = c.range, y0 = c.positive ? 0 : -R, y1 = R;
+  const Y = v => H - 4 * d - (v - y0) / (y1 - y0) * (H - 8 * d);
+  // grid
+  ctx.lineWidth = 1; ctx.font = `${10 * d}px ${css('--mono') || 'monospace'}`; ctx.fillStyle = colors['--faint']; ctx.textBaseline = 'middle';
+  const ticks = c.positive ? [0, R / 2, R] : [-R, -R / 2, 0, R / 2, R];
+  for (const tv of ticks) {
+    const y = Math.round(Y(tv)) + .5;
+    ctx.strokeStyle = tv === 0 ? colors['--zero'] : colors['--grid'];
+    ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(W, y); ctx.stroke();
+    ctx.fillText(Math.abs(tv) >= 10 ? tv.toFixed(0) : tv.toFixed(1), 2 * d, Math.min(Math.max(y, 6 * d), H - 6 * d));
+  }
+  for (let s = 2; s < 10; s += 2) { const x = Math.round(padL + pw * (1 - s * 1000 / win)) + .5; ctx.strokeStyle = colors['--grid']; ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
+  if (c.thr) {
+    const y = Y(c.thr()); ctx.setLineDash([5 * d, 4 * d]); ctx.strokeStyle = colors['--danger']; ctx.globalAlpha = .7;
+    ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(W, y); ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1;
+  }
+  // series
+  ctx.lineWidth = 1.5 * d; ctx.lineJoin = 'round';
+  c.ch.forEach((ch, j) => {
+    ctx.strokeStyle = colors[c.col[j]]; ctx.beginPath(); let pen = false;
+    for (let k = 0; k < ring.n; k++) {
+      const i = ri(k), dt = tEnd - ring.t[i]; if (dt > win) break;
+      const v = ring.v[ch][i]; if (!Number.isFinite(v)) { pen = false; continue; }
+      const x = padL + pw * (1 - dt / win), y = Y(v);
+      pen ? ctx.lineTo(x, y) : ctx.moveTo(x, y); pen = true;
+    }
+    ctx.stroke();
+  });
+  if (c.lab) $(c.lab).textContent = `±${R >= 10 ? R.toFixed(0) : R.toFixed(1)} ${c.unit}`;
+}
+
+/* =========================================================
+   Upright calibration — makes everything independent of how
+   the boards are physically rotated on the vest
+   ========================================================= */
+function angleDeg(a, b) {
+  if (!a || !b) return NaN;
+  const d = (a[0] * b[0] + a[1] * b[1] + a[2] * b[2]) / (Math.hypot(...a) * Math.hypot(...b));
+  return Math.acos(Math.min(1, Math.max(-1, d))) * 57.2958;
+}
+const Cal = {
+  u: store.get('vg_cal', null),          // { u1:[x,y,z], u2:[x,y,z], at, subject }
+  run: null,
+  start() {
+    if (!S.latest) return toast('No data yet — connect first');
+    this.run = { t0: null, s: [[0, 0, 0], [0, 0, 0]], n: 0, motion: 0 };
+    Verify.set('cal', 'run', 'stand straight and still…');
+    ['#calBtn', '#calBtn2'].forEach(b => $(b).disabled = true);
+    toast('Calibrating — wearer stands straight and still for 3 s');
+  },
+  onSample(t, v) {
+    const r = this.run; if (!r) return;
+    if (r.t0 === null) r.t0 = t;
+    for (let i = 0; i < 2; i++) for (let k = 0; k < 3; k++) r.s[i][k] += v[i * 6 + k];
+    r.n++;
+    const m = Math.max(v[14], v[15]); if (m > r.motion) r.motion = m;
+    if (t - r.t0 >= 3000) this.finish();
+  },
+  finish() {
+    const r = this.run; this.run = null;
+    ['#calBtn', '#calBtn2'].forEach(b => $(b).disabled = false);
+    const nrm = a => { const m = Math.hypot(...a); return a.map(x => x / m); };
+    const u1 = nrm(r.s[0].map(x => x / r.n)), u2 = nrm(r.s[1].map(x => x / r.n));
+    if (!u1.every(Number.isFinite) || !u2.every(Number.isFinite)) { Verify.set('cal', 'fail', 'a sensor is offline'); return; }
+    if (r.motion > 30) { Verify.set('cal', 'fail', `too much movement (${r.motion.toFixed(0)} °/s) — stand still and retry`); toast('Calibration failed — too much movement'); return; }
+    this.u = { u1, u2, at: new Date().toISOString(), subject: $('#subj').value.trim() };
+    store.set('vg_cal', this.u);
+    this.report(); toast('Calibrated');
+  },
+  report() {
+    if (!this.u) { $('#calTxt').textContent = 'Not calibrated — wearer stands upright, then Calibrate'; $('#calDot').className = 'dot warn'; return; }
+    const d = angleDeg(this.u.u1, this.u.u2), ax = i => gravityAxis(...this.u['u' + i]);
+    const st = d < 25 ? 'pass' : d < 45 ? 'warn' : 'fail';
+    Verify.set('cal', st, `up: S1 ${ax(1)} · S2 ${ax(2)} · boards differ ${d.toFixed(0)}°${d >= 25 ? ' — check mounting' : ''}`);
+    const when = new Date(this.u.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    $('#calTxt').innerHTML = `Calibrated${this.u.subject ? ' on ' + this.u.subject : ''} at ${when} · up S1 <b class="mono">${ax(1)}</b> S2 <b class="mono">${ax(2)}</b>`;
+    $('#calDot').className = 'dot ' + (st === 'pass' ? 'ok' : 'warn');
+  },
+  tilt(i, v) { if (!this.u) return NaN; const o = i * 6; return angleDeg(this.u['u' + (i + 1)], [v[o], v[o + 1], v[o + 2]]); },
+  tiltVec(i, a) { return this.u ? angleDeg(this.u['u' + (i + 1)], a) : NaN; }
+};
+
+/* =========================================================
+   1 · VERIFY
+   ========================================================= */
+const Verify = {
+  items: [
+    { id: 'link', t: 'ESP32 streaming data' },
+    { id: 's1', t: 'Thoracic BMI323 @ 0x68' },
+    { id: 's2', t: 'Lumbar BMI323 @ 0x69' },
+    { id: 'rate', t: 'Sample rate stable, no drops' },
+    { id: 'grav', t: 'At rest |a| ≈ 1 g on both' },
+    { id: 'bias', t: 'Gyro bias & noise low' },
+    { id: 'cal', t: 'Upright calibration (vest worn)' },
+    { id: 'tap1', t: 'Tap test: thoracic is S1' },
+    { id: 'tap2', t: 'Tap test: lumbar is S2' },
+  ],
+  res: {}, still: null, tap: null, dropsMark: 0, dropsT: 0,
+  set(id, st, d = '') { this.res[id] = { st, d }; },
+  render() {
+    const sym = { pass: '✓', fail: '!', warn: '~', run: '', pending: '' };
+    $('#checks').innerHTML = this.items.map(it => {
+      const r = this.res[it.id] || { st: 'pending', d: '' };
+      return `<li><span class="ic ${r.st}">${sym[r.st]}</span><div><div class="t">${it.t}</div>${r.d ? `<div class="d">${r.d}</div>` : ''}</div></li>`;
+    }).join('');
+  },
+  auto() {
+    const live = S.latest && performance.now() - S.lastWall < 1500;
+    if (S.mode === 'off') { ['link', 's1', 's2', 'rate'].forEach(id => this.set(id, 'pending', '')); return; }
+    if (S.mode === 'wifi' && !S.linkUp) { this.set('link', 'warn', 'lost the laptop server — is it still running?'); return; }
+    this.set('link', live ? 'pass' : 'warn', live ? `${S.total.toLocaleString()} samples via ${S.mode === 'wifi' ? 'WiFi' : S.mode === 'serial' ? 'USB' : 'demo'}${S.fw ? ' · fw ' + S.fw : ''}` : (S.mode === 'wifi' ? 'server up, waiting for ESP32 — check its power and WiFi name/password' : 'connected, no data yet'));
+    S.sensors.forEach((s, i) => {
+      const id = 's' + (i + 1), o = i * 6, v = S.latest?.v;
+      if (S.frozen[i] >= 50) this.set(id, 'fail', 'DATA FROZEN — values not changing. Check power/wiring, then Re-init sensors');
+      else if (s.st === 'OK' && v && Number.isFinite(v[o])) this.set(id, 'pass', `chip ID 0x43 · ${s.err} I²C errors`);
+      else if (s.st && s.st !== 'OK') this.set(id, 'fail', s.st === 'NOT_FOUND' ? `not found at ${s.addr} — check SDO jumper & wiring` : s.st);
+      else this.set(id, 'pending', 'waiting for status');
+    });
+    if (live && S.rate > 0) {
+      const now = performance.now();
+      if (now - this.dropsT > 10000) { this.dropsMark = S.drops; this.dropsT = now; }
+      const err = Math.abs(S.rate - S.target) / S.target, recentDrops = S.drops - this.dropsMark;
+      const st = err < .05 && recentDrops === 0 ? 'pass' : (err < .15 ? 'warn' : 'fail');
+      this.set('rate', st, `${S.rate.toFixed(1)} Hz measured vs ${S.target} Hz · ${S.drops} dropped total`);
+    }
+  },
+  startStill() {
+    if (!S.latest) return toast('No data yet');
+    this.still = { t0: null, dur: 5000, n: 0, s: new Float64Array(16), q: new Float64Array(16) };
+    this.set('grav', 'run', 'keep both boards still…'); this.set('bias', 'run', '');
+    $('#stillBtn').disabled = true;
+  },
+  finishStill() {
+    const s = this.still; this.still = null; $('#stillBtn').disabled = false;
+    if (s.n < 20) { this.set('grav', 'fail', 'not enough samples'); return; }
+    const mean = k => s.s[k] / s.n, sd = k => Math.sqrt(Math.max(0, s.q[k] / s.n - mean(k) ** 2));
+    const rows = [0, 1].map(i => {
+      const o = i * 6, b = [mean(o + 3), mean(o + 4), mean(o + 5)], n = [sd(o + 3), sd(o + 4), sd(o + 5)];
+      return { name: i ? 'Lumbar' : 'Thoracic', g: mean(12 + i), gsd: sd(12 + i), bias: Math.max(...b.map(Math.abs)), noise: Math.max(...n), b };
+    });
+    const gErr = Math.max(...rows.map(r => Math.abs(r.g - 1)));
+    this.set('grav', gErr < .05 ? 'pass' : gErr < .1 ? 'warn' : 'fail', rows.map(r => `${r.name[0]}: ${r.g.toFixed(3)} g`).join(' · '));
+    const bMax = Math.max(...rows.map(r => r.bias)), nMax = Math.max(...rows.map(r => r.noise));
+    this.set('bias', bMax < 2 && nMax < 1 ? 'pass' : bMax < 5 ? 'warn' : 'fail', `max bias ${bMax.toFixed(2)} °/s · max noise ${nMax.toFixed(2)} °/s`);
+    const c = (x, a, b) => x < a ? 'ok-t' : x < b ? 'warn-t' : 'bad-t';
+    $('#stillRes').innerHTML = `<table class="res"><tr><th></th><th>|a| mean</th><th>|a| σ</th><th>gyro bias</th><th>gyro σ</th></tr>${rows.map(r =>
+      `<tr><td>${r.name}</td><td class="${c(Math.abs(r.g - 1), .05, .1)}">${r.g.toFixed(3)} g</td><td>${(r.gsd * 1000).toFixed(1)} mg</td><td class="${c(r.bias, 2, 5)}">${r.bias.toFixed(2)}</td><td class="${c(r.noise, 1, 3)}">${r.noise.toFixed(2)}</td></tr>`).join('')}</table>
+      <p class="hint">Gyro bias per axis — thoracic [${rows[0].b.map(x => x.toFixed(2)).join(', ')}] · lumbar [${rows[1].b.map(x => x.toFixed(2)).join(', ')}] °/s. Subtract these offsets in post-processing if they matter.</p>`;
+  },
+  startTap(which) {
+    if (!S.latest) return toast('No data yet');
+    this.tap = { which, t0: performance.now(), p: [0, 0] };
+    this.set('tap' + which, 'run', `flick the ${which === 1 ? 'thoracic' : 'lumbar'} board now… (8 s)`);
+  },
+  onSample(t, v) {
+    if (this.still) {
+      const s = this.still; if (s.t0 === null) s.t0 = t;
+      for (let k = 0; k < 16; k++) { const x = v[k]; if (Number.isFinite(x)) { s.s[k] += x; s.q[k] += x * x; } }
+      s.n++; if (t - s.t0 >= s.dur) this.finishStill();
+    }
+    if (this.tap) {
+      const tp = this.tap;
+      tp.p[0] = Math.max(tp.p[0], Math.abs(v[12] - 1) + v[14] / 300);
+      tp.p[1] = Math.max(tp.p[1], Math.abs(v[13] - 1) + v[15] / 300);
+      const me = tp.p[tp.which - 1], other = tp.p[2 - tp.which];
+      if (me > .6 || other > .6) {
+        const id = 'tap' + tp.which;
+        if (me > other * 1.6) this.set(id, 'pass', `S${tp.which} responded (${me.toFixed(2)} vs ${other.toFixed(2)})`);
+        else if (other > me * 1.6) this.set(id, 'fail', `S${3 - tp.which} responded instead — boards swapped? swap SDO jumpers`);
+        else this.set(id, 'warn', 'both moved — hold one board still and tap the other');
+        this.tap = null;
+      } else if (performance.now() - tp.t0 > 8000) { this.set('tap' + tp.which, 'warn', 'no tap detected'); this.tap = null; }
+    }
+  }
+};
+$('#stillBtn').onclick = () => Verify.startStill();
+$('#calBtn').onclick = () => Cal.start();
+$('#calBtn2').onclick = () => Cal.start();
+$('#tap1Btn').onclick = () => Verify.startTap(1);
+$('#tap2Btn').onclick = () => Verify.startTap(2);
+
+/* =========================================================
+   2 · COLLECT
+   ========================================================= */
+const DEFAULT_ACTS = [
+  'F:Forward fall', 'F:Backward fall', 'F:Lateral fall (left)', 'F:Lateral fall (right)', 'F:Trip while walking', 'F:Slip fall',
+  'F:Fall from chair', 'F:Fall from bed', 'F:Fall onto knees', 'F:Collapse / syncope', 'F:Fall on stairs',
+  'A:Standing still', 'A:Walking', 'A:Jogging', 'A:Sitting down', 'A:Standing up', 'A:Lying down', 'A:Getting up from bed',
+  'A:Lying still', 'A:Bending to pick object', 'A:Squatting', 'A:Stairs up', 'A:Stairs down', 'A:Jumping',
+  'A:Sitting hard on chair', 'A:Kneeling', 'A:Turning around', 'A:Stumble (recovered)', 'A:Tying shoelaces'
+];
+const TARGET_PER_ACT = 5;
+const Collect = {
+  acts: [], trials: [], cur: null, unsaved: false, nextId: 1, cdTimer: null,
+  loadActs() {
+    const raw = store.get('vg_acts', DEFAULT_ACTS);
+    this.acts = raw.map(s => s.trim()).filter(Boolean).map(s => {
+      const m = s.match(/^([FA]):\s*(.+)$/i);
+      return m ? { label: m[1].toUpperCase() === 'F' ? 'fall' : 'adl', name: m[2] } : { label: 'adl', name: s };
+    });
+    $('#actEdit').value = this.acts.map(a => (a.label === 'fall' ? 'F:' : 'A:') + a.name).join('\n');
+    const sel = $('#act'), prev = sel.value;
+    const grp = l => this.acts.map((a, i) => a.label === l ? `<option value="${i}">${a.name}</option>` : '').join('');
+    sel.innerHTML = `<optgroup label="Falls">${grp('fall')}</optgroup><optgroup label="Activities of daily living">${grp('adl')}</optgroup>`;
+    if (prev && +prev < this.acts.length) sel.value = prev;
+    this.renderCoverage();
+  },
+  counts() { const c = {}; this.trials.forEach(t => { if (!t.bad) c[t.activity] = (c[t.activity] || 0) + 1; }); return c; },
+  renderCoverage() {
+    const c = this.counts(), sel = +$('#act').value;
+    $('#chips').innerHTML = this.acts.map((a, i) => {
+      const n = c[a.name] || 0;
+      return `<span class="chip ${a.label}${n >= TARGET_PER_ACT ? ' done' : ''}${i === sel ? ' sel' : ''}" data-i="${i}">${a.name}<span class="c">${n}/${TARGET_PER_ACT}</span></span>`;
+    }).join('');
+    const done = this.acts.filter(a => (c[a.name] || 0) >= TARGET_PER_ACT).length;
+    $('#covTxt').textContent = `${done}/${this.acts.length} activities complete`;
+  },
+  renderTrials() {
+    if (!this.trials.length) { $('#trials').innerHTML = '<div class="empty">No trials recorded yet</div>'; return; }
+    $('#trials').innerHTML = `<table><tr><th>#</th><th>Activity</th><th></th><th>Subj</th><th>Dur</th><th>N</th><th>Drop</th><th></th></tr>${
+      this.trials.slice().reverse().map(t => `<tr class="${t.bad ? 'bad' : ''}"><td class="mono">${t.id}</td><td>${t.activity}</td><td><span class="lb ${t.label}">${t.label}</span></td><td class="mono">${t.subject}</td><td class="mono">${(t.durMs / 1000).toFixed(1)}s</td><td class="mono">${t.rows.length}</td><td class="mono">${t.drops}</td><td><button class="btn sm ghost" data-bad="${t.id}">${t.bad ? 'Keep' : 'Discard'}</button></td></tr>`).join('')}</table>`;
+  },
+  arm() {
+    if (this.cur) return this.stop();
+    if (this.cdTimer) return;
+    if (!S.latest || S.mode === 'off') return toast('Connect the ESP32 (or start Demo) first');
+    const a = this.acts[+$('#act').value]; if (!a) return toast('Pick an activity');
+    if (!$('#cdChk').checked) return this.begin();
+    let n = 3; $('#cdNum').textContent = n; $('#cdAct').textContent = a.name; $('#cdOverlay').classList.add('on');
+    this.cdTimer = setInterval(() => {
+      n--; if (n > 0) { $('#cdNum').textContent = n; return; }
+      clearInterval(this.cdTimer); this.cdTimer = null; $('#cdOverlay').classList.remove('on'); this.begin();
+    }, 1000);
+  },
+  begin() {
+    const a = this.acts[+$('#act').value];
+    const prevN = this.trials.filter(t => t.activity === a.name && t.subject === $('#subj').value.trim()).length;
+    this.cur = { id: this.nextId++, subject: $('#subj').value.trim() || 'S00', activity: a.name, label: a.label, rep: prevN + 1,
+      rows: [], t0: null, durMs: 0, drops0: S.drops, rate: S.target, started: new Date().toISOString(), autoMs: Math.max(0, +$('#dur').value || 0) * 1000,
+      link: S.mode, calibration: Cal.u ? { ...Cal.u } : null };
+    if (!Cal.u) toast('Recording without upright calibration — tilt columns will be empty');
+    $('#recBtn').classList.add('on'); $('#recTitle').textContent = 'Recording · ' + a.name;
+    $('#recSub').innerHTML = `${this.cur.subject} · trial ${this.cur.rep} · <span class="kbd">Space</span> to stop`;
+  },
+  onSample(seq, t, v) {
+    const c = this.cur; if (!c) return;
+    if (c.t0 === null) c.t0 = t;
+    c.rows.push([seq, t, t - c.t0, ...v.slice(0, 12), Cal.tilt(0, v), Cal.tilt(1, v)]);
+    c.durMs = t - c.t0;
+    if ((S.frozen[0] === 50 || S.frozen[1] === 50)) toast('⚠ Sensor data FROZEN — this trial will be discarded');
+    if (c.autoMs && c.durMs >= c.autoMs) this.stop();
+  },
+  stop() {
+    const c = this.cur; if (!c) return; this.cur = null;
+    c.drops = S.drops - c.drops0; delete c.drops0;
+    $('#recBtn').classList.remove('on'); $('#recTitle').textContent = 'Saved · ' + c.activity;
+    $('#recSub').innerHTML = `${c.rows.length} samples · ${(c.durMs / 1000).toFixed(1)} s${c.drops ? ` · <span class="warn-t">${c.drops} dropped</span>` : ''}`;
+    if (c.rows.length < 5) { toast('Trial too short — discarded'); return; }
+    let rep0 = 0, rep1 = 0;
+    for (let k = 1; k < c.rows.length; k++) {
+      const a = c.rows[k], b = c.rows[k - 1];
+      if ([3, 4, 5, 6, 7, 8].every(j => a[j] === b[j])) rep0++;
+      if ([9, 10, 11, 12, 13, 14].every(j => a[j] === b[j])) rep1++;
+    }
+    if (Math.max(rep0, rep1) > c.rows.length * .3) {
+      c.bad = true; c.note = 'frozen sensor data';
+      toast('Trial auto-discarded: sensor data was frozen. Fix the sensor and record again.');
+    }
+    if (c.autoMs && c.durMs < c.autoMs * .5 && !c.bad) toast('Short trial — check it before keeping');
+    this.trials.push(c); this.unsaved = true;
+    if ($('#autoDl').checked) download(`vg_${c.subject}_${c.activity.replace(/\W+/g, '_')}_t${c.rep}_${stamp()}.csv`, this.csv([c]));
+    this.renderTrials(); this.renderCoverage();
+  },
+  csv(list) {
+    const h = 'trial_id,subject,activity,label,rep,seq,t_ms,t_rel_ms,s1_ax,s1_ay,s1_az,s1_gx,s1_gy,s1_gz,s2_ax,s2_ay,s2_az,s2_gx,s2_gy,s2_gz,s1_tilt_deg,s2_tilt_deg';
+    const out = [h];
+    for (const t of list) {
+      const pre = `${t.id},${t.subject},"${t.activity}",${t.label},${t.rep}`;
+      for (const r of t.rows) {
+        out.push(pre + ',' + r[0] + ',' + r[1] + ',' + r[2] + ',' +
+          r.slice(3).map((x, k) => Number.isFinite(x) ? x.toFixed(k >= 12 ? 1 : (k % 6) < 3 ? 4 : 2) : '').join(','));
+      }
+    }
+    return out.join('\n');
+  },
+  exportAll() {
+    const keep = this.trials.filter(t => !t.bad);
+    if (!keep.length) return toast('Nothing to export');
+    download(`vestguard_dataset_${stamp()}.csv`, this.csv(keep)); this.unsaved = false;
+    toast(`Exported ${keep.length} trials`);
+  },
+  exportMeta() {
+    if (!this.trials.length) return toast('Nothing to export');
+    const meta = { exported: new Date().toISOString(), firmware: S.fw, units: { accel: 'g', gyro: 'deg/s' }, ranges: { accel: '±16 g', gyro: '±2000 dps' },
+      placement: { s1: 'thoracic (0x68)', s2: 'lumbar (0x69)', note: 'both boards mounted in the same orientation; axes defined by calibration up-vectors u1/u2 (unit vectors in sensor frame, measured standing upright)' },
+      trials: this.trials.map(({ rows, autoMs, ...t }) => ({ ...t, samples: rows.length })) };
+    download(`vestguard_meta_${stamp()}.json`, JSON.stringify(meta, null, 2), 'application/json');
+  }
+};
+$('#recBtn').onclick = () => Collect.arm();
+$('#expCsv').onclick = () => Collect.exportAll();
+$('#expJson').onclick = () => Collect.exportMeta();
+$('#act').onchange = () => Collect.renderCoverage();
+$('#chips').onclick = e => { const c = e.target.closest('.chip'); if (c) { $('#act').value = c.dataset.i; Collect.renderCoverage(); } };
+$('#trials').onclick = e => { const b = e.target.closest('[data-bad]'); if (!b) return; const t = Collect.trials.find(x => x.id === +b.dataset.bad); t.bad = !t.bad; Collect.renderTrials(); Collect.renderCoverage(); };
+$('#actSave').onclick = () => { store.set('vg_acts', $('#actEdit').value.split('\n')); Collect.loadActs(); toast('Activity list saved'); };
+$('#actReset').onclick = () => { store.set('vg_acts', DEFAULT_ACTS); Collect.loadActs(); };
+addEventListener('beforeunload', e => { if (Collect.unsaved && Collect.trials.some(t => !t.bad)) { e.preventDefault(); e.returnValue = ''; } });
+
+/* =========================================================
+   3 · DETECT  (rule-based placeholder + simulated alert cascade)
+   ========================================================= */
+const LEVELS = { 1: { name: 'Low', acts: ['Buzzer', 'SMS to caregiver'] }, 2: { name: 'Medium', acts: ['SMS to caregiver'] }, 3: { name: 'High', acts: ['SMS to caregiver', 'Emergency call'] } };
+const Detect = {
+  p: { imp: 2.5, ang: 45, win: 1.5, can: 10, dual: true, buzz: true },
+  st: 'idle', cand: null, cool: 0, events: [], alert: null,
+  meanVec(o, t0, t1) {
+    let x = 0, y = 0, z = 0, n = 0;
+    for (let k = 0; k < ring.n; k++) { const i = ri(k), t = ring.t[i]; if (t < t0) break; if (t <= t1) { const a = ring.v[o][i]; if (Number.isFinite(a)) { x += a; y += ring.v[o + 1][i]; z += ring.v[o + 2][i]; n++; } } }
+    return n ? [x / n, y / n, z / n] : null;
+  },
+  sd(ch, t0, t1) {
+    let s = 0, q = 0, n = 0;
+    for (let k = 0; k < ring.n; k++) { const i = ri(k), t = ring.t[i]; if (t < t0) break; if (t <= t1) { const v = ring.v[ch][i]; if (Number.isFinite(v)) { s += v; q += v * v; n++; } } }
+    return n ? Math.sqrt(Math.max(0, q / n - (s / n) ** 2)) : 0;
+  },
+  angle(a, b) { const d = angleDeg(a, b); return Number.isFinite(d) ? d : 0; },
+  onSample(t, v) {
+    const m1 = Number.isFinite(v[12]) ? v[12] : 0, m2 = Number.isFinite(v[13]) ? v[13] : 0;
+    if (this.st === 'idle') {
+      if (t < this.cool || Math.max(m1, m2) < this.p.imp) return;
+      this.cand = { t, p1: m1, p2: m2, w1: v[14] || 0, pre1: this.meanVec(0, t - 1500, t - 400), pre2: this.meanVec(6, t - 1500, t - 400) };
+      this.setStatus('analyzing', 'Impact detected — analysing', `peak ${Math.max(m1, m2).toFixed(2)} g, checking posture…`);
+      this.st = 'analyzing';
+    } else if (this.st === 'analyzing') {
+      const c = this.cand;
+      c.p1 = Math.max(c.p1, m1); c.p2 = Math.max(c.p2, m2); c.w1 = Math.max(c.w1, v[14] || 0);
+      if (t - c.t < this.p.win * 1000) return;
+      const post1 = this.meanVec(0, t - 500, t), post2 = this.meanVec(6, t - 500, t);
+      const a1 = this.angle(c.pre1, post1), a2 = this.angle(c.pre2, post2);
+      const still = this.sd(12, t - 500, t);
+      const dualOk = !this.p.dual || (c.p2 >= this.p.imp * .6 && a2 >= this.p.ang * .6);
+      const isFall = a1 >= this.p.ang && dualOk;
+      let lvl = 0;
+      const tiltPost = Cal.tiltVec(0, post1), lying = Number.isFinite(tiltPost) ? tiltPost >= 60 : a1 >= 70;
+      if (isFall) lvl = (c.p1 >= 4 || (lying && still < .05)) ? 3 : (c.p1 >= 3 || lying) ? 2 : 1;
+      const ev = { time: new Date(), p1: c.p1, p2: c.p2, a1, a2, still, w1: c.w1, isFall, lvl, tiltPost,
+        why: isFall ? '' : (a1 < this.p.ang ? 'no posture change' : 'lumbar sensor disagrees') };
+      this.events.unshift(ev); if (this.events.length > 60) this.events.pop();
+      this.renderEvents();
+      this.st = 'idle'; this.cool = t + 2500;
+      if (isFall) this.raise(ev); else this.setStatus('idle', 'Monitoring', `last impact rejected — ${ev.why}`);
+    }
+  },
+  setStatus(cls, title, sub) {
+    $('#detStatus').className = 'status ' + (cls === 'idle' ? '' : cls);
+    $('#detTitle').textContent = title; $('#detSub').textContent = sub;
+  },
+  raise(ev) {
+    this.cancelAlert(true);
+    const L = LEVELS[ev.lvl];
+    this.setStatus('fall', `FALL DETECTED · ${L.name}`, `peak ${ev.p1.toFixed(2)} g · posture Δ ${ev.a1.toFixed(0)}°`);
+    if (this.p.buzz) send('A' + ev.lvl);
+    $('#alertSev').className = 'sev l' + ev.lvl; $('#alertSev').textContent = L.name.toUpperCase();
+    $('#alertTitle').textContent = 'Fall detected';
+    $('#alertMsg').textContent = 'Alert goes out when the countdown ends.';
+    $('#okBtn').style.display = '';
+    $('#alertActs').innerHTML = L.acts.map(a => `<span class="act">${a}</span>`).join('');
+    $('#smsPrev').textContent = this.sms(ev);
+    $('#alertBox').classList.add('on');
+    let left = this.p.can; $('#alertCd').textContent = left;
+    this.alert = { ev, timer: setInterval(() => {
+      left--; $('#alertCd').textContent = left;
+      if (left <= 0) this.dispatch();
+    }, 1000) };
+  },
+  sms(ev) {
+    const L = LEVELS[ev.lvl], subj = $('#subj').value.trim() || 'Wearer';
+    return `To: ${$('#contact').value}\nVESTGUARD ALERT [${L.name.toUpperCase()}]\nFall detected for ${subj} at ${ev.time.toLocaleTimeString()}.\nImpact ${ev.p1.toFixed(1)} g, posture change ${ev.a1.toFixed(0)}°.\nLocation: https://maps.google.com/?q=${$('#gps').value.replace(/\s/g, '')}`;
+  },
+  dispatch() {
+    const a = this.alert; if (!a) return; clearInterval(a.timer);
+    $('#alertCd').textContent = '✓'; $('#okBtn').style.display = 'none';
+    $('#alertTitle').textContent = 'Alert dispatched (simulated)';
+    $('#alertMsg').textContent = LEVELS[a.ev.lvl].acts.join(' + ') + ' sent at ' + new Date().toLocaleTimeString();
+    $('#alertActs').querySelectorAll('.act').forEach(e => e.classList.add('done'));
+    a.ev.outcome = 'dispatched'; this.renderEvents(); this.alert = null;
+    logLine(`# simulated alert L${a.ev.lvl} dispatched`);
+    setTimeout(() => { if (!this.alert) this.setStatus('idle', 'Monitoring', 'last event: alert dispatched'); }, 4000);
+  },
+  cancelAlert(silent) {
+    const a = this.alert; if (!a) return; clearInterval(a.timer); this.alert = null;
+    send('A0');
+    if (!silent) {
+      a.ev.outcome = 'cancelled'; this.renderEvents();
+      $('#alertBox').classList.remove('on'); this.setStatus('idle', 'Monitoring', 'last alert cancelled by wearer');
+    }
+  },
+  renderEvents() {
+    if (!this.events.length) { $('#events').innerHTML = '<div class="empty">No events yet</div>'; return; }
+    $('#events').innerHTML = this.events.map(e => `<div class="ev"><span class="tm">${e.time.toLocaleTimeString()}</span>
+      <span>${e.isFall ? 'Fall' : 'Impact — not a fall'}${e.outcome ? ` <span class="muted">· ${e.outcome}</span>` : ''}</span>
+      <span class="sev ${e.isFall ? 'l' + e.lvl : 'no'}">${e.isFall ? LEVELS[e.lvl].name : 'rejected'}</span>
+      <span class="dd">T ${e.p1.toFixed(2)}g Δ${e.a1.toFixed(0)}° · L ${e.p2.toFixed(2)}g Δ${e.a2.toFixed(0)}°${Number.isFinite(e.tiltPost) ? ` · tilt after ${e.tiltPost.toFixed(0)}°` : ''} · ω ${e.w1.toFixed(0)}°/s${e.why ? ' · ' + e.why : ''}</span></div>`).join('');
+  }
+};
+function bindSlider(id, vid, key, f) { const el = $(id); const up = () => { Detect.p[key] = +el.value; $(vid).textContent = f(+el.value); }; el.oninput = up; up(); }
+bindSlider('#pImp', '#vImp', 'imp', v => v.toFixed(1) + ' g');
+bindSlider('#pAng', '#vAng', 'ang', v => v + '°');
+bindSlider('#pWin', '#vWin', 'win', v => v.toFixed(1) + ' s');
+bindSlider('#pCan', '#vCan', 'can', v => v + ' s');
+$('#pDual').onchange = e => Detect.p.dual = e.target.checked;
+$('#pBuzz').onchange = e => Detect.p.buzz = e.target.checked;
+$('#okBtn').onclick = () => Detect.cancelAlert(false);
+$('#clrEv').onclick = () => { Detect.events = []; Detect.renderEvents(); $('#alertBox').classList.remove('on'); };
+$('#simFall').onclick = () => src?.play?.('fall');
+$('#simHard').onclick = () => src?.play?.('hard');
+$('#simStumble').onclick = () => src?.play?.('stumble');
+$('#simSit').onclick = () => src?.play?.('sit');
+
+/* =========================================================
+   Tabs, keyboard, main loop
+   ========================================================= */
+document.querySelectorAll('.tab').forEach(b => b.onclick = () => {
+  document.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x === b));
+  document.querySelectorAll('.pane').forEach(p => p.classList.toggle('on', p.id === 'pane-' + b.dataset.tab));
+});
+addEventListener('keydown', e => {
+  if (e.code !== 'Space' || /INPUT|TEXTAREA|SELECT|BUTTON/.test(document.activeElement.tagName)) return;
+  if (!$('#pane-collect').classList.contains('on')) return;
+  e.preventDefault(); Collect.arm();
+});
+
+let lastUi = 0;
+function frame(now) {
+  charts.forEach(drawChart);
+  if (now - lastUi > 120) {
+    lastUi = now;
+    updateCards(); Verify.auto(); Verify.render();
+    const c = Collect.cur;
+    if (c) { $('#recTimer').innerHTML = `${(c.durMs / 1000).toFixed(1)}<small>${c.rows.length} samples${c.autoMs ? ` / ${(c.autoMs / 1000).toFixed(0)} s` : ''}</small>`; }
+  }
+  requestAnimationFrame(frame);
+}
+S.lastWall = 0;
+Collect.loadActs(); Collect.renderTrials(); Cal.report(); Verify.render();
+requestAnimationFrame(frame);
+// Served from the ESP32 itself (http://192.168.4.1)? connect straight away.
+if (/^https?:$/.test(location.protocol) && location.host && !/claude/.test(location.hostname) && !(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform())) {
+  $('#hostIn').value = location.host; connectWifi();   // opened from the laptop server
+} else {
+  $('#hostIn').value = store.get('vg_host', 'localhost:8000');
+}
+</script>
+
+<script src="vendor/capacitor.js"></script>
+<script>
+/* ---- Research mode inside the VestGuard app: raw data comes from the vest through this phone ---- */
+(() => {
+  const CAP = window.Capacitor;
+  if (!(CAP && CAP.isNativePlatform && CAP.isNativePlatform())) return;
+  const VN = CAP.Plugins.VestNative || (window.capacitorExports || CAP).registerPlugin('VestNative');
+  document.documentElement.classList.add('native');
+  const st = document.createElement('style');
+  st.textContent = `.native header.top{padding-top:calc(max(env(safe-area-inset-top,0px),var(--safe-area-inset-top,0px)) + 10px)}
+    .native #hostIn,.native #usbBtn{display:none}
+    .native body{padding-bottom:max(env(safe-area-inset-bottom,0px),var(--safe-area-inset-bottom,0px))}
+    #backBtn{white-space:nowrap}`;
+  document.head.appendChild(st);
+
+  class NativeSource {
+    async open() {
+      this.h1 = await VN.addListener('data', e => { const t = e.lines || ''; let i = 0, j; while ((j = t.indexOf('\n', i)) >= 0) { handleLine(t.slice(i, j)); i = j + 1; } });
+      this.h2 = await VN.addListener('line', e => { const c = e.line[0]; if (c === 'H' || c === 'I') handleLine(e.line); });
+      await VN.start();
+      await VN.setResearch({ on: true });
+      S.linkUp = true; logLine('# raw data from the vest through this phone');
+      this.send('?'); this.send('R' + $('#rateSel').value);
+    }
+    send(c) { VN.send({ cmd: c }).catch(() => {}); }
+    async close() {
+      try { this.h1 && this.h1.remove(); this.h2 && this.h2.remove(); } catch {}
+      S.linkUp = false;
+      await VN.setResearch({ on: false }).catch(() => {});
+    }
+  }
+  async function connectPhone() {
+    await disconnect();
+    const s = new NativeSource();
+    try { await s.open(); src = s; S.mode = 'wifi'; resetCounters(); toast('Connected to the vest through this phone'); }
+    catch (e) { toast('Could not start: ' + e.message); }
+    syncHeader();
+  }
+  $('#connBtn').onclick = () => S.mode === 'wifi' ? disconnect() : connectPhone();
+  // CSV / JSON exports go to Downloads/VestGuard (and can be shared from there)
+  window.download = (name, text, type = 'text/csv') =>
+    VN.saveFile({ name, text, mime: type, share: false }).then(r => toast('Saved to ' + r.path)).catch(e => toast(e.message || 'Save failed'));
+  const back = document.createElement('button');
+  back.className = 'btn ghost'; back.id = 'backBtn'; back.textContent = '‹ App';
+  back.onclick = async () => { await disconnect(); location.href = 'index.html'; };
+  const top = document.querySelector('header.top'); top.insertBefore(back, top.firstChild);
+  window.addEventListener('pagehide', () => { VN.setResearch({ on: false }).catch(() => {}); });
+  setTimeout(connectPhone, 300);
+})();
+</script>
+</body>
+</html>
