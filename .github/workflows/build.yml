@@ -17,14 +17,14 @@ jobs:
     name: Android app (APK)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '21'
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: '22'
           cache: npm
@@ -42,9 +42,15 @@ jobs:
 
       - name: Build APK
         working-directory: app/android
+        shell: bash
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon --stacktrace
+          ./gradlew assembleDebug --no-daemon 2>&1 | tee "$GITHUB_WORKSPACE/build.log"
+          exit ${PIPESTATUS[0]}
+
+      - name: Report build errors
+        if: failure()
+        run: python3 .github/report_errors.py build.log "Android build"
 
       - name: Name the APK
         run: |
@@ -74,7 +80,7 @@ jobs:
     name: Vest firmware (compile + detector test)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Detector test on recorded data
         run: |
@@ -91,11 +97,17 @@ jobs:
           arduino-cli core install esp32:esp32
 
       - name: Compile vest firmware (ESP32-S3)
+        shell: bash
         run: |
+          set -o pipefail
           arduino-cli compile --fqbn esp32:esp32:esp32s3:CDCOnBoot=cdc --warnings default \
-            --output-dir build/vest firmware/vestguard_vest
+            --output-dir build/vest firmware/vestguard_vest 2>&1 | tee fw.log
           arduino-cli compile --fqbn esp32:esp32:esp32s3:CDCOnBoot=cdc \
-            --output-dir build/daq firmware/vestguard_daq
+            --output-dir build/daq firmware/vestguard_daq 2>&1 | tee -a fw.log
+
+      - name: Report firmware errors
+        if: failure()
+        run: python3 .github/report_errors.py fw.log "Firmware build"
 
       - uses: actions/upload-artifact@v4
         with:

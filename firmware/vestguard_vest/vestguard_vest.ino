@@ -43,6 +43,7 @@
 #include <Preferences.h>
 #include <stdarg.h>
 #include "detector.h"
+#include "vest_types.h"
 
 // ================= DEFAULT WI-FI (fallback) =================
 const char* DEFAULT_SSID = "VestGuard";
@@ -95,7 +96,6 @@ const char* curPass() { return usingSaved && savedSsid.length() ? savedPass.c_st
 bool hasCustomWifi() { return savedSsid.length() && savedSsid != DEFAULT_SSID; }
 
 // ---------------- peers (phones + laptops) ----------------
-struct Peer { IPAddress ip; uint32_t lastHeard; bool phone; bool used; };
 Peer peers[3];
 const uint32_t PEER_TIMEOUT_MS = 8000;
 
@@ -271,7 +271,6 @@ void printInfo() {
 }
 
 // ---------------- buzzer ----------------
-struct Note { uint16_t freq; uint16_t ms; };
 const Note PAT_LOW[]  = {{2600,120},{0,120},{2600,120},{0,120},{2600,120},{0,600}};
 const Note PAT_MED[]  = {{2900,180},{0,90},{2900,180},{0,90},{2900,180},{0,90},{2900,180},{0,600}};
 const Note PAT_HIGH[] = {{3200,250},{2200,250},{3200,250},{2200,250},{3200,250},{2200,250},{0,300}};
