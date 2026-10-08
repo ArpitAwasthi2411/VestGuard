@@ -60,7 +60,7 @@ const int NETWORK_COUNT = sizeof(NETWORKS) / sizeof(NETWORKS[0]);
 const char* DEFAULT_SSID = NETWORKS[0].ssid;
 // ============================================================
 
-#define FW_VERSION  "3.1"
+#define FW_VERSION  "3.2"
 #define DATA_PORT   4210
 #define CMD_PORT    4211
 #define I2C_SDA     8

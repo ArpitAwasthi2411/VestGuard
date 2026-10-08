@@ -1,7 +1,8 @@
 /*
   VestGuard on-vest detector  (pure C++, no Arduino dependencies)
   ---------------------------------------------------------------
-  Same logic as the laptop engine (laptop/care.py) so results match what we validated:
+  Same logic as the laptop engine (laptop/care.py), tuned in 3.2 on the 6 + 8 Oct recordings
+  (121 trials incl. jogging, jumping, lying down, bending, three fall types):
 
     FALL     impact > 2.5 g, then within 1.5 s the upper-body posture changes >= 45 deg
              (mean accel 1.5..0.4 s before impact vs last 0.5 s), and the lower sensor agrees.
@@ -248,12 +249,16 @@ class Detector {
     bool dual = c.p2 >= IMPACT_G * 0.6f && (isnan(a2) || a2 >= 27);
     float peak = fmaxf(c.p1, c.p2);
     Event e; e.t = t; e.peak = peak;
-    if (a1 >= 45 && dual) {
+    // 3.2: a very hard impact with a smaller posture change still counts (e.g. fell and stayed kneeling)
+    bool postureChanged = a1 >= 45 || (a1 >= 30 && c.p1 >= 6);
+    if (postureChanged && dual) {
       float tiltAfter = (calibrated && hp1) ? angleDeg(u1, post1) : NAN;
       bool lying = !isnan(tiltAfter) ? tiltAfter >= 60 : a1 >= 70;
       uint8_t sev = (c.p1 >= 4 || (lying && still < 0.05f)) ? 3 : (c.p1 >= 3 || lying) ? 2 : 1;
       e.kind = Event::FALL; e.severity = sev; e.tiltChange = a1; e.tiltAfter = tiltAfter; e.lying = lying;
     } else {
+      // 3.2: not a stumble if only one sensor felt it (wiring glitch) or during jogging / jumping
+      if (c.p2 < IMPACT_G * 0.6f || act == ACT_ACTIVE || actCand == ACT_ACTIVE) return;
       e.kind = Event::STUMBLE;
     }
     push(e);
