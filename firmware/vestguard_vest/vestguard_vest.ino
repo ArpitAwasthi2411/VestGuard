@@ -15,6 +15,7 @@
 
   FIRST TIME
     Set your phone hotspot to:  name  VestGuard   password  vestguard123   band  2.4 GHz
+    Extra networks (home / college Wi-Fi): edit the NETWORKS list below. The vest tries each in turn.
     (ESP32 cannot see 5 GHz. On many phones: Hotspot > Advanced > AP band / "Extend compatibility")
 
   WIRING (unchanged)
@@ -46,11 +47,20 @@
 #include "vest_types.h"
 
 // ================= DEFAULT WI-FI (fallback) =================
-const char* DEFAULT_SSID = "VestGuard";
-const char* DEFAULT_PASS = "vestguard123";
+// The vest tries these networks in order (15 s each) and keeps cycling until one works.
+// Add up to 4. Leave unused lines as "" . Names/passwords are case-sensitive. 2.4 GHz only!
+struct WifiCred { const char* ssid; const char* pass; };
+const WifiCred NETWORKS[] = {
+  {"VestGuard",   "vestguard123"},     // 1. phone hotspot (default, keep this one)
+  {"YOUR_WIFI_2", "YOUR_PASSWORD_2"},  // 2. <-- put your second Wi-Fi here
+  {"",            ""},                 // 3. optional
+  {"",            ""},                 // 4. optional
+};
+const int NETWORK_COUNT = sizeof(NETWORKS) / sizeof(NETWORKS[0]);
+const char* DEFAULT_SSID = NETWORKS[0].ssid;
 // ============================================================
 
-#define FW_VERSION  "3.0"
+#define FW_VERSION  "3.1"
 #define DATA_PORT   4210
 #define CMD_PORT    4211
 #define I2C_SDA     8
@@ -86,14 +96,27 @@ WiFiUDP udp;
 
 // ---------------- Wi-Fi credentials (saved) ----------------
 String savedSsid, savedPass;
-bool usingSaved = true;
+int netIdx = 0;          // 0 = network saved from the app (if any), 1..N = NETWORKS[0..N-1]
 uint32_t wifiAttemptAt = 0, wifiUpSince = 0;
 bool wifiWasUp = false;
 uint32_t pendingWifiSwitchAt = 0;
 
-const char* curSsid() { return usingSaved && savedSsid.length() ? savedSsid.c_str() : DEFAULT_SSID; }
-const char* curPass() { return usingSaved && savedSsid.length() ? savedPass.c_str() : DEFAULT_PASS; }
-bool hasCustomWifi() { return savedSsid.length() && savedSsid != DEFAULT_SSID; }
+bool netUsable(const char* ssid) { return ssid && ssid[0] && strncmp(ssid, "YOUR_", 5) != 0; }
+bool hasCustomWifi() {
+  if (!savedSsid.length()) return false;
+  for (int i = 0; i < NETWORK_COUNT; i++) if (savedSsid == NETWORKS[i].ssid) return false;
+  return true;
+}
+const char* curSsid() { return netIdx == 0 && hasCustomWifi() ? savedSsid.c_str() : NETWORKS[netIdx > 0 ? netIdx - 1 : 0].ssid; }
+const char* curPass() { return netIdx == 0 && hasCustomWifi() ? savedPass.c_str() : NETWORKS[netIdx > 0 ? netIdx - 1 : 0].pass; }
+// move to the next network that is actually filled in
+void nextNetwork() {
+  for (int k = 0; k <= NETWORK_COUNT; k++) {
+    netIdx = (netIdx + 1) % (NETWORK_COUNT + 1);
+    if (netIdx == 0 ? hasCustomWifi() : netUsable(NETWORKS[netIdx - 1].ssid)) return;
+  }
+  netIdx = 1;
+}
 
 // ---------------- peers (phones + laptops) ----------------
 Peer peers[3];
@@ -262,7 +285,7 @@ void i2cScan() {
 void printInfo() {
   emitInfo("I,FW,VestGuard-Vest,%s", FW_VERSION);
   emitInfo("I,WIFI,STA,%s,%s", curSsid(), WiFi.localIP().toString().c_str());
-  emitInfo("I,WIFICFG,%s,%s", hasCustomWifi() ? savedSsid.c_str() : DEFAULT_SSID, hasCustomWifi() ? "custom" : "default");
+  emitInfo("I,WIFICFG,%s,%s", netUp() ? curSsid() : (hasCustomWifi() ? savedSsid.c_str() : DEFAULT_SSID), hasCustomWifi() ? "custom" : "default");
   emitInfo("I,RANGE,ACC_16G,GYR_2000DPS");
   emitInfo("I,RATE,%lu", (unsigned long)sampleRateHz);
   emitInfo("I,CAL,%d", det.calibrated ? 1 : 0);
@@ -332,7 +355,7 @@ void startWifi() {
   WiFi.mode(WIFI_STA);
   WiFi.setSleep(false);
   WiFi.setAutoReconnect(true);
-  usingSaved = hasCustomWifi();
+  netIdx = hasCustomWifi() ? 0 : 1;
   wifiBegin();
   uint32_t t0 = millis();
   while (!netUp() && millis() - t0 < 12000) delay(200);
@@ -342,7 +365,7 @@ void startWifi() {
 void wifiService() {
   uint32_t now = millis();
   if (pendingWifiSwitchAt && now >= pendingWifiSwitchAt) {
-    pendingWifiSwitchAt = 0; usingSaved = true; wifiBegin(); return;
+    pendingWifiSwitchAt = 0; netIdx = hasCustomWifi() ? 0 : 1; wifiBegin(); return;
   }
   if (netUp()) {
     if (!wifiWasUp) { wifiWasUp = true; wifiUpSince = now; emitInfo("I,WIFI,STA,%s,%s", curSsid(), WiFi.localIP().toString().c_str()); }
@@ -350,7 +373,7 @@ void wifiService() {
   }
   wifiWasUp = false;
   if (now - wifiAttemptAt > 15000) {
-    if (hasCustomWifi()) usingSaved = !usingSaved;   // alternate custom <-> default
+    nextNetwork();                                   // try the next network in the list
     wifiBegin();
   }
 }
