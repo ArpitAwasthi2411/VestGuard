@@ -244,7 +244,7 @@
     }
     _sync(line, ts) {
       const p = line.split(','), b = unb64(p[3]);
-      if (!b) return;
+      if (!b || (b.uid && this._seen('s:' + b.uid))) return;     // live + drained copies arrive twice
       const a = b.alert ? this.alerts.find(x => x.id === b.alert) : null;
       switch (b.t) {
         case 'resp':
@@ -279,6 +279,7 @@
     }
     _autoCalled(p, ts) {
       // CALL,alertId,name,number  (this phone placed an automatic call)
+      if (this._seen('call:' + p[1] + ':' + p[3] + ':' + Math.floor(ts / 30))) return;
       this.addFeed('call', 'auto_called', `Called ${p[2]}`, { who: p[2], by: this.me ? this.me.name : '' }, 'caregiver', this.me ? this.me.name : null, p[1] || null, ts);
     }
     _share(body) {
