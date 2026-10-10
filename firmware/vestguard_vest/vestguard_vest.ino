@@ -60,7 +60,7 @@ const int NETWORK_COUNT = sizeof(NETWORKS) / sizeof(NETWORKS[0]);
 const char* DEFAULT_SSID = NETWORKS[0].ssid;
 // ============================================================
 
-#define FW_VERSION  "3.2"
+#define FW_VERSION  "3.3"
 #define DATA_PORT   4210
 #define CMD_PORT    4211
 #define I2C_SDA     8
@@ -119,7 +119,7 @@ void nextNetwork() {
 }
 
 // ---------------- peers (phones + laptops) ----------------
-Peer peers[3];
+Peer peers[5];               // hub phone + up to 4 caregiver phones / laptop
 const uint32_t PEER_TIMEOUT_MS = 8000;
 
 bool netUp() { return WiFi.status() == WL_CONNECTED; }

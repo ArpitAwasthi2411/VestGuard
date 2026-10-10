@@ -144,8 +144,14 @@ public class VestPlugin extends Plugin {
             return;
         }
         VestService s = VestService.instance;
-        if (s != null) s.raiseAlarm(id, sev, demo, System.currentTimeMillis(), null);
-        else Alarm.start(ctx(), 0);
+        if (s != null) {
+            s.raiseAlarm(id, sev, demo, System.currentTimeMillis(), null);
+            try {
+                JSONObject b = new JSONObject();
+                b.put("t", "fall"); b.put("alert", id); b.put("sev", sev); b.put("demo", demo); b.put("uid", "fall" + id);
+                s.broadcastSync(s.syncLine("CS", b));
+            } catch (Exception ignored) { }
+        } else Alarm.start(ctx(), 0);
         call.resolve();
     }
 
@@ -196,6 +202,7 @@ public class VestPlugin extends Plugin {
         r.put("notifications", NotificationManagerCompat.from(ctx()).areNotificationsEnabled());
         r.put("location", granted(Manifest.permission.ACCESS_FINE_LOCATION) || granted(Manifest.permission.ACCESS_COARSE_LOCATION));
         r.put("sms", granted(Manifest.permission.SEND_SMS));
+        r.put("calls", granted(Manifest.permission.CALL_PHONE));
         boolean fsi = true;
         if (Build.VERSION.SDK_INT >= 34) {
             NotificationManager nm = (NotificationManager) ctx().getSystemService(Context.NOTIFICATION_SERVICE);
@@ -226,6 +233,9 @@ public class VestPlugin extends Plugin {
                     break;
                 case "location":
                     ask(new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION}, 702);
+                    break;
+                case "calls":
+                    ask(new String[]{Manifest.permission.CALL_PHONE, Manifest.permission.READ_PHONE_STATE}, 704);
                     break;
                 case "sms":
                     ask(new String[]{Manifest.permission.SEND_SMS, Manifest.permission.READ_PHONE_STATE}, 703);
@@ -280,6 +290,56 @@ public class VestPlugin extends Plugin {
         }
         Intent fallback = new Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         try { getActivity().startActivity(fallback); } catch (Exception ignored) { }
+    }
+
+    // ------------------------------------------------------------ family (several phones)
+    /** send {t:..., ...} to every other phone of this family */
+    @PluginMethod
+    public void syncSend(PluginCall call) {
+        VestService s = VestService.instance;
+        JSObject body = call.getObject("body", new JSObject());
+        if (s != null && !VestService.familyCode(ctx()).isEmpty()) s.broadcastSync(s.syncLine("CS", body));
+        call.resolve();
+    }
+
+    /** SOS from this phone: notify the family, SMS, and (on the Home Hub) start calling */
+    @PluginMethod
+    public void sos(PluginCall call) {
+        String id = call.getString("id", "sos" + System.currentTimeMillis());
+        String who = call.getString("who", "");
+        VestService s = VestService.instance;
+        if (s != null) {
+            s.localSos(id, who);
+            try {
+                JSONObject b = new JSONObject();
+                b.put("t", "sos"); b.put("alert", id); b.put("who", who); b.put("uid", "sos" + id);
+                s.broadcastSync(s.syncLine("CS", b));
+            } catch (Exception ignored) { }
+        }
+        call.resolve();
+    }
+
+    /** call a number now with speakerphone (Home Hub "Call family" button) */
+    @PluginMethod
+    public void callNow(PluginCall call) {
+        VestService s = VestService.instance;
+        boolean ok = s != null && s.placeCall(call.getString("number", ""), call.getString("name", ""), call.getString("alert", ""));
+        if (!ok) {
+            try {
+                Intent i = new Intent(Intent.ACTION_DIAL, Uri.parse("tel:" + call.getString("number", "")));
+                i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                getActivity().startActivity(i);
+            } catch (Exception ignored) { }
+        }
+        JSObject r = new JSObject();
+        r.put("placed", ok);
+        call.resolve(r);
+    }
+
+    @PluginMethod
+    public void speak(PluginCall call) {
+        Voice.say(call.getString("text", ""), call.getString("lang", "en"));
+        call.resolve();
     }
 
     // ------------------------------------------------------------ research mode

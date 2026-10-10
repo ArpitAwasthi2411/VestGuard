@@ -62,8 +62,11 @@ public class VestService extends Service {
     static final String ACTION_ACK = "com.silvershield.vestguard.ACK";
     static final String ACTION_REFRESH = "com.silvershield.vestguard.REFRESH";
 
-    static final int DATA_PORT = 4210, CMD_PORT = 4211;
+    static final int DATA_PORT = 4210, CMD_PORT = 4211, SYNC_PORT = 4212;
     static final long ONLINE_MS = 5000, LOST_MS = 20000, ESCALATE_MS = 60000;
+    static final long HUB_RING_MS = 30000;      // Home Hub: speak first, ring loudly after 30 s without "I'm OK"
+    static final long CALL_AFTER_MS = 60000;    // Home Hub: start calling contacts after 60 s without a response
+    static final long CALL_GAP_MS = 60000;      // ...then the next contact every 60 s
 
     interface Listener { void onLine(String line, long ts); }
     interface DataListener { void onData(String lines); }
@@ -91,6 +94,17 @@ public class VestService extends Service {
     private int alertSev = 0;
     private long alertTs = 0;
     private boolean alertDemo = false, alertAcked = false, alertEscalated = false;
+    private String alertKind = "fall";            // fall | sos
+    private String alertFrom = "";                // who raised an SOS
+    private boolean hubRang = false;
+    private int callIdx = 0, voiceCount = 0;
+    private long lastVoice = 0;
+
+    // family sync (several phones on the same Wi-Fi / hotspot)
+    private DatagramSocket syncSock;
+    private final java.util.concurrent.ConcurrentHashMap<String, InetAddress> peers = new java.util.concurrent.ConcurrentHashMap<>();
+    private final java.util.concurrent.ConcurrentHashMap<String, Long> peerSeen = new java.util.concurrent.ConcurrentHashMap<>();
+    private long lastPresence = 0, lastDiscover = 0;
 
     // ------------------------------------------------------------------ lifecycle
     static void start(Context ctx) {
@@ -103,6 +117,7 @@ public class VestService extends Service {
         super.onCreate();
         instance = this;
         createChannels();
+        Voice.init(this);
     }
 
     @Override
@@ -145,6 +160,9 @@ public class VestService extends Service {
         if (exec != null) exec.shutdownNow();
         if (sock != null) sock.close();
         sock = null;
+        if (syncSock != null) syncSock.close();
+        syncSock = null;
+        Voice.shutdown();
         if (wakeLock != null && wakeLock.isHeld()) wakeLock.release();
         if (mcLock != null && mcLock.isHeld()) mcLock.release();
         Alarm.stop();
@@ -265,6 +283,16 @@ public class VestService extends Service {
         }
         rxThread = new Thread(this::receiveLoop, "vest-rx");
         rxThread.start();
+        try {
+            DatagramSocket ss = new DatagramSocket(null);
+            ss.setReuseAddress(true);
+            ss.setBroadcast(true);
+            ss.bind(new InetSocketAddress(SYNC_PORT));
+            syncSock = ss;
+            new Thread(this::syncLoop, "family-rx").start();
+        } catch (Exception e) {
+            Log.e(TAG, "sync bind failed", e);
+        }
         exec = Executors.newSingleThreadScheduledExecutor();
         exec.scheduleWithFixedDelay(this::everySecond, 1, 1, TimeUnit.SECONDS);
     }
@@ -298,6 +326,145 @@ public class VestService extends Service {
                 if (s.isClosed()) break;
                 Log.w(TAG, "rx", e);
             }
+        }
+    }
+
+    // ------------------------------------------------------------------ family sync
+    /** every IPv4 broadcast address of every active interface (hotspot, Wi-Fi) + 255.255.255.255 */
+    private java.util.List<InetAddress> broadcastAddrs() {
+        java.util.ArrayList<InetAddress> out = new java.util.ArrayList<>();
+        try {
+            java.util.Enumeration<java.net.NetworkInterface> nis = java.net.NetworkInterface.getNetworkInterfaces();
+            while (nis != null && nis.hasMoreElements()) {
+                java.net.NetworkInterface ni = nis.nextElement();
+                if (!ni.isUp() || ni.isLoopback()) continue;
+                for (java.net.InterfaceAddress ia : ni.getInterfaceAddresses()) {
+                    InetAddress b = ia.getBroadcast();
+                    if (b != null && !out.contains(b)) out.add(b);
+                }
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "interfaces", e);
+        }
+        try { out.add(InetAddress.getByName("255.255.255.255")); } catch (Exception ignored) { }
+        return out;
+    }
+
+    private void sendTo(DatagramSocket s, InetAddress to, int port, String text) {
+        if (s == null || s.isClosed() || to == null) return;
+        try {
+            byte[] b = (text + "\n").getBytes(StandardCharsets.UTF_8);
+            s.send(new DatagramPacket(b, b.length, to, port));
+        } catch (Exception e) {
+            // broadcast can fail on some interfaces; ignore
+        }
+    }
+
+    /** send a family line to every other phone (known peers + broadcast). Any thread. */
+    void broadcastSync(String line) {
+        ScheduledExecutorService e = exec;
+        if (e == null || e.isShutdown()) return;
+        e.execute(() -> {
+            DatagramSocket s = syncSock;
+            for (InetAddress a : peers.values()) sendTo(s, a, SYNC_PORT, line);
+            for (InetAddress a : broadcastAddrs()) sendTo(s, a, SYNC_PORT, line);
+        });
+    }
+
+    static String familyCode(Context c) { return config(c).optString("family", "").trim().toUpperCase(Locale.US); }
+    static String deviceId(Context c) { return config(c).optString("device", ""); }
+    String role() { return config(this).optString("kind", "caregiver"); }
+    boolean isHub() { return "hub".equals(role()); }
+
+    private static String b64(String s) {
+        return android.util.Base64.encodeToString(s.getBytes(StandardCharsets.UTF_8), android.util.Base64.NO_WRAP);
+    }
+    private static String unb64(String s) {
+        return new String(android.util.Base64.decode(s, android.util.Base64.DEFAULT), StandardCharsets.UTF_8);
+    }
+    /** "CS,<family>,<device>,<base64 json>" */
+    String syncLine(String type, JSONObject body) {
+        return type + "," + familyCode(this) + "," + deviceId(this) + "," + b64(body.toString());
+    }
+
+    private void syncLoop() {
+        byte[] buf = new byte[4096];
+        DatagramSocket s = syncSock;
+        while (s != null && !s.isClosed()) {
+            try {
+                DatagramPacket p = new DatagramPacket(buf, buf.length);
+                s.receive(p);
+                String text = new String(p.getData(), 0, p.getLength(), StandardCharsets.UTF_8);
+                for (String line : text.split("\n")) {
+                    line = line.trim();
+                    if (!line.isEmpty()) handleSync(line, p.getAddress());
+                }
+            } catch (Exception e) {
+                if (s.isClosed()) break;
+                Log.w(TAG, "sync rx", e);
+            }
+        }
+    }
+
+    private void handleSync(String line, InetAddress from) {
+        String[] p = line.split(",", 4);
+        if (p.length < 4 || !(p[0].equals("CG") || p[0].equals("CS"))) return;
+        String fam = familyCode(this);
+        if (fam.isEmpty() || !fam.equals(p[1]) || p[2].equals(deviceId(this))) return;   // other families / my own echo
+        peers.put(p[2], from);
+        peerSeen.put(p[2], System.currentTimeMillis());
+        long now = System.currentTimeMillis();
+        if (p[0].equals("CS")) {
+            JSONObject body;
+            try { body = new JSONObject(unb64(p[3])); } catch (Exception e) { return; }
+            String t = body.optString("t"), aid = body.optString("alert", "");
+            String key = "sync:" + body.optString("uid", t + aid + body.optString("who"));
+            synchronized (seen) {
+                if (seen.contains(key)) return;
+                seen.add(key);
+                while (seen.size() > 300) seen.remove(seen.iterator().next());
+            }
+            switch (t) {
+                case "resp": remoteResponded(aid); break;
+                case "res": clearAlert(aid); break;
+                case "sos": raiseSos(aid, body.optString("who"), now); break;
+                case "fall": raiseRemoteFall(aid, body.optInt("sev", 3), body.optBoolean("demo"), now); break;
+                default: break;
+            }
+            JSONObject ev = new JSONObject();
+            try { ev.put("line", line); ev.put("ts", now); } catch (Exception ignored) { }
+            storePending(ev);
+        }
+        Listener l = listener;
+        if (l != null) l.onLine(line, now);
+    }
+
+    /** presence + vest discovery, once a second from tick() */
+    private void familyTick(long now) {
+        String fam = familyCode(this);
+        if (!fam.isEmpty() && now - lastPresence > 3000) {
+            lastPresence = now;
+            JSONObject me = new JSONObject();
+            try {
+                JSONObject cfg = config(this);
+                me.put("name", cfg.optString("me", ""));
+                me.put("role", cfg.optString("meRole", "family"));
+                me.put("kind", role());
+                me.put("vest", lastRx > 0 && now - lastRx < ONLINE_MS);
+            } catch (Exception ignored) { }
+            String line = syncLine("CG", me);
+            DatagramSocket s = syncSock;
+            for (InetAddress a : peers.values()) sendTo(s, a, SYNC_PORT, line);
+            for (InetAddress a : broadcastAddrs()) sendTo(s, a, SYNC_PORT, line);
+        }
+        for (java.util.Map.Entry<String, Long> e : peerSeen.entrySet()) {
+            if (now - e.getValue() > 60000) { peers.remove(e.getKey()); peerSeen.remove(e.getKey()); }
+        }
+        // vest not heard for a while: shout "PH" on the network so a vest on the same Wi-Fi links to this phone too
+        boolean online = lastRx > 0 && now - lastRx < ONLINE_MS;
+        if (!online && now - lastDiscover > 2000) {
+            lastDiscover = now;
+            for (InetAddress a : broadcastAddrs()) sendTo(sock, a, CMD_PORT, research ? "P" : "PH");
         }
     }
 
@@ -351,6 +518,14 @@ public class VestService extends Service {
                     int sev = 2;
                     try { sev = Integer.parseInt(p[2]); } catch (Exception ignored) { }
                     raiseAlarm(id, sev, false, now, loc);
+                    // phones in the family that the vest isn't linked to still hear about it
+                    try {
+                        JSONObject b = new JSONObject();
+                        b.put("t", "fall"); b.put("alert", id); b.put("sev", sev); b.put("uid", "fall" + id);
+                        b.put("line", line);
+                        if (loc != null) { b.put("lat", loc.getLatitude()); b.put("lon", loc.getLongitude()); }
+                        broadcastSync(syncLine("CS", b));
+                    } catch (Exception ignored) { }
                 }
             } catch (Exception e) {
                 Log.w(TAG, "event", e);
@@ -375,6 +550,7 @@ public class VestService extends Service {
     private void tick() {
         long now = System.currentTimeMillis();
         sendToVest(research ? "P" : "PH");
+        familyTick(now);
         boolean online = lastRx > 0 && now - lastRx < ONLINE_MS;
         if (online && !wasOnline) {
             onlineSince = now;
@@ -392,29 +568,130 @@ public class VestService extends Service {
         updateStatus(false);
 
         synchronized (this) {
-            if (alertId != null && !alertAcked && !alertEscalated && now - alertTs > ESCALATE_MS) {
-                alertEscalated = true;
-                postAlert();
-                Alarm.start(this, 0);
+            if (alertId != null && !alertAcked) {
+                long age = now - alertTs;
+                if (isHub()) {
+                    // 1) speak to the wearer  2) ring loudly  3) call the family one by one (speakerphone)
+                    if (!hubRang && age > HUB_RING_MS) { hubRang = true; Alarm.start(this, 0); }
+                    if (!hubRang && voiceCount < 4 && now - lastVoice > 9000) {
+                        lastVoice = now; voiceCount++;
+                        Voice.say(Strings.t(lang(), "sos".equals(alertKind) ? "tts_sos" : "tts_fall", "name", wearerFirst()), lang());
+                    }
+                    JSONArray contacts = config(this).optJSONArray("contacts");
+                    boolean autoCall = config(this).optBoolean("autoCall", true);
+                    if (autoCall && contacts != null && callIdx < contacts.length() && age > CALL_AFTER_MS + callIdx * CALL_GAP_MS) {
+                        JSONObject c = contacts.optJSONObject(callIdx++);
+                        if (c != null) placeCall(c.optString("phone", ""), c.optString("name", ""), alertId);
+                    }
+                }
+                if (!alertEscalated && age > ESCALATE_MS) {
+                    alertEscalated = true;
+                    postAlert();
+                    if (!isHub() || callIdx == 0) Alarm.start(this, 0);
+                }
             }
         }
     }
 
+    // ------------------------------------------------------------------ calling (Home Hub)
+    /** Calls a number with the speakerphone on, so the family can talk to the wearer through the hub phone. */
+    boolean placeCall(String number, String name, String aid) {
+        number = number == null ? "" : number.replaceAll("[^0-9+]", "");
+        if (number.length() < 6) return false;
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CALL_PHONE) != PackageManager.PERMISSION_GRANTED) {
+            Log.w(TAG, "no CALL_PHONE permission");
+            return false;
+        }
+        Alarm.stop();
+        Voice.stop();
+        try {
+            android.telecom.TelecomManager tm = (android.telecom.TelecomManager) getSystemService(Context.TELECOM_SERVICE);
+            android.os.Bundle extras = new android.os.Bundle();
+            extras.putBoolean(android.telecom.TelecomManager.EXTRA_START_CALL_WITH_SPEAKERPHONE, true);
+            if (tm != null) tm.placeCall(android.net.Uri.fromParts("tel", number, null), extras);
+        } catch (SecurityException e) {
+            Log.w(TAG, "placeCall", e);
+            return false;
+        } catch (Exception e) {
+            Log.w(TAG, "placeCall", e);
+            return false;
+        }
+        long now = System.currentTimeMillis();
+        String line = "CALL," + (aid == null ? "" : aid) + "," + name.replace(",", " ") + "," + number;
+        JSONObject ev = new JSONObject();
+        try { ev.put("line", line); ev.put("ts", now); } catch (Exception ignored) { }
+        storePending(ev);
+        Listener l = listener;
+        if (l != null) l.onLine(line, now);
+        try {
+            JSONObject b = new JSONObject();
+            b.put("t", "call"); b.put("alert", aid == null ? "" : aid); b.put("who", name); b.put("uid", "call" + now);
+            b.put("by", config(this).optString("me", ""));
+            broadcastSync(syncLine("CS", b));
+        } catch (Exception ignored) { }
+        return true;
+    }
+
     // ------------------------------------------------------------------ alarm
     synchronized void raiseAlarm(String id, int sev, boolean demo, long ts, Location loc) {
+        raise(id, sev, demo, ts, "fall", "");
+        if (!demo) sendSms(sev, ts, loc);
+    }
+
+    private void raise(String id, int sev, boolean demo, long ts, String kind, String from) {
+        if (id != null && id.equals(alertId) && !alertAcked) return;     // already ringing for this one
         alertId = id;
         alertSev = sev;
         alertTs = ts;
         alertDemo = demo;
         alertAcked = false;
         alertEscalated = false;
+        alertKind = kind;
+        alertFrom = from == null ? "" : from;
+        hubRang = false;
+        callIdx = 0;
+        voiceCount = 0;
+        lastVoice = 0;
         postAlert();
-        Alarm.start(this, 0);
-        if (!demo) sendSms(sev, ts, loc);
+        if (isHub() && !"sos".equals(kind)) {
+            Voice.say(Strings.t(lang(), "tts_fall", "name", wearerFirst()), lang());
+            lastVoice = System.currentTimeMillis();
+            voiceCount = 1;
+        } else {
+            Alarm.start(this, 0);
+            if (isHub()) hubRang = true;
+        }
+    }
+
+    /** SOS pressed on another phone (usually the Home Hub) */
+    synchronized void raiseSos(String id, String who, long ts) { raise(id, 3, false, ts, "sos", who); }
+
+    /** a demo fall raised on another phone */
+    synchronized void raiseRemoteFall(String id, int sev, boolean demo, long ts) { raise(id, sev, demo, ts, "fall", ""); }
+
+    /** this phone pressed SOS: ring the other phones; the hub calls the family straight away */
+    synchronized void localSos(String id, String who) {
+        raise(id, 3, false, System.currentTimeMillis(), "sos", who);
+        Alarm.stop();                                    // the person who pressed SOS doesn't need their own siren
+        hubRang = true;
+        callIdx = 0;
+        alertTs = System.currentTimeMillis() - CALL_AFTER_MS + 15000;   // hub starts calling ~15 s after an SOS
+        sendSms(3, System.currentTimeMillis(), lastLocation());
+    }
+
+    /** another caregiver is responding: stop ringing here too */
+    synchronized void remoteResponded(String id) {
+        if (id != null && id.equals(alertId)) {
+            Alarm.stop();
+            Voice.stop();
+            alertAcked = true;
+            postAlert();
+        }
     }
 
     synchronized void acknowledge(String id, boolean fromNotification) {
         Alarm.stop();
+        Voice.stop();
         if (id != null && id.equals(alertId)) {
             alertAcked = true;
             postAlert();
@@ -434,6 +711,7 @@ public class VestService extends Service {
     synchronized void clearAlert(String id) {
         if (id == null || id.equals(alertId)) {
             Alarm.stop();
+            Voice.stop();
             alertId = null;
             NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
             if (nm != null) nm.cancel(NID_ALERT);
@@ -444,7 +722,9 @@ public class VestService extends Service {
         if (alertId == null) return;
         String lang = lang();
         String sev = Strings.t(lang, "sev_" + alertSev);
-        String title = Strings.t(lang, alertDemo ? "fall_title_demo" : "fall_title", "name", wearerFirst());
+        String title = "sos".equals(alertKind)
+                ? Strings.t(lang, "sos_title", "name", alertFrom.isEmpty() ? wearerFirst() : alertFrom)
+                : Strings.t(lang, alertDemo ? "fall_title_demo" : "fall_title", "name", wearerFirst());
         String body = alertAcked ? Strings.t(lang, "fall_ack")
                 : alertEscalated ? Strings.t(lang, "fall_esc", "sev", sev)
                 : Strings.t(lang, "fall_body", "sev", sev);

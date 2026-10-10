@@ -42,6 +42,9 @@ final class Strings {
         EN.put("paused_body", "Android stopped the vest connection. Tap to open VestGuard and resume.");
         EN.put("loc_old", "(location from {n} min ago)");
         EN.put("loc_home", "(home address)");
+        EN.put("sos_title", "SOS from {name}");
+        EN.put("tts_fall", "{name}, are you okay? If you are fine, press I am OK on the screen. Otherwise your family is being called.");
+        EN.put("tts_sos", "Help is on the way. Your family is being called.");
 
         HI.put("ch_alert", "गिरने के अलार्म");
         HI.put("ch_status", "वेस्ट कनेक्शन");
@@ -74,6 +77,9 @@ final class Strings {
         HI.put("paused_body", "Android ने वेस्ट कनेक्शन रोक दिया। फिर शुरू करने के लिए टैप करें।");
         HI.put("loc_old", "({n} मिनट पुरानी जगह)");
         HI.put("loc_home", "(घर का पता)");
+        HI.put("sos_title", "{name} ने मदद माँगी (SOS)");
+        HI.put("tts_fall", "{name}, क्या आप ठीक हैं? ठीक हैं तो स्क्रीन पर मैं ठीक हूँ दबाइए। नहीं तो परिवार को फ़ोन किया जा रहा है।");
+        HI.put("tts_sos", "मदद आ रही है। परिवार को फ़ोन किया जा रहा है।");
     }
 
     static String t(String lang, String key, String... kv) {

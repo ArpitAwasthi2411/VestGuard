@@ -72,9 +72,16 @@
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.SEND_SMS" />
+    <!-- Home Hub: call the family automatically (speakerphone) -->
+    <uses-permission android:name="android.permission.CALL_PHONE" />
     <!-- dual-SIM phones: pick a SIM for the alert SMS -->
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
 
     <uses-feature android:name="android.hardware.telephony" android:required="false" />
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.TTS_SERVICE" />
+        </intent>
+    </queries>
     <uses-feature android:name="android.hardware.location.gps" android:required="false" />
 </manifest>
