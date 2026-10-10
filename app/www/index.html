@@ -288,6 +288,75 @@ nav.tabs button.on::before{content:"";position:absolute;top:0;width:36px;height:
 .onboard .in{max-width:460px;margin:0 auto;padding:calc(var(--sat) + 28px) 22px 30px}
 .onboard .lang{display:flex;justify-content:space-between;align-items:center}
 .onboard h1{font-size:34px;line-height:1.15;margin:22px 0 8px}
+
+/* ---------- sign-in flow ---------- */
+.ob-logo{display:flex;align-items:center;gap:12px;font-weight:700;font-size:20px}
+.ob-hero{margin:26px -22px 0;height:150px;position:relative;overflow:hidden;border-radius:0 0 28px 28px;background:linear-gradient(180deg,#CFE3DA 0%,#EEF2F5 100%)}
+:root[data-theme=dark] .ob-hero{background:linear-gradient(180deg,#123A2E 0%,var(--mist) 100%)}
+.ob-hero svg{position:absolute;left:0;right:0;bottom:0;width:100%;height:120px}
+.ob-steps{display:flex;gap:6px;margin:4px 0 18px}
+.ob-steps i{height:4px;flex:1;border-radius:2px;background:var(--line)}
+.ob-steps i.on{background:var(--pine)}
+.rolecard{display:flex;gap:14px;align-items:flex-start;width:100%;text-align:left;padding:18px;border-radius:20px;border:1.5px solid var(--line);background:var(--surface);margin-bottom:12px}
+.rolecard:active{transform:scale(.99)}
+.rolecard .ic{width:48px;height:48px;border-radius:14px;display:grid;place-items:center;flex:none;background:var(--pine-soft);color:var(--pine)}
+.rolecard.hubc .ic{background:var(--saffron-soft);color:var(--saffron-ink)}
+.rolecard .ic svg{width:26px;height:26px}
+.rolecard b{display:block;font-size:18px;margin-bottom:3px;color:var(--ink)}
+.rolecard span{color:var(--ink2);font-size:15px}
+.famcode{font-size:44px;font-weight:700;letter-spacing:8px;text-align:center;padding:18px 0;border-radius:20px;background:var(--surface);border:1.5px dashed var(--pine);color:var(--pine);margin:14px 0}
+.codein{font-size:28px!important;letter-spacing:6px;text-align:center;text-transform:uppercase;font-weight:700}
+.linkbtn{background:none;border:0;color:var(--blue);font-weight:700;padding:12px 0;width:100%}
+.ob-actions{display:grid;gap:10px;margin-top:20px}
+
+/* ---------- Home Hub (the phone that stays with the wearer) ---------- */
+.hub{position:fixed;inset:0;z-index:90;background:var(--mist);display:none;flex-direction:column;overflow:auto;padding:calc(var(--sat) + 14px) 20px calc(var(--sab) + 18px)}
+.hub.on{display:flex}
+.hub-top{display:flex;align-items:center;gap:10px}
+.hub-time{font-size:42px;font-weight:700;line-height:1;letter-spacing:-1px}
+.hub-date{color:var(--ink2);font-size:16px}
+.hub-gear{margin-left:auto;width:52px;height:52px;border-radius:16px;border:1px solid var(--line);background:var(--surface);display:grid;place-items:center;color:var(--ink)}
+.hub-gear svg{width:24px;height:24px}
+.hub-status{display:flex;align-items:center;gap:10px;margin-top:18px;padding:12px 16px;border-radius:16px;background:var(--pine-soft);color:var(--pine);font-weight:700;font-size:17px}
+.hub-status i{width:12px;height:12px;border-radius:50%;background:currentColor;flex:none;animation:breathe 2.4s ease-in-out infinite}
+.hub-status.off{background:var(--saffron-soft);color:var(--saffron-ink)}
+.hub-status.off i{animation:none}
+.hub h1{font-size:32px;line-height:1.15;margin:22px 0 2px}
+.hub .now{color:var(--ink2);font-size:18px}
+.sos-wrap{flex:1;display:grid;place-items:center;padding:18px 0;min-height:250px}
+.sos{position:relative;width:min(64vw,260px);aspect-ratio:1;border-radius:50%;border:0;background:radial-gradient(circle at 35% 30%,#EE4B5E,#C11F33 70%);color:#fff;font-size:40px;font-weight:700;box-shadow:0 18px 40px -14px rgba(210,38,59,.7),inset 0 -8px 0 rgba(0,0,0,.12);touch-action:none;user-select:none;-webkit-user-select:none}
+.sos small{display:block;font-size:15px;font-weight:400;opacity:.92;margin-top:4px}
+.sos svg.ring{position:absolute;inset:-10px;width:calc(100% + 20px);height:calc(100% + 20px);transform:rotate(-90deg);pointer-events:none}
+.sos svg.ring circle{fill:none;stroke:#D2263B;stroke-width:6;stroke-linecap:round;stroke-dasharray:var(--c);stroke-dashoffset:var(--c);transition:none}
+.sos.holding svg.ring circle{stroke-dashoffset:0;transition:stroke-dashoffset 1.6s linear}
+.hub-calls{display:grid;gap:12px}
+.hub-call{display:flex;align-items:center;gap:14px;min-height:68px;padding:0 20px;border-radius:20px;border:1.5px solid var(--line);background:var(--surface);font-size:20px;font-weight:700;text-align:left;width:100%}
+.hub-call svg{width:26px;height:26px;color:var(--pine);flex:none}
+.hub-call span{font-size:15px;font-weight:400;color:var(--ink3);margin-left:auto}
+/* hub alert state */
+.hub.alert{background:#B4182B;color:#fff}
+.hub.alert .hub-date,.hub.alert .now{color:rgba(255,255,255,.85)}
+.hub.alert .hub-gear{background:rgba(255,255,255,.15);border-color:transparent;color:#fff}
+.hub-q{font-size:40px;line-height:1.1;font-weight:700;margin:26px 0 8px}
+.hub-count{font-size:19px;opacity:.95}
+.hub-okbtn{width:100%;min-height:120px;border-radius:28px;border:0;background:#fff;color:#1D7A5F;font-size:40px;font-weight:700;margin-top:auto;box-shadow:0 14px 30px -12px rgba(0,0,0,.45)}
+.hub-nowbtn{width:100%;min-height:64px;border-radius:20px;border:2px solid rgba(255,255,255,.75);background:transparent;color:#fff;font-size:20px;font-weight:700;margin-top:12px}
+.hub-resp{margin-top:16px;padding:14px 16px;border-radius:16px;background:rgba(0,0,0,.18);font-size:18px}
+.hubback{position:fixed;right:14px;bottom:calc(var(--nav-h) + var(--sab) + 14px);z-index:45;display:none;border:0;border-radius:999px;background:var(--ink);color:var(--surface);font-weight:700;padding:12px 18px;box-shadow:var(--shadow)}
+.hubback.on{display:block}
+/* family */
+.member{display:flex;align-items:center;gap:12px;padding:12px 18px;border-top:1px solid var(--line)}
+.member .avatar{width:38px;height:38px;background:var(--pine-soft);color:var(--pine);font-size:14px}
+.member .kind{margin-left:auto;font-size:13px;padding:3px 10px;border-radius:999px;background:var(--sunk);color:var(--ink2)}
+.member .kind.hubk{background:var(--saffron-soft);color:var(--saffron-ink)}
+.quick3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.qa{display:flex;flex-direction:column;align-items:center;gap:8px;padding:14px 6px;border-radius:18px;border:1px solid var(--line);background:var(--surface);font-weight:700;font-size:14px;text-align:center;color:var(--ink);text-decoration:none}
+.qa .ic{width:44px;height:44px;border-radius:14px;display:grid;place-items:center;background:var(--pine-soft);color:var(--pine)}
+.qa .ic svg{width:22px;height:22px}
+.qa.blue .ic{background:var(--blue-soft);color:var(--blue)}
+/* band: softer, rounded bottom, avatar halo */
+.band{border-radius:0 0 28px 28px}
+.band .avatar{box-shadow:0 0 0 3px rgba(255,255,255,.35)}
 .toast{position:fixed;left:50%;bottom:calc(var(--nav-h) + var(--sab) + 14px);transform:translate(-50%,20px);opacity:0;background:var(--ink);color:var(--surface);padding:12px 18px;border-radius:14px;font-size:16px;z-index:200;transition:.25s;max-width:calc(100vw - 32px);pointer-events:none;text-align:center}
 .toast.on{opacity:1;transform:translate(-50%,0)}
 @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
@@ -342,20 +411,10 @@ nav.tabs button.on::before{content:"";position:absolute;top:0;width:36px;height:
 
 <div class="scrim" id="scrim"><div class="sheet" id="sheet"></div></div>
 
-<div class="onboard" id="onboard"><div class="in">
-  <div class="lang">
-    <svg width="52" height="52" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="16" fill="#1D7A5F"/><path d="M32 13 17 19v11c0 10 6.4 17.2 15 20 8.6-2.8 15-10 15-20V19z" fill="none" stroke="#fff" stroke-width="3.5" stroke-linejoin="round"/><path d="M23 32h5l3-6 4 11 3-5h4" fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-    <div class="seg sm" style="width:170px"><button data-setlang="en">English</button><button data-setlang="hi">हिंदी</button></div>
-  </div>
-  <h1 data-i18n="ob_title"></h1>
-  <p class="muted" data-i18n="ob_sub"></p>
-  <div class="form" style="padding:16px 0">
-    <label><span data-i18n="ob_name"></span><input id="obName" autocomplete="name" data-i18n-ph="ob_name_ph"></label>
-    <label><span data-i18n="ob_role"></span><select id="obRole"><option value="family" data-i18n="role_family"></option><option value="nurse" data-i18n="role_nurse"></option><option value="doctor" data-i18n="role_doctor"></option><option value="neighbour" data-i18n="role_neighbour"></option></select></label>
-  </div>
-  <p class="muted" style="font-size:15px" data-i18n="ob_keep"></p>
-  <button class="btn pine" id="obGo" style="width:100%;margin-top:8px" data-i18n="ob_go"></button>
-</div></div>
+<div class="hub" id="hub"></div>
+<button class="hubback" id="hubBack"></button>
+<div class="onboard" id="onboard"><div class="in" id="obIn"></div></div>
+
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
@@ -424,6 +483,8 @@ function setPref(k, v) {
   S[k] = v; store.set({ lang: 'vgc_lang', theme: 'vgc_theme', size: 'vgc_size', showVitals: 'vgc_vitals' }[k], v);
   const r = document.documentElement; r.dataset.theme = S.theme; r.dataset.size = S.size;
   applyStatic(); renderAll(); if (S.ovId) renderOverride();
+  if ($('#onboard').classList.contains('on')) renderOb();
+  renderHub();
   if (k === 'lang' && engine) engine.pushConfig();
 }
 
@@ -463,6 +524,8 @@ const ICON = {
   trash: '<path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/>',
   plus: '<path d="M12 5v14M5 12h14"/>',
   pin: '<path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/>',
+  people: '<circle cx="9" cy="8" r="3.2"/><path d="M3 20a6 6 0 0 1 12 0"/><circle cx="17" cy="9" r="2.6"/><path d="M15.5 14.2A5 5 0 0 1 21 19"/>',
+  gear: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
 };
 const svg = k => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[k] || ''}</svg>`;
 
@@ -541,7 +604,7 @@ function connect() {
   S.ws = ws;
   ws.onopen = () => {
     S.up = true; S.tries = 0; S.lastMsg = Date.now();
-    if (S.me) send({ t: 'hello', id: S.me.id, name: S.me.name, role: S.me.role }, false);
+    if (S.me) send(helloMsg(), false);
     S.outbox.forEach(o => ws.send(JSON.stringify(o)));
     if (S.wasDown) { toast(t('reconnected')); S.wasDown = false; }
     renderConn();
@@ -618,7 +681,7 @@ function renderHome() {
   if (!s) { $('#tab-home').innerHTML = `<div class="empty">${t('waiting_first')}</div>`; return; }
   const open = s.alerts.filter(a => a.status !== 'resolved'), last = open.at(-1);
   const feed = s.feed.filter(e => e.kind !== 'medication' && e.kind !== 'room' && (S.feedAll || isImportant(e))).slice(-25).reverse();
-  const people = s.caregivers.map(c => `<span class="person${c.name === S.me?.name ? ' me' : ''}"><span class="avatar">${esc(initials(c.name))}</span>${esc(c.name)} <span class="faint">· ${esc(role(c.role))}</span></span>`).join('');
+  const people = s.caregivers.map(c => `<span class="person${c.me ? ' me' : ''}"><span class="avatar">${esc(initials(c.name))}</span>${esc(c.name)} <span class="faint">· ${esc(c.kind === 'hub' ? t('kind_hub') : role(c.role))}</span></span>`).join('');
   $('#tab-home').innerHTML = `
     ${last ? `<button class="openalert" data-open-alert="${last.id}">${svg('alert')}<span><b>${t('open_alert_title')}</b>${esc(alertStatusText(last))}</span><span class="go">${t('open')}</span></button>` : ''}
     <div class="sec">
@@ -645,9 +708,11 @@ function renderHome() {
         <div class="vital"><div class="k">${t('temp')}</div><div class="v num"><span id="vTp">—</span><small>°C</small></div></div>
         <div class="vitals-foot">${t('sim_note')}</div>
       </button></div>` : ''}
-    <div class="sec quick">
-      <button class="btn" data-log="meal">${svg('meal')}${t('log_meal')}</button>
-      <button class="btn" data-log="note">${svg('note')}${t('add_note')}</button>
+    <div class="sec quick3">
+      ${s.profile.wearer.phone ? `<a class="qa" href="tel:${esc(s.profile.wearer.phone.replace(/\s/g, ''))}" data-callname="${esc(s.profile.wearer.name)}"><span class="ic">${svg('call')}</span>${esc(t('call_name', { name: first(s.profile.wearer.name) }))}</a>`
+        : `<button class="qa" data-goto="profile"><span class="ic">${svg('call')}</span>${esc(t('call_name', { name: first(s.profile.wearer.name) }))}</button>`}
+      <button class="qa blue" data-log="meal"><span class="ic">${svg('meal')}</span>${t('log_meal')}</button>
+      <button class="qa blue" data-log="note"><span class="ic">${svg('note')}</span>${t('add_note')}</button>
     </div>
     <div class="sec">
       <div class="sec-h"><h2>${t('activity_title')}</h2>
@@ -655,7 +720,7 @@ function renderHome() {
       <div class="panel">${feedHtml(feed)}</div>
     </div>
     <div class="sec">
-      <div class="sec-h"><h2>${t('caregivers_online')}</h2></div>
+      <div class="sec-h"><h2>${t('family_online')}</h2></div>
       <div class="people">${people || `<span class="faint">${t('only_you')}</span>`}</div>
     </div>`;
   renderLive();
@@ -697,6 +762,7 @@ function renderLive() {
 /* ============================================================
    ALERTS
    ============================================================ */
+const alertTitle = a => a.kind === 'sos' ? t('a_sos') : t('fall_sev', { sev: t('sev_' + a.severity) });
 function alertStatusText(a) {
   if (a.status === 'resolved') return t('a_resolved', { who: a.resolved_by, res: t('res_' + a.resolution) });
   if (a.responders.length) return t('a_resp', { who: a.responders.map(r => r.name).join(', ') });
@@ -712,7 +778,7 @@ function renderAlerts() {
       const resp = a.responders[0] ? Math.round(a.responders[0].ts - a.ts) : null;
       const cls = a.status === 'resolved' ? 'res' : a.responders.length ? 'ack' : 'open';
       return `<button class="aitem" data-alert="${a.id}"><span class="sev s${a.severity}"></span>
-        <span><div class="t">${t('fall_sev', { sev: t('sev_' + a.severity) })}${a.demo ? ` <span class="tag">${t('demo')}</span>` : ''}</div>
+        <span><div class="t">${alertTitle(a)}${a.demo ? ` <span class="tag">${t('demo')}</span>` : ''}</div>
         <div class="d">${dayLabel(a.ts)}, ${hhmm(a.ts)} · ${t('a_impact', { g: a.peak_g })}${resp !== null ? ' · ' + t('a_resp_in', { d: dur(resp) }) : ''}</div>
         <div class="d">${esc(alertStatusText(a))}</div></span>
         <span class="st ${cls}">${t(cls === 'res' ? 'st_closed' : cls === 'ack' ? 'st_handling' : 'st_open')}</span></button>`;
@@ -725,7 +791,7 @@ function openAlertSheet(id) {
   a.responders.forEach(r => ev.push([r.ts, t('ad_resp', { who: r.name })]));
   if (a.resolved_ts) ev.push([a.resolved_ts, alertStatusText(a)]);
   ev.sort((x, y) => x[0] - y[0]);
-  sheet(`<h3>${t('fall_sev', { sev: t('sev_' + a.severity) })}</h3><p class="muted" style="margin:0">${dayLabel(a.ts)}, ${hhmm(a.ts)} · ${esc(locLabel(a))}</p>
+  sheet(`<h3>${alertTitle(a)}</h3><p class="muted" style="margin:0">${dayLabel(a.ts)}, ${hhmm(a.ts)} · ${esc(locLabel(a))}</p>
     <div class="act-facts" style="margin:14px 0">
       <div class="fact"><div class="k">${t('ad_impact')}</div><div class="v num">${a.peak_g} g</div></div>
       <div class="fact"><div class="k">${t('ad_posture')}</div><div class="v num">${a.tilt_change}°</div></div>
@@ -802,9 +868,18 @@ function renderProfile() {
   if (!p) { $('#tab-profile').innerHTML = settings + `<div class="empty">${t('connect_first')}</div>`; return; }
   const w = p.wearer;
   $('#tab-profile').innerHTML = `
+    ${isHub() ? `<div class="sec"><button class="btn pine" style="width:100%;min-height:56px" id="pHub">${t('hub_back')}</button></div>` : ''}
     <div class="sec"><div class="sec-h"><h2>${t('you')}</h2></div>
       <div class="panel rows"><div class="row"><span class="avatar" style="background:var(--ink);color:var(--surface)">${esc(initials(S.me?.name))}</span>
-      <div><div class="t">${esc(S.me?.name)}</div><div class="d">${t('this_phone', { role: role(S.me?.role) })}</div></div><span class="end"><button class="btn sm" id="pMe">${t('change')}</button></span></div></div></div>
+      <div><div class="t">${esc(S.me?.name)}</div><div class="d">${isHub() ? t('kind_hub') : t('this_phone', { role: role(S.me?.role) })}</div></div><span class="end"><button class="btn sm" id="pMe">${t('change')}</button></span></div></div></div>
+    <div class="sec"><div class="sec-h"><h2>${t('family_t')}</h2></div>
+      <div class="panel">
+        <div class="setting"><div class="t">${t('family_code')}</div><div class="famcode" style="font-size:30px;letter-spacing:6px;margin:6px 0 8px">${esc(S.me?.family || '—')}</div><div class="d" style="margin:0">${t('family_d')}</div></div>
+        <div class="setting" style="padding-bottom:4px"><div class="t" style="margin:0">${t('family_online')}</div></div>
+        ${(S.snap.caregivers || []).map(c => `<div class="member"><span class="avatar">${esc(initials(c.name))}</span><div><b>${esc(c.name)}</b>${c.me ? ` <span class="faint">(${t('you').toLowerCase()})</span>` : ''}</div>
+          <span class="kind ${c.kind === 'hub' ? 'hubk' : ''}">${c.kind === 'hub' ? t('kind_hub') : t('kind_cg')}</span></div>`).join('')}
+        ${(S.snap.caregivers || []).length < 2 ? `<div class="member faint" style="font-size:15px">${t('only_this')}</div>` : ''}
+      </div></div>
     <div class="sec"><div class="sec-h"><h2>${t('vest')}</h2></div>
       <div class="panel rows">
         <div class="row"><div><div class="t">${t('cal_title')}</div><div class="d">${S.snap.calib ? t('cal_done') : t('cal_not')} ${t('cal_how')}</div></div>
@@ -872,6 +947,8 @@ function protectionHtml() {
       <div class="row"><div class="d" style="color:${allOk ? 'var(--pine)' : 'var(--saffron-ink)'};font-weight:700">${allOk ? t('protect_ok') : t('protect_todo')}</div></div>
       ${items.map(([k, key, ok]) => `<div class="row"><div><div class="t">${t(key)}</div><div class="d">${t(key + '_d')}</div></div>
         <span class="end">${ok ? `<span class="okdot">${t('on')}</span>` : `<button class="btn sm pine" data-perm="${k}">${t('allow')}</button>`}</span></div>`).join('')}
+      ${isHub() ? `<div class="row"><div style="flex:1"><div class="t">${t('p_calls')}</div><div class="d">${t('p_calls_d')}</div></div>
+        <button class="switch" role="switch" aria-checked="${S.snap?.autoCall !== false && !!P.calls}" aria-label="${t('p_calls')}" id="pAutoCall"></button></div>` : ''}
       <div class="row"><div style="flex:1"><div class="t">${t('p_sms')}</div><div class="d">${t('p_sms_d')}</div></div>
         <button class="switch" role="switch" aria-checked="${sms && P.sms}" aria-label="${t('p_sms')}" id="pSms"></button></div>
     </div></div>`;
@@ -928,13 +1005,14 @@ function beep(freq, t0, d) {
 }
 function alarmOnce() { if (!audioCtx) return; const t0 = audioCtx.currentTime; [0, .35, .7].forEach((dt, i) => beep(i % 2 ? 660 : 880, t0 + dt, .3)); }
 function startAlarm() {
-  if (VN) { if (!S.draining && S.ovId) ringNative(); return; }
+  if (VN) { if (!S.draining && S.ovId && !isHub()) ringNative(); return; }
   stopAlarm(); alarmOnce(); alarmTimer = setInterval(alarmOnce, 1600);
   if (navigator.vibrate) { navigator.vibrate([400, 200, 400, 200, 800]); vibTimer = setInterval(() => navigator.vibrate([400, 200, 400]), 2000); }
 }
 function ringNative() { const a = S.snap?.alerts.find(x => x.id === S.ovId); VN.raiseAlarm({ id: S.ovId, sev: a?.severity || 3, demo: !!a?.demo, ringOnly: true }).catch(() => {}); }
 function stopAlarm() { if (VN) VN.stopAlarm().catch(() => {}); clearInterval(alarmTimer); clearInterval(vibTimer); alarmTimer = vibTimer = null; if (navigator.vibrate) navigator.vibrate(0); }
 function checkOverride(changed) {
+  if (isHub()) { renderHub(); return; }
   const open = (S.snap?.alerts || []).filter(a => a.status !== 'resolved');
   if (S.ovId && !open.find(a => a.id === S.ovId)) { closeOverride(); if (changed?.status === 'resolved') toast(alertStatusText(changed)); return; }
   const fresh = open.filter(a => !S.seenAlerts[a.id]).at(-1);
@@ -954,9 +1032,10 @@ function renderOverride() {
   const a = S.snap?.alerts.find(x => x.id === S.ovId); if (!a) return;
   const w = S.snap.profile.wearer, mine = a.responders.some(r => r.name === S.me?.name);
   if (mine && !S.quiet[a.id]) { S.quiet[a.id] = 1; stopAlarm(); }
-  $('#ovSev').textContent = t('ov_sev', { sev: t('sev_' + a.severity) }) + (a.demo ? ' · ' + t('ov_demo') : '');
-  $('#ovSub').textContent = `${w.name} · ${ago(a.ts)}`;
-  $('#ovFacts').innerHTML = `<span>${t('ov_impact', { g: a.peak_g })}</span><span>${t('ov_posture', { d: a.tilt_change })}</span>${a.tilt_after != null && a.tilt_after >= 60 ? `<span>${t('ov_floor')}</span>` : ''}`;
+  $('#ovSev').textContent = (a.kind === 'sos' ? 'SOS' : t('ov_sev', { sev: t('sev_' + a.severity) })) + (a.demo ? ' · ' + t('ov_demo') : '');
+  $('#ovTitle').textContent = a.kind === 'sos' ? t('ov_title_sos') : t('ov_title');
+  $('#ovSub').textContent = `${a.kind === 'sos' && a.from ? a.from : w.name} · ${ago(a.ts)}`;
+  $('#ovFacts').innerHTML = a.kind === 'sos' ? '' : `<span>${t('ov_impact', { g: a.peak_g })}</span><span>${t('ov_posture', { d: a.tilt_change })}</span>${a.tilt_after != null && a.tilt_after >= 60 ? `<span>${t('ov_floor')}</span>` : ''}`;
   $('#ovResp').innerHTML = a.responders.length ? a.responders.map(r => esc(t('ov_resp_line', { who: r.name, role: role(r.role), time: hhmm(r.ts) }))).join('<br>') : esc(t('ov_none'));
   $('#ovEsc').classList.toggle('on', a.escalated && !a.responders.length);
   $('#ovAck').textContent = mine ? t('ov_ack_done') : t('ov_ack');
@@ -1055,7 +1134,11 @@ document.addEventListener('click', e => {
   if (d.callname) send({ t: 'call', target: d.callname });
   switch (b.id) {
     case 'pVit': return setPref('showVitals', !S.showVitals);
-    case 'pMe': return onboard();
+    case 'pMe': return onboard(1);
+    case 'pHub': S.hubHidden = false; return renderHub();
+    case 'pAutoCall': { const want = b.getAttribute('aria-checked') !== 'true';
+      if (want && S.perms && !S.perms.calls) { VN?.requestPermission({ name: 'calls' }).catch(() => {}); setTimeout(refreshPerms, 1500); }
+      send({ t: 'settings', autoCall: want }, false); if (S.snap) S.snap.autoCall = want; b.setAttribute('aria-checked', want); return; }
     case 'pSaveW': {
       const f = n => $(`#pWearer [name=${n}]`).value.trim();
       saveProfile({ wearer: { name: f('name'), age: +f('age') || f('age'), phone: f('phone'), notes: f('notes') }, home: { label: f('label'), lat: +f('lat'), lon: +f('lon') } });
@@ -1095,26 +1178,183 @@ function renderAll() {
 /* ============================================================
    Onboarding
    ============================================================ */
-function onboard() {
-  $('#obName').value = S.me?.name || ''; $('#obRole').value = S.me?.role || 'family';
-  applyStatic(); $('#onboard').classList.add('on'); setTimeout(() => $('#obName').focus(), 50);
+const helloMsg = () => ({ t: 'hello', id: S.me.id, name: S.me.name, role: S.me.role, kind: S.me.kind || 'caregiver', family: S.me.family || '', phone: S.me.phone || '' });
+const isHub = () => S.me?.kind === 'hub';
+const newCode = () => Array.from({ length: 6 }, () => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[Math.floor(Math.random() * 32)]).join('');
+const OB = { step: 0, d: {} };
+const HILLS = `<svg viewBox="0 0 400 120" preserveAspectRatio="none" aria-hidden="true"><path d="M0 120V70l40-22 38 18 46-40 52 34 34-16 50 30 42-26 50 24 48-30v78z" fill="#1D7A5F" opacity=".35"/><path d="M0 120V88l52-18 44 14 60-30 58 30 48-14 54 22 46-18 38 12v34z" fill="#1D7A5F" opacity=".7"/><path d="M0 120v-14l70-10 70 8 80-16 70 14 60-8 50 10v16z" fill="#16233A" opacity=".55"/></svg>`;
+const LOGO = `<svg width="44" height="44" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="16" fill="#1D7A5F"/><path d="M32 13 17 19v11c0 10 6.4 17.2 15 20 8.6-2.8 15-10 15-20V19z" fill="none" stroke="#fff" stroke-width="3.5" stroke-linejoin="round"/><path d="M23 32h5l3-6 4 11 3-5h4" fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+function onboard(step = 0) {
+  OB.step = step; OB.d = { kind: S.me?.kind, name: S.me?.name || '', phone: S.me?.phone || '', role: S.me?.role || 'family', family: S.me?.family || '',
+    wearer: S.snap?.profile?.wearer?.name || '', cname: S.snap?.profile?.contacts?.[0]?.name || '', cphone: S.snap?.profile?.contacts?.[0]?.phone || '' };
+  $('#onboard').classList.add('on'); renderOb();
 }
-$('#obGo').onclick = () => {
-  const name = $('#obName').value.trim(); if (!name) { $('#obName').focus(); return toast(t('ob_need')); }
-  S.me = { id: S.me?.id || Math.random().toString(36).slice(2, 10), name, role: $('#obRole').value };
-  store.set('vgc_me', S.me); unlockAudio(); $('#onboard').classList.remove('on');
-  if (S.up) send({ t: 'hello', id: S.me.id, name: S.me.name, role: S.me.role }, false);
-  renderAll();
-  if (NATIVE && S.mode === 'vest' && !store.get('vgc_setup_seen', false)) setTimeout(setupSheet, 300);
-};
+function renderOb() {
+  const d = OB.d, st = OB.step, hub = d.kind === 'hub';
+  const dots = `<div class="ob-steps">${[1, 2, 3, 4].map(i => `<i class="${i <= st ? 'on' : ''}"></i>`).join('')}</div>`;
+  const langSeg = `<div class="seg sm" style="width:170px"><button data-setlang="en" class="${S.lang === 'en' ? 'on' : ''}">English</button><button data-setlang="hi" class="${S.lang === 'hi' ? 'on' : ''}">हिंदी</button></div>`;
+  let h = '';
+  if (st === 0) {
+    h = `<div class="lang"><span class="ob-logo">${LOGO}VestGuard</span>${langSeg}</div>
+      <div class="ob-hero">${HILLS}</div>
+      <h1>${t('ob_welcome_sub')}</h1>
+      <div class="ob-actions"><button class="btn pine" data-ob="next" style="min-height:56px">${t('ob_start')}</button></div>`;
+  } else if (st === 1) {
+    h = `${dots}<h1 style="margin-top:6px">${t('ob_role_q')}</h1>
+      <button class="rolecard" data-obkind="caregiver"><span class="ic">${svg('people')}</span><span><b>${t('ob_role_cg_t')}</b><span>${t('ob_role_cg_d')}</span></span></button>
+      <button class="rolecard hubc" data-obkind="hub"><span class="ic">${svg('room')}</span><span><b>${t('ob_role_hub_t')}</b><span>${t('ob_role_hub_d')}</span></span></button>
+      <button class="linkbtn" data-ob="back">${t('ob_back')}</button>`;
+  } else if (st === 2) {
+    h = hub ? `${dots}<h1 style="margin-top:6px">${t('ob_wearer_t')}</h1>
+      <div class="form" style="padding:8px 0"><label>${t('ob_wearer_name')}<input id="obW" value="${esc(d.wearer)}" placeholder="${esc(t('ob_wearer_ph'))}" autocomplete="off"></label></div>
+      <h2 style="font-size:20px;margin:16px 0 0">${t('ob_contact_t')}</h2>
+      <div class="form" style="padding:8px 0"><label>${t('ob_contact_name')}<input id="obCN" value="${esc(d.cname)}" placeholder="${esc(t('ob_contact_ph'))}"></label>
+        <label>${t('ob_contact_phone')}<input id="obCP" type="tel" inputmode="tel" value="${esc(d.cphone)}" placeholder="${esc(t('ob_phone_ph'))}"></label></div>`
+    : `${dots}<h1 style="margin-top:6px">${t('ob_you_t')}</h1>
+      <div class="form" style="padding:8px 0">
+        <label>${t('ob_name')}<input id="obN" value="${esc(d.name)}" placeholder="${esc(t('ob_name_ph'))}" autocomplete="name"></label>
+        <label>${t('ob_phone')}<input id="obP" type="tel" inputmode="tel" value="${esc(d.phone)}" placeholder="${esc(t('ob_phone_ph'))}"></label>
+        <label>${t('ob_role')}<select id="obR">${['family', 'nurse', 'doctor', 'neighbour'].map(r => `<option value="${r}" ${d.role === r ? 'selected' : ''}>${t('role_' + r)}</option>`).join('')}</select></label>
+      </div>`;
+    h += `<div class="ob-actions"><button class="btn pine" data-ob="next" style="min-height:56px">${t('ob_next')}</button><button class="linkbtn" data-ob="back">${t('ob_back')}</button></div>`;
+  } else if (st === 3) {
+    if (hub && !OB.joining) {
+      d.family = d.family || newCode();
+      h = `${dots}<h1 style="margin-top:6px">${t('ob_fam_hub_t')}</h1><p class="muted">${t('ob_fam_hub_d')}</p>
+        <div class="famcode">${esc(d.family)}</div>
+        <div class="ob-actions"><button class="btn pine" data-ob="next" style="min-height:56px">${t('ob_next')}</button>
+        <button class="linkbtn" data-ob="join">${t('ob_fam_have')}</button><button class="linkbtn" data-ob="back">${t('ob_back')}</button></div>`;
+    } else {
+      h = `${dots}<h1 style="margin-top:6px">${t('ob_fam_t')}</h1><p class="muted">${t('ob_fam_join_d')}</p>
+        <div class="form" style="padding:8px 0"><label>${t('ob_fam_code')}<input id="obF" class="codein" maxlength="6" value="${esc(d.family)}" autocapitalize="characters" autocomplete="off"></label></div>
+        <div class="ob-actions"><button class="btn pine" data-ob="joincode" style="min-height:56px">${t('ob_fam_join')}</button>
+        <button class="linkbtn" data-ob="newfam">${t('ob_fam_new')}</button><button class="linkbtn" data-ob="back">${t('ob_back')}</button></div>`;
+    }
+  } else {
+    h = `${dots}<div style="text-align:center;margin-top:30px"><span class="ob-logo" style="justify-content:center">${LOGO}</span>
+      <h1>${t('ob_done_t')}</h1><p class="muted">${hub ? t('ob_done_hub', { name: esc(first(d.wearer)) }) : t('ob_done_cg')}</p>
+      <div class="famcode" style="font-size:28px;letter-spacing:6px">${esc(d.family)}</div><p class="faint" style="margin-top:-6px">${t('family_code')}</p></div>
+      <div class="ob-actions"><button class="btn pine" data-ob="finish" style="min-height:56px">${t('ob_finish')}</button><button class="linkbtn" data-ob="back">${t('ob_back')}</button></div>`;
+  }
+  $('#obIn').innerHTML = h;
+}
+function obCollect() {
+  const d = OB.d, v = id => ($('#' + id)?.value || '').trim();
+  if (OB.step === 2) {
+    if (d.kind === 'hub') {
+      d.wearer = v('obW'); d.cname = v('obCN'); d.cphone = v('obCP');
+      if (!d.wearer) { $('#obW').focus(); toast(t('ob_need')); return false; }
+      if (!d.cphone) { $('#obCP').focus(); toast(t('ob_need_phone')); return false; }
+      d.name = d.wearer; d.role = 'family';
+    } else {
+      d.name = v('obN'); d.phone = v('obP'); d.role = $('#obR').value;
+      if (!d.name) { $('#obN').focus(); toast(t('ob_need')); return false; }
+    }
+  }
+  return true;
+}
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-ob],[data-obkind]'); if (!b || !$('#onboard').classList.contains('on')) return;
+  const a = b.dataset.ob, d = OB.d;
+  if (b.dataset.obkind) { d.kind = b.dataset.obkind; OB.joining = false; OB.step = 2; return renderOb(); }
+  if (a === 'back') { OB.step = Math.max(0, OB.step - 1); OB.joining = false; return renderOb(); }
+  if (a === 'next') { if (!obCollect()) return; OB.step++; return renderOb(); }
+  if (a === 'join') { OB.joining = true; d.family = ''; return renderOb(); }
+  if (a === 'newfam') { d.family = newCode(); OB.joining = false; OB.step = 4; return renderOb(); }
+  if (a === 'joincode') {
+    const c = ($('#obF').value || '').trim().toUpperCase();
+    if (!/^[A-Z0-9]{6}$/.test(c)) { $('#obF').focus(); return toast(t('ob_need_code')); }
+    d.family = c; OB.step = 4; return renderOb();
+  }
+  if (a === 'finish') {
+    S.me = { id: S.me?.id || Math.random().toString(36).slice(2, 10), name: d.name, role: d.role || 'family', kind: d.kind || 'caregiver', phone: d.phone || '', family: d.family };
+    store.set('vgc_me', S.me); unlockAudio(); $('#onboard').classList.remove('on');
+    if (S.up) send(helloMsg(), false);
+    if (d.kind === 'hub') {
+      const prof = JSON.parse(JSON.stringify(S.snap?.profile || {}));
+      const wearer = Object.assign({}, prof.wearer || {}, { name: d.wearer });
+      const contacts = (prof.contacts || []).filter(c => c.phone !== d.cphone);
+      contacts.unshift({ name: d.cname || t('ob_contact_name'), relation: '', phone: d.cphone });
+      if (S.snap) saveProfile({ wearer, contacts }); else send({ t: 'profile', profile: { wearer, contacts } });
+      S.hubHidden = false;
+    }
+    renderAll(); renderHub();
+    if (NATIVE && S.mode === 'vest' && !store.get('vgc_setup_seen', false)) setTimeout(setupSheet, 400);
+  }
+});
+
+
+/* ============================================================
+   Home Hub: the phone that stays with the wearer
+   ============================================================ */
+const fmtClock = () => new Date().toLocaleTimeString(locale(), { hour: 'numeric', minute: '2-digit' });
+const fmtDate = () => new Date().toLocaleDateString(locale(), { weekday: 'long', day: 'numeric', month: 'long' });
+function renderHub() {
+  const el = $('#hub'), back = $('#hubBack');
+  if (!isHub() || !S.me) { el.classList.remove('on'); back.classList.remove('on'); return; }
+  back.textContent = t('hub_back');
+  back.classList.toggle('on', !!S.hubHidden);
+  el.classList.toggle('on', !S.hubHidden);
+  if (S.hubHidden) return;
+  const snap = S.snap, L = S.live, w = snap?.profile?.wearer?.name || S.me.name, contacts = snap?.profile?.contacts || [];
+  const open = (snap?.alerts || []).filter(a => a.status !== 'resolved').at(-1);
+  const online = !!L?.device?.online;
+  el.classList.toggle('alert', !!open);
+  const gear = `<button class="hub-gear" data-hub="settings" aria-label="${esc(t('hub_settings'))}">${svg('gear')}</button>`;
+  if (open) {
+    const age = Math.max(0, Math.floor(Date.now() / 1000 - open.ts)), left = Math.max(0, 60 - age);
+    const coming = open.responders.length ? t('hub_coming', { who: open.responders.map(r => r.name).join(', ') }) : '';
+    const sos = open.kind === 'sos';
+    const count = coming ? '' : sos ? t('hub_sos_sent') : left > 0 ? t('hub_calling_in', { n: left }) : t('hub_calling');
+    el.innerHTML = `<div class="hub-top"><div><div class="hub-time">${fmtClock()}</div><div class="hub-date">${fmtDate()}</div></div>${gear}</div>
+      <div class="hub-q">${sos ? t('hub_sos_q') : esc(t('hub_q', { name: first(w) }))}</div>
+      <div class="hub-count">${esc(count)}</div>
+      ${coming ? `<div class="hub-resp">${esc(coming)}</div>` : ''}
+      <div style="flex:1"></div>
+      <button class="hub-okbtn" data-hub="ok">${t('hub_ok')}</button>
+      ${contacts.length ? `<button class="hub-nowbtn" data-hub="callnow">${t('hub_callnow')}</button>` : ''}`;
+    return;
+  }
+  const act = L?.activity?.state ? t('act_' + L.activity.state) : '';
+  el.innerHTML = `<div class="hub-top"><div><div class="hub-time">${fmtClock()}</div><div class="hub-date">${fmtDate()}</div></div>${gear}</div>
+    <div class="hub-status ${online ? '' : 'off'}"><i></i>${online ? t('hub_protected') : t('hub_not_conn')}</div>
+    <h1>${esc(t('hub_greet', { name: first(w) }))}</h1>
+    <div class="now">${online && act ? esc(t('hub_now', { act })) : ''}</div>
+    <div class="sos-wrap"><button class="sos" id="sosBtn" aria-label="${esc(t('hub_hold'))}">
+      <svg class="ring" viewBox="0 0 100 100"><circle cx="50" cy="50" r="47" style="--c:296"/></svg>${t('hub_sos')}<small>${t('hub_hold')}</small></button></div>
+    <div class="hub-calls">${contacts.slice(0, 2).map((c, i) => `<button class="hub-call" data-hub="call" data-idx="${i}">${svg('call')}${esc(t('hub_call', { name: first(c.name) }))}<span>${esc(c.relation || '')}</span></button>`).join('')
+      || `<div class="empty">${t('hub_no_contacts')}</div>`}</div>`;
+  bindSos();
+}
+let sosTimer = null;
+function bindSos() {
+  const b = $('#sosBtn'); if (!b) return;
+  const start = e => { e.preventDefault(); b.classList.add('holding'); if (navigator.vibrate) navigator.vibrate(30);
+    sosTimer = setTimeout(() => { b.classList.remove('holding'); if (navigator.vibrate) navigator.vibrate([200, 100, 200]); send({ t: 'sos' }); }, 1600); };
+  const stop = () => { clearTimeout(sosTimer); b.classList.remove('holding'); };
+  b.addEventListener('pointerdown', start); ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => b.addEventListener(ev, stop));
+}
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-hub]'); if (!b) return;
+  const a = b.dataset.hub, open = (S.snap?.alerts || []).filter(x => x.status !== 'resolved').at(-1);
+  if (a === 'settings') { S.hubHidden = true; go('profile'); renderHub(); }
+  else if (a === 'call') send({ t: 'callnow', idx: +b.dataset.idx || 0 }, false);
+  else if (a === 'callnow') send({ t: 'callnow', idx: 0, alert: open?.id || '' }, false);
+  else if (a === 'ok' && open) {
+    Object.assign(open, { status: 'resolved', resolution: 'wearer_ok', resolved_by: S.me.name, resolved_ts: Date.now() / 1000 });
+    send({ t: 'resolve', alert: open.id, resolution: 'wearer_ok', note: '' });
+    renderHub(); toast(t('toast_resolved'));
+  }
+});
+$('#hubBack').onclick = () => { S.hubHidden = false; renderHub(); };
 
 async function wake() { try { if (navigator.wakeLock && document.visibilityState === 'visible') await navigator.wakeLock.request('screen'); } catch {} }
 document.addEventListener('visibilitychange', wake);
-setInterval(() => { renderConn(); if (S.ovId) renderOverride(); renderSetup(); }, 1000);
+setInterval(() => { renderConn(); if (S.ovId) renderOverride(); renderSetup(); if (isHub() && !S.hubHidden && !$('#sosBtn')?.classList.contains('holding')) renderHub(); }, 1000);
 applyStatic();
-if (!S.me) onboard();
+if (!S.me || !S.me.family) onboard();
 startNative();
-renderAll(); connect(); wake();
+renderAll(); renderHub(); connect(); wake();
 if (NATIVE && S.me && S.mode === 'vest' && !store.get('vgc_setup_seen', false)) setTimeout(setupSheet, 800);
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { drainNative(); refreshPerms(); } });
 </script>

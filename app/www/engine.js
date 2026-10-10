@@ -22,6 +22,7 @@
     home: { label: 'Home, Bandla, Bilaspur', lat: 31.3260, lon: 76.7590 },
   };
   const now = () => Date.now() / 1000;
+  const unb64 = t => { try { return JSON.parse(decodeURIComponent(escape(atob(t)))); } catch { return null; } };
   const uid = () => Math.random().toString(36).slice(2, 12);
   const today = () => { const d = new Date(); return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`; };
   const load = (k, d) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } };
@@ -48,6 +49,8 @@
       this.vestWifi = st.vestWifi || null;
       this.fw = st.fw || null;
       this.autoSms = !!st.autoSms;
+      this.autoCall = st.autoCall !== false;
+      this.peers = {};                   // other phones of this family: device -> {name, role, kind, ts, vest}
 
       this.lastRx = 0; this.everConnected = !!st.ever; this.wasOnline = false;
       this.sensorOk = [false, false]; this.hbSeen = false; this.rssi = 0; this.frozenUntil = 0;
@@ -69,7 +72,7 @@
     _save() {
       save('vge_state', { profile: this.profile, alerts: this.alerts.slice(-200), feed: this.feed.slice(-400), steps: this.steps,
         stumbles: this.stumbles, seenEv: this.seenEv.slice(-300), calib: this.calib, vestWifi: this.vestWifi, fw: this.fw,
-        ever: this.everConnected, autoSms: this.autoSms });
+        ever: this.everConnected, autoSms: this.autoSms, autoCall: this.autoCall });
       save('vge_actmin', this.actMin.slice(-7 * 24 * 60));
       this.persistDirty = false; this.lastSave = now();
     }
@@ -92,7 +95,7 @@
       const ts = tsMs ? tsMs / 1000 : now();
       const p = line.split(',');
       const live = now() - ts < 10;
-      if (p[0] !== 'ACK' && live) {
+      if (!['ACK', 'CG', 'CS', 'CALL'].includes(p[0]) && live) {
         if (!this.everConnected) { this.everConnected = true; this.addFeed('device', 'vest_connected', 'Vest connected'); }
         else if (this.lastRx && ts - this.lastRx > 10) this.addFeed('device', 'vest_reconnected', 'Vest reconnected');
         this.lastRx = Math.max(this.lastRx, ts);
@@ -104,6 +107,9 @@
         case 'E': return this._event(p, ts);
         case 'F': return this._fall(p, ts, extra);
         case 'ACK': return this._ackFromNotification(p[1], ts);
+        case 'CG': return this._presence(line, ts);
+        case 'CS': return this._sync(line, ts);
+        case 'CALL': return this._autoCalled(p, ts);
       }
     }
 
@@ -198,9 +204,10 @@
       this.createAlert(sev, parseFloat(p[3]), parseFloat(p[4]), ta >= 0 ? ta : null, false, p[1], ts, loc);
     }
 
-    createAlert(severity, peak, tiltChange, tiltAfter, demo, id, ts, loc) {
+    createAlert(severity, peak, tiltChange, tiltAfter, demo, id, ts, loc, kind = 'fall', from = '') {
+      if (id && this.alerts.some(x => x.id === id)) return this.alerts.find(x => x.id === id);
       const a = {
-        id: id || uid(), ts: ts || now(), kind: 'fall', severity, peak_g: Math.round(peak * 100) / 100,
+        id: id || uid(), ts: ts || now(), kind, from, severity, peak_g: Math.round(peak * 100) / 100,
         tilt_change: Math.round(tiltChange), tilt_after: tiltAfter == null || isNaN(tiltAfter) ? null : Math.round(tiltAfter),
         status: 'active', responders: [], escalated: false, resolution: null, resolved_by: null, resolved_ts: null, note: '',
         location: loc || Object.assign({}, this.profile.home, { source: 'home' }), demo: !!demo,
@@ -208,7 +215,8 @@
       if (now() - a.ts > ESCALATE_AFTER_S) a.escalated = true;
       this.alerts.push(a);
       this.alerts.sort((x, y) => x.ts - y.ts);
-      this.addFeed('alert', 'fall_detected', `Fall detected — impact ${peak.toFixed(1)} g` + (demo ? ' (demo)' : ''),
+      if (kind === 'sos') this.addFeed('alert', 'sos_raised', `SOS from ${from}`, { who: from }, 'caregiver', from, a.id, a.ts);
+      else this.addFeed('alert', 'fall_detected', `Fall detected — impact ${peak.toFixed(1)} g` + (demo ? ' (demo)' : ''),
         { sev: severity, g: Math.round(peak * 10) / 10, demo: !!demo }, 'vest', null, a.id, a.ts);
       this.fallBoost = now();
       this.emit({ t: 'alert', alert: a });
@@ -216,11 +224,75 @@
       return a;
     }
 
+    // ------------------------------------------------------------ family (other phones on the same network)
+    _presence(line, ts) {
+      const p = line.split(','), b = unb64(p[3]);
+      if (!b) return;
+      const had = this.peers[p[2]];
+      this.peers[p[2]] = { id: p[2], name: b.name || '?', role: b.role || 'family', kind: b.kind || 'caregiver', ts, vest: !!b.vest };
+      if (!had) {
+        this.dirty = true;
+        // a phone just joined: the home hub shares the wearer's profile and contacts with it
+        if (this.me && this.me.kind === 'hub') this._share({ t: 'profile', profile: { wearer: this.profile.wearer, contacts: this.profile.contacts, home: this.profile.home } });
+      }
+    }
+    caregivers() {
+      const t = now(), out = [];
+      if (this.me) out.push({ id: this.me.id, name: this.me.name, role: this.me.role, kind: this.me.kind || 'caregiver', me: true });
+      for (const k in this.peers) if (t - this.peers[k].ts < 15) out.push(this.peers[k]);
+      return out;
+    }
+    _sync(line, ts) {
+      const p = line.split(','), b = unb64(p[3]);
+      if (!b) return;
+      const a = b.alert ? this.alerts.find(x => x.id === b.alert) : null;
+      switch (b.t) {
+        case 'resp':
+          if (a && a.status !== 'resolved') this._respond(a, { name: b.who, role: b.role }, b.ts || ts);
+          break;
+        case 'res':
+          if (a && a.status !== 'resolved') {
+            Object.assign(a, { status: 'resolved', resolution: b.res || 'assisted', resolved_by: b.who, resolved_ts: b.ts || ts, note: b.note || '' });
+            this.addFeed('alert', 'resolved', `Alert resolved by ${b.who}`, { who: b.who, res: a.resolution }, 'caregiver', b.who, a.id);
+            this.emit({ t: 'alert', alert: a });
+          }
+          break;
+        case 'sos':
+          this.createAlert(3, 0, 0, null, false, b.alert, b.ts || ts, null, 'sos', b.who || '?');
+          break;
+        case 'fall':
+          if (!a) {
+            if (b.line && b.line.startsWith('F,')) this._fall(b.line.split(','), b.ts || ts, b.lat != null ? { lat: b.lat, lon: b.lon } : {});
+            else this.createAlert(+b.sev || 3, 5.2, 88, 92, !!b.demo, b.alert, b.ts || ts);
+          }
+          break;
+        case 'note':
+          if (b.entry && !this.feed.some(e => e.id === b.entry.id)) { this.feed.push(b.entry); this.feed.sort((x, y) => x.ts - y.ts); this._changed(); }
+          break;
+        case 'profile':
+          if (b.profile) { for (const k of ['wearer', 'contacts', 'home']) if (k in b.profile) this.profile[k] = b.profile[k]; this._changed(); this.pushConfig(); }
+          break;
+        case 'call':
+          this.addFeed('call', 'auto_called', `${b.by || 'Home hub'} called ${b.who}`, { who: b.who, by: b.by || '' }, 'caregiver', b.by || null, b.alert || null);
+          break;
+      }
+    }
+    _autoCalled(p, ts) {
+      // CALL,alertId,name,number  (this phone placed an automatic call)
+      this.addFeed('call', 'auto_called', `Called ${p[2]}`, { who: p[2], by: this.me ? this.me.name : '' }, 'caregiver', this.me ? this.me.name : null, p[1] || null, ts);
+    }
+    _share(body) {
+      if (!this.io.native || !this.io.native.syncSend) return;
+      body.uid = body.uid || uid(); body.ts = body.ts || now();
+      this.io.native.syncSend({ body }).catch(() => {});
+    }
+
     _ackFromNotification(id, ts) {
       const a = this.alerts.find(x => x.id === id);
       const me = this.me || load('vgc_me', null);     // the app may not have said hello yet on a cold start
       if (!a || a.status === 'resolved' || !me) return;
       this._respond(a, me, ts);
+      this._share({ t: 'resp', alert: a.id, who: me.name, role: me.role });
     }
     _respond(a, who, ts) {
       if (a.responders.some(r => r.name === who.name)) return;
@@ -331,13 +403,14 @@
         vitals: { hr: Math.round(this.vit.hr), spo2: Math.round(this.vit.spo2), temp: Math.round(this.vit.temp * 10) / 10, simulated: true },
         device: { online, last_rx: this.lastRx || null, sensors: this.sensorOk, rssi: this.rssi, ever: this.everConnected,
           ip: this.vestIp, fw: this.fw, wifi: this.vestWifi, mode: 'vest' },
+        peers: this.caregivers().length - 1,
       };
     }
     snapshot() {
       return {
         t: 'snapshot', profile: this.profile, alerts: this.alerts.slice(-100), feed: this.feed.slice(-150), sleep: this.sleep,
-        calib: this.calib, caregivers: this.me ? [{ id: this.me.id, name: this.me.name, role: this.me.role }] : [],
-        autoSms: this.autoSms, live: this.live(),
+        calib: this.calib, caregivers: this.caregivers(),
+        autoSms: this.autoSms, autoCall: this.autoCall, live: this.live(),
       };
     }
     series(range) {
@@ -360,24 +433,25 @@
       const who = this.me ? this.me.name : 'A caregiver', nat = this.io.native;
       switch (m.t) {
         case 'hello':
-          this.me = { id: m.id || uid(), name: (m.name || 'Caregiver').slice(0, 40), role: (m.role || 'family').slice(0, 30) };
+          this.me = { id: m.id || uid(), name: (m.name || 'Caregiver').slice(0, 40), role: (m.role || 'family').slice(0, 30), kind: m.kind || 'caregiver', family: m.family || '', phone: m.phone || '' };
           this.emit(this.snapshot());
           this.pushConfig();
           break;
         case 'ack': {
           const a = this.alerts.find(x => x.id === m.alert);
-          if (a && a.status !== 'resolved' && this.me) this._respond(a, this.me);
+          if (a && a.status !== 'resolved' && this.me) { this._respond(a, this.me); this._share({ t: 'resp', alert: a.id, who: this.me.name, role: this.me.role }); }
           if (nat) nat.ackAlarm({ id: m.alert }).catch(() => {});
           break;
         }
         case 'resolve': {
           const a = this.alerts.find(x => x.id === m.alert);
           if (a && a.status !== 'resolved') {
-            const res = ['assisted', 'ems', 'false_alarm'].includes(m.resolution) ? m.resolution : 'assisted';
+            const res = ['assisted', 'ems', 'false_alarm', 'wearer_ok'].includes(m.resolution) ? m.resolution : 'assisted';
             Object.assign(a, { status: 'resolved', resolution: res, resolved_by: who, resolved_ts: now(), note: (m.note || '').slice(0, 300) });
             this.io.sendVest('A0');
             this.addFeed('alert', 'resolved', `Alert resolved by ${who}`, { who, res }, 'caregiver', who, a.id);
             this.emit({ t: 'alert', alert: a });
+            this._share({ t: 'res', alert: a.id, res, who, note: a.note });
           }
           if (nat) nat.clearAlarm({ id: m.alert }).catch(() => {});
           break;
@@ -387,15 +461,29 @@
           break;
         case 'log': {
           const txt = (m.text || '').trim().slice(0, 300);
-          if (m.kind === 'meal') this.addFeed('meal', txt ? 'meal' : 'meal_plain', txt ? `Meal: ${txt}` : 'Meal eaten', { text: txt }, 'caregiver', who);
-          else if (m.kind === 'note' && txt) this.addFeed('note', 'note', txt, { text: txt }, 'caregiver', who);
+          let e = null;
+          if (m.kind === 'meal') e = this.addFeed('meal', txt ? 'meal' : 'meal_plain', txt ? `Meal: ${txt}` : 'Meal eaten', { text: txt }, 'caregiver', who);
+          else if (m.kind === 'note' && txt) e = this.addFeed('note', 'note', txt, { text: txt }, 'caregiver', who);
+          if (e) this._share({ t: 'note', entry: e });
           break;
         }
         case 'profile':
           for (const k of ['wearer', 'contacts', 'home']) if (m.profile && k in m.profile) this.profile[k] = m.profile[k];
           this.addFeed('note', 'profile_updated', 'Profile updated', {}, 'caregiver', who);
           this.pushConfig();
+          this._share({ t: 'profile', profile: { wearer: this.profile.wearer, contacts: this.profile.contacts, home: this.profile.home } });
           break;
+        case 'sos': {
+          const a = this.createAlert(3, 0, 0, null, false, 'sos' + Date.now().toString(36), now(), null, 'sos', who);
+          if (nat) nat.sos({ id: a.id, who }).catch(() => {});
+          break;
+        }
+        case 'callnow': {
+          const c = this.profile.contacts[m.idx || 0];
+          if (c && nat) nat.callNow({ number: c.phone, name: c.name, alert: m.alert || '' }).catch(() => {});
+          else if (c) this.emit({ t: 'dial', number: c.phone });
+          return;
+        }
         case 'calibrate':
           if (!this.online()) this.toast('toast_no_vest');
           else { this.io.sendVest('C'); this.toast('toast_cal_start'); this.calibrating = true; this.dirty = true; }
@@ -407,6 +495,7 @@
           return;
         case 'settings':
           if ('autoSms' in m) { this.autoSms = !!m.autoSms; this.pushConfig(); }
+          if ('autoCall' in m) { this.autoCall = !!m.autoCall; this.pushConfig(); }
           break;
         case 'series':
           this.emit(this.series(m.range || '24h'));
@@ -432,7 +521,9 @@
       nat.setConfig({
         lang, wearer: this.profile.wearer.name, contacts: this.profile.contacts.map(c => ({ name: c.name, phone: c.phone })),
         autoSms: this.autoSms, lat: +this.profile.home.lat || 0, lon: +this.profile.home.lon || 0, homeLabel: this.profile.home.label,
-        me: this.me ? this.me.name : '',
+        me: this.me ? this.me.name : '', meRole: this.me ? this.me.role : 'family',
+        kind: this.me ? (this.me.kind || 'caregiver') : 'caregiver', family: this.me ? (this.me.family || '') : '',
+        device: this.me ? this.me.id : '', autoCall: this.autoCall,
       }).catch(() => {});
     }
   }
