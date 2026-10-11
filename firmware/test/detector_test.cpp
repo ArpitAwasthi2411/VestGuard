@@ -21,6 +21,13 @@ int main(int argc, char** argv) {
   bool lowerOnly = argc > 2 && !strcmp(argv[2], "--lower");
   // --events: one CSV line per checked impact with all its evidence (for the explainer)
   bool evCsv = argc > 2 && !strcmp(argv[2], "--events");
+  // Path B tests (3.6). Recorded trials are only 10 s long, so these extend each trial:
+  //   --pad      +40 s lying/standing perfectly still (sensor noise only) in the trial's final pose
+  //   --padmove  +40 s in the final pose with small restless movements (adjusting, breathing deeply)
+  //   --slow     acceleration smoothed over 1 s (no hard impact = a "soft" version of every trial), then --pad
+  bool pad = argc > 2 && (!strcmp(argv[2], "--pad") || !strcmp(argv[2], "--slow") || !strcmp(argv[2], "--padmove"));
+  bool padMove = argc > 2 && !strcmp(argv[2], "--padmove");
+  bool slow = argc > 2 && !strcmp(argv[2], "--slow");
   if (evCsv) printf("trial,label,activity,kind,why,sev,p1,p2,turn_upper,turn_lower,tilt_before,tilt_after,still\n");
   std::ifstream f(argv[1]); std::string line; std::getline(f, line);
   std::vector<S> rows;
@@ -38,6 +45,38 @@ int main(int argc, char** argv) {
       size_t b = a; while (b < rows.size() && rows[b].trial == rows[a].trial) b++;
       uint32_t t0 = rows[a].t, t1 = rows[b - 1].t;
       for (size_t k = b; k-- > a;) { S r = rows[k]; r.t = t0 + (t1 - rows[k].t); r.label = "adl"; r.activity = "reversed " + r.activity; out.push_back(r); }
+      a = b;
+    }
+    rows.swap(out);
+  }
+  if (pad) {
+    std::vector<S> out; size_t a = 0; unsigned seed = 7;
+    auto rnd = [&]() { seed = seed * 1103515245u + 12345u; return ((seed >> 8) & 0xFFFF) / 65535.0f - 0.5f; };
+    while (a < rows.size()) {
+      size_t b = a; while (b < rows.size() && rows[b].trial == rows[a].trial) b++;
+      std::vector<S> tr(rows.begin() + a, rows.begin() + b);
+      if (slow) {                                     // 1 s moving average on both accelerometers
+        std::vector<S> sm = tr;
+        for (size_t i = 0; i < tr.size(); i++) for (int k : {0, 1, 2, 6, 7, 8}) {
+          float sum = 0; int n = 0;
+          for (size_t j = (i >= 25 ? i - 25 : 0); j <= std::min(tr.size() - 1, i + 25); j++) if (!std::isnan(tr[j].v[k])) { sum += tr[j].v[k]; n++; }
+          if (n) sm[i].v[k] = sum / n;
+        }
+        tr = sm;
+        for (auto& r : tr) r.activity = "soft " + r.activity;
+      }
+      float last[12] = {0}; int n = 0;
+      for (size_t i = tr.size() > 50 ? tr.size() - 50 : 0; i < tr.size(); i++) if (!std::isnan(tr[i].v[0]) && !std::isnan(tr[i].v[6])) { for (int k = 0; k < 12; k++) last[k] += tr[i].v[k]; n++; }
+      for (int k = 0; k < 12; k++) last[k] /= std::max(1, n);
+      uint32_t t = tr.back().t;
+      float amp = padMove ? 0.06f : 0.006f;
+      for (int i = 0; i < 2000; i++) {                // 40 s at 50 Hz
+        S r = tr.back(); t += 20; r.t = t;
+        float wob = padMove ? 0.05f * sinf(i * 0.35f) * (((i / 100) % 3) == 0) : 0;   // a shift every few seconds
+        for (int k = 0; k < 12; k++) r.v[k] = last[k] + (k % 6 < 3 ? amp * rnd() + wob : 0.4f * rnd());
+        tr.push_back(r);
+      }
+      for (auto& r : tr) { if (padMove) r.activity = "restless " + r.activity; out.push_back(r); }
       a = b;
     }
     rows.swap(out);
@@ -72,6 +111,7 @@ int main(int argc, char** argv) {
         if (e.kind == vg::Event::FALL) { falls++; snprintf(b, sizeof b, " FALL(sev%u %.1fg %.0fdeg after%.0f)", e.severity, e.peak, e.tiltChange, e.tiltAfter); detail += b; }
         if (e.kind == vg::Event::RISE) { snprintf(b, sizeof b, " rise(%.1fg %.0f->%.0f)", e.peak, e.tiltBefore, e.tiltAfter); detail += b; }
         if (e.kind == vg::Event::NOFALL) { snprintf(b, sizeof b, " nofall:%s(%.1fg)", e.why, e.peak); detail += b; }
+        if (e.kind == vg::Event::SOFT) { falls++; snprintf(b, sizeof b, " SOFT(down %.1fs, still %.0fs, peak %.1fg)", e.downMs / 1000, e.stillMs / 1000, e.peak); detail += b; }
         if (e.kind == vg::Event::RECOVER) { detail += " recovered"; }
         if (e.kind == vg::Event::STUMBLE) { stumbles++; snprintf(b, sizeof b, " stumble(%.1fg)", e.peak); detail += b; }
       }

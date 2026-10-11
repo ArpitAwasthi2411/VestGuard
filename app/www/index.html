@@ -1142,7 +1142,7 @@ function renderOverride() {
   $('#ovSev').textContent = (sos ? t('ov_chip_sos') : ph === 'check' ? t('ov_chip_check') : ph === 'responding' ? t('ov_chip_resp') : t('ov_sev', { sev: t('sev_' + a.severity) })) + (a.demo ? ' · ' + t('ov_demo') : '');
   $('#ovEl').textContent = mmss(age);
   $('#ovElL').textContent = sos ? t('ov_since_sos') : t('ov_since');
-  $('#ovTitle').textContent = sos ? t('ov_title_sos2', { name: a.from || wf }) : t('ov_title2', { name: wf });
+  $('#ovTitle').textContent = sos ? t('ov_title_sos2', { name: a.from || wf }) : t(a.soft ? 'ov_title_soft' : 'ov_title2', { name: wf });
   $('#ovSub').textContent = sos ? t('ov_sub_sos', { time: hhmm(a.ts) })
     : ph === 'check' ? t('ov_sub_check', { name: wf, n: Math.ceil(CHECK_S - age) })
     : t('ov_sub_fall', { time: hhmm(a.ts), how: t(a.tilt_after != null && a.tilt_after >= 60 ? 'ov_how_floor' : 'ov_how_' + a.severity) });
@@ -1157,6 +1157,7 @@ function renderOverride() {
   const autoCall = S.snap.autoCall !== false && contacts.length && (a.hub || sos);
   const steps = [];
   if (sos) steps.push(stepHtml('done', t('st_sos_pressed', { name: a.from || wf }), '', hhmm(a.ts)));
+  else if (a.soft) steps.push(stepHtml('done', t('st_detected_soft'), t('st_detected_soft_d', { n: Math.round(a.ev?.stillS || 30) }), hhmm(a.ts)));
   else steps.push(stepHtml('done', t('st_detected'), t('ov_impact', { g: a.peak_g }), hhmm(a.ts)));
   if (a.hub && !sos) steps.push(ph === 'check'
     ? stepHtml('now', t('st_asking', { name: wf }), t('st_asking_d', { n: Math.ceil(CHECK_S - age) }), '')
@@ -1187,6 +1188,15 @@ function initMap() {}
 /* Why did the vest call this a fall? The same four checks the vest runs, with the measured numbers. */
 function whyHtml(a) {
   const e = a.ev; if (a.kind === 'sos') return '';
+  if (e && e.soft) {      // Path B: soft collapse
+    const r1 = x => x == null ? '—' : (Math.round(x * 10) / 10).toString();
+    const row = (title, help, val, lim) => `<div class="why-row"><span class="ck">${TICK}</span><div><b>${esc(title)}</b><span>${esc(help)}</span></div><div class="v">${val}<small>${esc(lim)}</small></div></div>`;
+    return `<summary>${t('why_title')}<small>${t('why_sub_soft')}</small></summary>`
+      + row(t('why_soft_down'), t('why_soft_down_d'), r1(e.downS) + ' s', t('why_soft_down_l'))
+      + row(t('why_soft_lying'), t('why_soft_lying_d'), Math.round(e.ta || 0) + '°', t('why_soft_lying_l'))
+      + row(t('why_soft_still'), t('why_soft_still_d'), Math.round(e.stillS || 0) + ' s', t('why_soft_still_l'))
+      + `<div class="why-sev">${esc(t('why_soft_note', { g: r1(e.peak) }))}</div>`;
+  }
   const r1 = x => x == null ? '—' : (Math.round(x * 10) / 10).toString(), deg = x => x == null ? '—' : Math.round(x) + '°';
   const row = (ok, title, help, val, lim) => `<div class="why-row${ok ? '' : ' na'}"><span class="ck">${ok ? TICK : '·'}</span><div><b>${esc(title)}</b><span>${esc(help)}</span></div><div class="v">${val}<small>${esc(lim)}</small></div></div>`;
   let rows;

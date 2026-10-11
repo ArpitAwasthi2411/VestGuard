@@ -11,6 +11,13 @@
              Severity 3: peak >= 4 g, or lying and still.  2: peak >= 3 g or lying.  1: otherwise.
              3.4: NOT a fall if the body ends MORE upright than it started (getting up quickly
              from bed / floor): a real fall always ends further from upright.
+    SOFT     3.6 (Path B, from the 2026 project report's "System 2", simplified): a collapse with NO hard
+             impact. Upright (< 30 deg) -> lying (>= 60 deg) within 3 s, then lying and completely
+             still (movement sd < 0.01 g) for 30 s. Getting back up (< 45 deg) cancels it; small
+             movements restart the 30 s. Skipped if Path A already reported this fall.
+    UPRIGHT  3.6: the "standing straight" reference slowly follows the vest while the wearer is clearly
+             upright and moving (walking), so a vest that shifts during the day stays accurate.
+             It can never drift more than 20 deg from the calibration.
     RECOVER  3.4: after a fall, the wearer is upright again for 5 s (within 2 min) -> one event.
     STUMBLE  impact > 2.5 g but posture didn't change (stayed upright).
     ACTIVITY resting / light / walking / active / lying, debounced 8 s.
@@ -50,7 +57,7 @@ inline const char* postureName(int8_t p) {
 }
 
 struct Event {
-  enum Kind : uint8_t { NONE, FALL, STUMBLE, ACTIVITY, CAL_OK, CAL_FAIL, RISE, RECOVER, NOFALL } kind = NONE;
+  enum Kind : uint8_t { NONE, FALL, STUMBLE, ACTIVITY, CAL_OK, CAL_FAIL, RISE, RECOVER, NOFALL, SOFT } kind = NONE;
   uint32_t t = 0;          // sample time of the event
   uint8_t severity = 0;    // FALL
   float peak = 0;          // FALL / STUMBLE, g
@@ -62,6 +69,8 @@ struct Event {
   float p1 = 0, p2 = 0;    // peak g, upper / lower sensor
   float a2 = NAN;          // lower-back turn, deg
   float still = NAN;       // movement after the impact (sd of |a|, g); ~0 = lying still
+  float downMs = 0;        // SOFT: seconds*1000 from upright to lying
+  float stillMs = 0;       // SOFT: how long they then lay still
   const char* why = "";    // NOFALL: "one_sensor" (only one sensor felt it) | "upright_active" (stayed upright, jogging/jumping)
   int8_t from = ACT_NONE;  // ACTIVITY
   int8_t to = ACT_NONE;    // ACTIVITY
@@ -88,7 +97,8 @@ class Detector {
   // ---- calibration ----
   bool calibrated = false;
   float u1[3] = {0, 0, 1}, u2[3] = {0, 0, 1};
-  void setCalibration(const float* a, const float* b) { memcpy(u1, a, 12); memcpy(u2, b, 12); calibrated = true; }
+  float c1[3] = {0, 0, 1}, c2[3] = {0, 0, 1};     // the saved calibration (the adaptive reference stays near it)
+  void setCalibration(const float* a, const float* b) { memcpy(u1, a, 12); memcpy(u2, b, 12); memcpy(c1, a, 12); memcpy(c2, b, 12); calibrated = true; }
   void clearCalibration() { calibrated = false; }
   // 3.4: upper sensor offline -> keep detecting with the lower sensor alone (its own "standing" vector)
   bool lowerPrimary = false;
@@ -149,6 +159,9 @@ class Detector {
     else if (sd < 0.35f) cls = ACT_WALKING;
     else cls = ACT_ACTIVE;
 
+    softTick(now, sd);
+    adaptUpright(cls, aNow);
+
     // 3.4: back on their feet after a fall?
     if (watchRecover) {
       if (!after(recoverUntil, now)) watchRecover = false;
@@ -168,6 +181,13 @@ class Detector {
       if (prev != ACT_NONE) { Event e; e.kind = Event::ACTIVITY; e.t = now; e.from = prev; e.to = cls; push(e); }
     }
   }
+
+  // ---- 3.6 tunables, Path B (soft collapse) ----
+  static constexpr uint32_t SOFT_DOWN_MS = 3000;     // upright -> lying within this time
+  static constexpr uint32_t SOFT_STILL_MS = 30000;   // then still for this long
+  static constexpr uint32_t SOFT_WATCH_MS = 180000;  // give up watching after 3 min of restless lying
+  static constexpr float SOFT_STILL_SD = 0.01f;      // g; lying still is ~0.002, adjusting a pillow > 0.02
+  bool softEnabled = true;
 
   // Data stopped (vest lost both sensors) -> forget the window so stale data can't trigger anything.
   void reset() { count = 0; head = 0; st = IDLE; hasData = false; }
@@ -212,7 +232,7 @@ class Detector {
       Event e; e.t = t;
       if (calN < 20 || calMotion > 30) e.kind = Event::CAL_FAIL;
       else {
-        for (int k = 0; k < 3; k++) { u1[k] = calS1[k] / calN; u2[k] = calS2[k] / calN; }
+        for (int k = 0; k < 3; k++) { u1[k] = calS1[k] / calN; u2[k] = calS2[k] / calN; c1[k] = u1[k]; c2[k] = u2[k]; }
         calibrated = true;
         e.kind = Event::CAL_OK;
       }
@@ -257,6 +277,50 @@ class Detector {
   uint32_t cool = 0; bool coolSet = false;
   struct Cand { uint32_t t; float p1, p2, w; float pre1[3], pre2[3]; bool hasPre1, hasPre2; } c;
   bool watchRecover = false; uint32_t recoverUntil = 0, upSince = 0;
+  uint32_t lastFallT = 0; bool anyFall = false;
+
+  // ---- Path B: soft collapse ----
+  enum { S_IDLE, S_DOWN, S_DONE } sst = S_IDLE;
+  uint32_t lastUprightT = 0, downAt = 0, stillSince = 0; bool haveUpright = false; float downMs = 0, downPeak = 0;
+  void softTick(uint32_t now, float sd) {
+    if (!softEnabled || !calibrated || tilt < 0) { sst = S_IDLE; return; }
+    if (tilt < 30) { lastUprightT = now; haveUpright = true; }
+    switch (sst) {
+      case S_IDLE:
+        if (posture == POST_LYING && haveUpright && now - lastUprightT <= SOFT_DOWN_MS) {
+          sst = S_DOWN; downAt = now; stillSince = 0; downMs = (float)(now - lastUprightT);
+          downPeak = 0;
+          for (int i = 0; i < count; i++) { const Row& r = at(i); if (after(r.t, lastUprightT - 500)) downPeak = fmaxf(downPeak, fmaxf(r.m1, r.m2)); }
+        }
+        break;
+      case S_DOWN:
+        if (tilt < 45 || now - downAt > SOFT_WATCH_MS) { sst = S_IDLE; break; }          // got up / restless rest
+        if (anyFall && after(lastFallT + 60000, now) && after(lastFallT, downAt - 5000)) { sst = S_DONE; break; }   // Path A has it
+        if (sd < SOFT_STILL_SD) { if (!stillSince) stillSince = now; }
+        else stillSince = 0;                                                              // moved: restart the 30 s
+        if (stillSince && now - stillSince >= SOFT_STILL_MS) {
+          Event e; e.kind = Event::SOFT; e.t = now; e.severity = 2; e.lying = true; e.tiltAfter = tilt;
+          e.peak = downPeak; e.downMs = downMs; e.stillMs = (float)(now - stillSince); e.still = sd;
+          push(e); sst = S_DONE;
+          watchRecover = true; recoverUntil = now + 120000; upSince = 0;
+        }
+        break;
+      case S_DONE:
+        if (tilt < 45) sst = S_IDLE;
+        break;
+    }
+  }
+
+  // ---- adaptive upright reference ----
+  void adaptUpright(int8_t cls, const float* aNow) {
+    if (!calibrated || lowerPrimary || tilt < 0 || tilt >= 20 || cls != ACT_WALKING) return;
+    float* u = u1; const float* c = c1;
+    float nu[3];
+    float nn = norm3(aNow), nu0 = norm3(u);
+    if (nn < 0.5f || nu0 < 0.5f) return;
+    for (int k = 0; k < 3; k++) nu[k] = u[k] * (1 - 0.003f) + (aNow[k] / nn * nu0) * 0.003f;
+    if (angleDeg(nu, c) <= 20) memcpy(u, nu, 12);
+  }
 
   void detect(uint32_t t, const Row& r) {
     if (st == IDLE) {
@@ -300,6 +364,7 @@ class Detector {
       bool lying = !isnan(tiltAfter) ? tiltAfter >= 60 : a1 >= 70;
       uint8_t sev = (c.p1 >= 4 || (lying && still < 0.05f)) ? 3 : (c.p1 >= 3 || lying) ? 2 : 1;
       e.kind = Event::FALL; e.severity = sev; e.lying = lying;
+      lastFallT = t; anyFall = true;
       watchRecover = calibrated; recoverUntil = t + 120000; upSince = 0;
     } else if (postureChanged) {
       e.kind = Event::NOFALL; e.why = "one_sensor";          // turned, but the lower back didn't agree

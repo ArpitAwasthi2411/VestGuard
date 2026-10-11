@@ -4,6 +4,12 @@
    ESP32-S3 + 2x BMI323   ->   phone app (or laptop)
   ============================================================
 
+  WHAT'S NEW IN 3.6  (hybrid: the project report's soft-fall system + the 3.x impact checks)
+    * Path B, soft collapse: catches a collapse with no hard impact (sliding down a wall, slumping off
+      a chair): upright -> lying within 3 s, then completely still for 30 s. Sent as a fall alert
+      (F line, last fields "soft,<down ms>,<still ms>"). Path A (the four impact checks) is unchanged.
+    * The "standing straight" reference slowly follows a vest that shifts during the day (max 20 deg).
+
   WHAT'S NEW IN 3.5
     * Explainable decisions: every impact the vest checks is sent with its numbers
       (impact g of both sensors, upper/lower turn, tilt before/after, stillness) and the
@@ -74,7 +80,7 @@ const int NETWORK_COUNT = sizeof(NETWORKS) / sizeof(NETWORKS[0]);
 const char* DEFAULT_SSID = NETWORKS[0].ssid;
 // ============================================================
 
-#define FW_VERSION  "3.5"
+#define FW_VERSION  "3.6"
 #define DATA_PORT   4210
 #define CMD_PORT    4211
 #define I2C_SDA     8
@@ -478,6 +484,12 @@ void handleDetectorEvents() {
         // F,id,sev,peak,turn,tiltAfter,lying | tiltBefore,p1,p2,turnLower,still   (first 7 fields unchanged)
         eventf(true, "%u,%.2f,%.0f,%.0f,%d,%.0f,%.2f,%.2f,%.0f,%.3f", e.severity, e.peak, e.tiltChange, nz(e.tiltAfter), e.lying ? 1 : 0,
                nz(e.tiltBefore), e.p1, e.p2, nz(e.a2), isnan(e.still) ? -1.0f : e.still);
+        break;
+      case vg::Event::SOFT:
+        buzzerStart(2);
+        // same F layout as Path A; turn = tilt reached; the extra fields say it was a soft collapse
+        eventf(true, "%u,%.2f,%.0f,%.0f,1,-1,%.2f,%.2f,-1,%.3f,soft,%.0f,%.0f", e.severity, e.peak, nz(e.tiltAfter), nz(e.tiltAfter),
+               e.peak, e.peak, isnan(e.still) ? -1.0f : e.still, e.downMs, e.stillMs);
         break;
       case vg::Event::STUMBLE:  eventf(false, "STUMBLE,%.2f,%.0f,%.2f,%.0f", e.peak, e.tiltChange, e.p2, nz(e.a2)); break;
       case vg::Event::RISE:     eventf(false, "RISE,%.2f,%.0f,%.0f,%.0f", e.peak, nz(e.tiltBefore), nz(e.tiltAfter), e.tiltChange); break;

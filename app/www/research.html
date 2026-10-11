@@ -211,6 +211,31 @@ body.demo .demo-only{display:flex}
 .kbd{font-family:var(--mono);font-size:11px;padding:1px 5px;border:1px solid var(--line2);border-radius:4px;color:var(--muted)}
 .nosupport{display:none;margin:12px 20px 0;padding:10px 14px;border-radius:10px;background:var(--warn-dim);color:var(--warn);font-size:13px;border:1px solid var(--warn)}
 @media (max-width:980px){.top{flex-wrap:wrap}.stats{order:3;width:100%;margin-left:0}.controls{margin-left:auto;flex-wrap:wrap}.brand span{display:none}}
+.tcard{margin-top:10px;border:1px solid var(--line);border-radius:12px;background:var(--panel2);padding:12px 12px 10px;font-size:13px;display:grid;gap:8px}
+.tcard .hd{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.tcard .hd b{font-size:14.5px}
+.tcard .tag{font-family:var(--mono);font-size:10.5px;padding:2px 6px;border-radius:5px;background:var(--panel);border:1px solid var(--line);color:var(--muted)}
+.tcard .exp{margin-left:auto;font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px}
+.exp.fall{background:var(--danger-dim);color:var(--danger)} .exp.none{background:var(--accent-dim);color:var(--accent)} .exp.soft{background:var(--warn-dim);color:var(--warn)}
+.tcard .flow{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;align-items:start}
+.tcard .flow span{font-size:10.5px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);padding-top:2px}
+.tcard .safety{color:var(--warn);font-size:12px}
+.tcard .why{color:var(--muted);font-size:12px}
+.cue{position:fixed;left:50%;top:14px;transform:translateX(-50%);z-index:60;padding:10px 18px;border-radius:14px;font-weight:700;font-size:18px;display:none;box-shadow:0 8px 24px rgba(0,0,0,.35);max-width:92vw;text-align:center}
+.cue.on{display:block}
+.cue.hold{background:var(--panel);color:var(--text);border:1px solid var(--line2)} .cue.go{background:var(--accent);color:#04140c}
+.score{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.score div{border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:var(--panel2)}
+.score b{display:block;font-family:var(--mono);font-size:18px}
+.score span{font-size:11px;color:var(--muted)}
+.vd{font-family:var(--mono);font-size:10.5px;padding:1px 6px;border-radius:5px;background:var(--panel2);border:1px solid var(--line)}
+.vd.al{background:var(--danger-dim);color:var(--danger);border-color:transparent}
+.ok-t{color:var(--accent);font-weight:600} .no-t{color:var(--danger);font-weight:600}
+.syschk{display:grid;gap:6px}
+.syschk .it{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;font-size:12.5px;padding:7px 9px;border:1px solid var(--line);border-radius:9px}
+.syschk .it small{display:block;color:var(--muted)}
+.syschk .it .b{display:flex;gap:4px}
+.syschk button.on.pass{background:var(--accent-dim);color:var(--accent)} .syschk button.on.fail{background:var(--danger-dim);color:var(--danger)}
 .calrow{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--panel2);font-size:12.5px;margin-bottom:12px}
 .calrow .grow{color:var(--muted)}
 </style>
@@ -261,7 +286,7 @@ body.demo .demo-only{display:flex}
   <aside class="card side">
     <nav class="tabs">
       <button class="tab on" data-tab="verify"><span class="num">1</span>Verify</button>
-      <button class="tab" data-tab="collect"><span class="num">2</span>Collect</button>
+      <button class="tab" data-tab="collect"><span class="num">2</span>Test &amp; record</button>
       <button class="tab" data-tab="detect"><span class="num">3</span>Detect</button>
     </nav>
 
@@ -297,10 +322,12 @@ body.demo .demo-only{display:flex}
       <div class="sec">
         <div class="calrow"><span class="dot" id="calDot"></span><span class="grow" id="calTxt">Not calibrated</span><button class="btn sm" id="calBtn2">Calibrate</button></div>
         <div class="form">
-          <label>Subject ID<input type="text" id="subj" value="S01" maxlength="12"></label>
-          <label>Auto-stop (s, 0 = manual)<input type="number" id="dur" value="10" min="0" max="120"></label>
-          <label class="full">Activity<select id="act"></select></label>
+          <label>Wearer<input type="text" id="subj" value="S01" maxlength="12" title="Use a different ID for every person (S01 Arpit, S02 Yogit …)"></label>
+          <label>Auto-stop (s, 0 = manual)<input type="number" id="dur" value="15" min="0" max="120"></label>
+          <label class="full">Test<select id="act"></select></label>
+          <label class="full">Variation<select id="var"></select></label>
         </div>
+        <div class="tcard" id="tcard"></div>
         <div class="checkrow">
           <label><input type="checkbox" id="cdChk" checked> 3 s countdown</label>
           <label><input type="checkbox" id="autoDl"> Auto-download each trial</label>
@@ -312,6 +339,10 @@ body.demo .demo-only{display:flex}
         </div>
       </div>
       <div class="sec">
+        <div class="sec-h">Scoreboard <span class="r muted">vest's own verdict vs what should happen</span></div>
+        <div class="score" id="score"></div>
+      </div>
+      <div class="sec">
         <div class="sec-h">Coverage <span class="r muted" id="covTxt"></span></div>
         <div class="chips" id="chips"></div>
       </div>
@@ -320,10 +351,14 @@ body.demo .demo-only{display:flex}
         <div class="trials" id="trials"></div>
       </div>
       <div class="sec">
+        <div class="sec-h">System checks <span class="r muted">do these in the normal app, tick the result</span></div>
+        <div class="syschk" id="sysChk"></div>
+      </div>
+      <div class="sec">
         <details><summary>Edit activity list</summary>
           <textarea id="actEdit" spellcheck="false"></textarea>
           <div class="row" style="margin-top:6px"><button class="btn sm" id="actSave">Save list</button><button class="btn sm ghost" id="actReset">Reset to default</button></div>
-          <p class="hint">One per line. Prefix <span class="mono">F:</span> for falls, <span class="mono">A:</span> for ADLs. Match your existing dataset labels so old and new data merge cleanly.</p>
+          <p class="hint">Extra activities, one per line. Prefix <span class="mono">F:</span> for falls, <span class="mono">A:</span> for ADLs. They are added after the built-in test protocol.</p>
         </details>
       </div>
     </div>
@@ -348,7 +383,7 @@ body.demo .demo-only{display:flex}
         </div>
       </div>
       <div class="sec">
-        <div class="sec-h">Rule-based detector <span class="r muted">placeholder until ML model is on-device</span></div>
+        <div class="sec-h">Rule-based detector <span class="r muted">a browser copy of the impact rules for tuning; the vest's own verdicts show in Test &amp; record</span></div>
         <div class="slider"><span>Impact threshold</span><span class="v" id="vImp"></span><input type="range" id="pImp" min="1.5" max="6" step="0.1" value="2.5"></div>
         <div class="slider"><span>Min orientation change</span><span class="v" id="vAng"></span><input type="range" id="pAng" min="20" max="90" step="1" value="45"></div>
         <div class="slider"><span>Post-impact window</span><span class="v" id="vWin"></span><input type="range" id="pWin" min="0.8" max="4" step="0.1" value="1.5"></div>
@@ -373,6 +408,7 @@ body.demo .demo-only{display:flex}
   </aside>
 </main>
 
+<div class="cue" id="cue"></div>
 <div class="countdown" id="cdOverlay"><div><div id="cdNum">3</div><p id="cdAct"></p></div></div>
 <div id="toast"></div>
 
@@ -443,6 +479,9 @@ function handleLine(line) {
     else if (p[1] === 'FW') S.fw = p[2] + ' ' + p[3];
     else if (p[1] === 'FROZEN') toast(`⚠ ${p[2]} sensor froze (${p[4]}) — auto re-initialising`);
     else if (p[1] === 'RATE') { S.target = +p[2]; $('#rateSel').value = String(S.target); }
+  } else if (c === 'F' || c === 'E') {
+    logLine(line);
+    Collect.onVest(line);
   } else logLine(line);
 }
 
@@ -931,28 +970,138 @@ $('#tap2Btn').onclick = () => Verify.startTap(2);
 /* =========================================================
    2 · COLLECT
    ========================================================= */
-const DEFAULT_ACTS = [
-  'F:Forward fall', 'F:Backward fall', 'F:Lateral fall (left)', 'F:Lateral fall (right)', 'F:Trip while walking', 'F:Slip fall',
-  'F:Fall from chair', 'F:Fall from bed', 'F:Fall onto knees', 'F:Collapse / syncope', 'F:Fall on stairs',
-  'A:Standing still', 'A:Walking', 'A:Jogging', 'A:Sitting down', 'A:Standing up', 'A:Lying down', 'A:Getting up from bed',
-  'A:Lying still', 'A:Bending to pick object', 'A:Squatting', 'A:Stairs up', 'A:Stairs down', 'A:Jumping',
-  'A:Sitting hard on chair', 'A:Kneeling', 'A:Turning around', 'A:Stumble (recovered)', 'A:Tying shoelaces'
+/* The test protocol. Every trial: hold the START pose still (first 3 s), do the action on "GO",
+   then hold the END pose still until the timer stops. Names match the 6 + 8 Oct dataset labels.
+   expect: fall = must alert · soft = must alert (Path B, slow collapse) · none = must NOT alert */
+const PROTOCOL = [
+  { id: 'F1', label: 'fall', name: 'Forward fall', expect: 'fall', secs: 15, start: 'Standing still, arms relaxed', act: 'Lean forward and fall onto the mat; break it with hands or knees', end: 'Lying face down, still', vars: ['Hands first', 'Knees first', 'After 2 steps'], safety: 'Thick mat or mattress. A spotter stands beside you.' },
+  { id: 'F2', label: 'fall', name: 'Backward fall', expect: 'fall', secs: 15, start: 'Standing still, back to the mat', act: 'Step back, sit back onto the mat and roll onto your back', end: 'Lying on your back, still', vars: ['Sit back first', 'Straight back (crash mat only)'], safety: 'Tuck your chin so your head does not hit.' },
+  { id: 'F3', label: 'fall', name: 'Lateral fall (left)', expect: 'fall', secs: 15, start: 'Standing still, mat on your left', act: 'Fall sideways to the left onto the mat', end: 'Lying on your left side, still', vars: ['Arm under the body', 'Arm out'] },
+  { id: 'F4', label: 'fall', name: 'Lateral fall (right)', expect: 'fall', secs: 15, start: 'Standing still, mat on your right', act: 'Fall sideways to the right onto the mat', end: 'Lying on your right side, still', vars: ['Arm under the body', 'Arm out'] },
+  { id: 'F5', label: 'fall', name: 'Trip while walking', expect: 'fall', secs: 15, start: 'Standing still, 3 steps from the mat', act: 'Walk towards the mat, catch your foot, fall forward', end: 'Lying face down, still', vars: ['Slow walk', 'Normal walk'] },
+  { id: 'F6', label: 'fall', name: 'Slip fall', expect: 'fall', secs: 15, start: 'Standing still, 3 steps from the mat', act: 'Walk, let one foot slide forward, land on your hips then back', end: 'Sitting or lying on your back', vars: ['Land sitting', 'Land lying'] },
+  { id: 'F7', label: 'fall', name: 'Fall onto knees', expect: 'fall', secs: 15, start: 'Standing still', act: 'Drop to both knees, then forward onto your hands', end: 'Kneeling, or flat on the mat', vars: ['Stay kneeling', 'Go flat'], why: 'Kneeling ends only ~40° from upright: the hard-impact rule must catch it.' },
+  { id: 'F8', label: 'fall', name: 'Collapse / syncope', expect: 'fall', secs: 15, start: 'Standing still', act: 'Go limp all at once and fold down onto the mat', end: 'Lying on your side, still', vars: ['Fold forward', 'Fold sideways'] },
+  { id: 'F9', label: 'fall', name: 'Slide down wall', expect: 'soft', secs: 50, start: 'Standing with your back against a wall, mat below', act: 'Slide down slowly to sitting on the floor, then slump sideways onto the mat', end: 'Lying on your side, COMPLETELY still for 35 s', vars: ['Slow (about 5 s)', 'Very slow (about 10 s)'], why: 'No hard impact: only Path B (soft collapse) can catch this.' },
+  { id: 'F10', label: 'fall', name: 'Faint from chair', expect: 'soft', secs: 50, start: 'Sitting on a chair, mat in front', act: 'Slump forward or sideways off the chair onto the mat', end: 'Lying, COMPLETELY still for 35 s', vars: ['Forward', 'Sideways'], why: 'May or may not hit hard; either path may catch it.' },
+  { id: 'F11', label: 'fall', name: 'Fall from bed', expect: 'fall', secs: 15, start: 'Lying at the edge of a bed, mat on the floor', act: 'Roll off the bed onto the mat', end: 'Lying on the floor, still', vars: ['Face up', 'On your side'], why: 'Starts lying: "went down, not up" must still pass.' },
+  { id: 'F12', label: 'fall', name: 'Fall then get up', expect: 'fall', secs: 30, start: 'Standing still', act: 'Fall forward onto the mat, wait 5 s, then get up', end: 'Standing still for 10 s', vars: ['Get up slowly', 'Get up fast'], why: 'Checks the "back on their feet" report after a fall.' },
+  { id: 'A1', label: 'adl', name: 'Standing still', expect: 'none', secs: 20, start: 'Standing', act: 'Stand still', end: 'Standing', vars: ['Normal'] },
+  { id: 'A2', label: 'adl', name: 'Walking', expect: 'none', secs: 30, start: 'Standing', act: 'Walk about 20 m and back', end: 'Standing', vars: ['Slow', 'Normal', 'Fast'] },
+  { id: 'A3', label: 'adl', name: 'Stairs up', expect: 'none', secs: 25, start: 'Standing at the bottom of the stairs', act: 'Walk up one flight', end: 'Standing at the top', vars: ['Holding the rail', 'No rail'] },
+  { id: 'A4', label: 'adl', name: 'Stairs down', expect: 'none', secs: 25, start: 'Standing at the top of the stairs', act: 'Walk down one flight', end: 'Standing at the bottom', vars: ['Holding the rail', 'No rail'] },
+  { id: 'A5', label: 'adl', name: 'Sitting down', expect: 'none', secs: 15, start: 'Standing in front of a chair', act: 'Sit down', end: 'Sitting still', vars: ['Normal', 'Drop down hard'] },
+  { id: 'A6', label: 'adl', name: 'Standing up', expect: 'none', secs: 15, start: 'Sitting on a chair', act: 'Stand up', end: 'Standing still', vars: ['Normal', 'Fast', 'Pushing on your knees'] },
+  { id: 'A7', label: 'adl', name: 'Lying down', expect: 'none', secs: 15, start: 'Sitting on the edge of a bed', act: 'Lie down on the bed', end: 'Lying', vars: ['Normal', 'Flop down hard', 'Normal, then stay still 35 s (set auto-stop 50)'], why: '"Flop down hard" and "stay still" are known look-alikes of a fall: record them so we can measure it.' },
+  { id: 'A8', label: 'adl', name: 'Getting up from bed', expect: 'none', secs: 15, start: 'Lying on a bed', act: 'Get up and stand', end: 'Standing still', vars: ['Normal', 'Fast (jump up)'], why: 'The false alarm seen on 11 Oct; firmware 3.4+ must stay quiet.' },
+  { id: 'A9', label: 'adl', name: 'Getting up from floor', expect: 'none', secs: 20, start: 'Lying on the mat', act: 'Stand up', end: 'Standing still', vars: ['Normal', 'Fast'] },
+  { id: 'A10', label: 'adl', name: 'Bending to pick object', expect: 'none', secs: 15, start: 'Standing', act: 'Bend, pick something up from the floor, stand up', end: 'Standing still', vars: ['Slow', 'Fast'] },
+  { id: 'A11', label: 'adl', name: 'Squatting', expect: 'none', secs: 25, start: 'Standing', act: 'Squat fully (Indian toilet posture), hold 10 s, stand up', end: 'Standing still', vars: ['Normal'] },
+  { id: 'A12', label: 'adl', name: 'Sitting on floor', expect: 'none', secs: 25, start: 'Standing', act: 'Sit cross-legged on the floor, wait 5 s, stand up', end: 'Standing still', vars: ['Normal', 'Using hands to get up'] },
+  { id: 'A13', label: 'adl', name: 'Prayer prostration', expect: 'none', secs: 25, start: 'Standing', act: 'Kneel and bow until your forehead touches the floor, hold 3 s, come back up', end: 'Standing or kneeling', vars: ['Sajda', 'Dandvat (lying flat, face down)'], why: 'Looks very much like a fall to a sensor. Very common for elders in India.' },
+  { id: 'A14', label: 'adl', name: 'Rolling over in bed', expect: 'none', secs: 20, start: 'Lying on your back on a bed', act: 'Roll onto one side, then onto the other side', end: 'Lying', vars: ['Normal'] },
+  { id: 'A15', label: 'adl', name: 'Stumble (recovered)', expect: 'none', secs: 15, start: 'Standing', act: 'Walk, catch your foot, recover without falling', end: 'Standing still', vars: ['Small trip', 'Big trip'] },
+  { id: 'A16', label: 'adl', name: 'Jogging', expect: 'none', secs: 20, start: 'Standing', act: 'Jog on the spot or across the room', end: 'Standing still', vars: ['Slow', 'Fast'] },
+  { id: 'A17', label: 'adl', name: 'Jumping', expect: 'none', secs: 15, start: 'Standing', act: 'Jump 5 times', end: 'Standing still', vars: ['Small jumps', 'Big jumps'] },
+  { id: 'A18', label: 'adl', name: 'Kneeling', expect: 'none', secs: 20, start: 'Standing', act: 'Kneel down slowly on one knee, then both, then get up', end: 'Standing still', vars: ['Normal'] },
+  { id: 'A19', label: 'adl', name: 'Tying shoelaces', expect: 'none', secs: 20, start: 'Standing', act: 'Bend or kneel and tie both shoes', end: 'Standing still', vars: ['Bending', 'Kneeling', 'Foot on a chair'] },
+  { id: 'A20', label: 'adl', name: 'Turning around', expect: 'none', secs: 15, start: 'Standing', act: 'Turn around quickly 3 times', end: 'Standing still', vars: ['Normal'] },
+  { id: 'A21', label: 'adl', name: 'Back pat / hug', expect: 'none', secs: 15, start: 'Standing', act: 'Someone pats your back firmly 3 times, then hugs you', end: 'Standing still', vars: ['Pat', 'Hug'] },
+  { id: 'A22', label: 'adl', name: 'Lying still', expect: 'none', secs: 20, start: 'Lying on a bed', act: 'Stay lying, breathe normally', end: 'Lying', vars: ['On back', 'On side'] },
+  { id: 'A23', label: 'adl', name: 'Vest dropped (not worn)', expect: 'none', secs: 15, start: 'Vest held in your hand', act: 'Drop it on the floor, or throw it onto a bed', end: 'Vest lying still', vars: ['Dropped', 'Thrown on bed'], why: 'Known risk: a dropped vest may look like a fall. Measure it.' },
 ];
+const SYSTEM_CHECKS = [
+  ['R1', 'Wi-Fi drop', 'Turn the phone hotspot off for 10 s while walking, then on. App shows "Reconnecting", no alarm.'],
+  ['R2', 'Upper sensor unplugged', 'Unplug the upper-back sensor, then do a forward fall. The lower sensor alone must still alert.'],
+  ['R3', 'Wearer says OK', 'With the home phone present, fall and press "I\'m OK" within 30 s. Caregiver phones only chime.'],
+  ['R4', 'Nobody answers', 'Fall and do not answer. Caregiver phones ring at 30 s; the home phone calls the first contact at 60 s.'],
+  ['R5', 'Someone responds', 'Tap "I\'m going to help" on a caregiver phone. The home phone says who is coming; other phones stop ringing.'],
+  ['R6', 'Range', 'Walk to the farthest room with the vest on. Note where the app shows "Reconnecting".'],
+  ['R7', 'Battery', 'Run the vest on battery for 1 h while walking around. No "battery dipped" restarts in the feed.'],
+];
+const protoByName = n => PROTOCOL.find(p => p.name === n);
+const DEFAULT_ACTS = [];
 const TARGET_PER_ACT = 5;
 const Collect = {
   acts: [], trials: [], cur: null, unsaved: false, nextId: 1, cdTimer: null,
   loadActs() {
-    const raw = store.get('vg_acts', DEFAULT_ACTS);
-    this.acts = raw.map(s => s.trim()).filter(Boolean).map(s => {
+    const extra = store.get('vg_acts_extra', []).map(s => s.trim()).filter(Boolean).map(s => {
       const m = s.match(/^([FA]):\s*(.+)$/i);
       return m ? { label: m[1].toUpperCase() === 'F' ? 'fall' : 'adl', name: m[2] } : { label: 'adl', name: s };
-    });
-    $('#actEdit').value = this.acts.map(a => (a.label === 'fall' ? 'F:' : 'A:') + a.name).join('\n');
+    }).filter(a => !protoByName(a.name));
+    this.acts = PROTOCOL.map(p => ({ label: p.label, name: p.name, p })).concat(extra);
+    $('#actEdit').value = store.get('vg_acts_extra', []).join('\n');
     const sel = $('#act'), prev = sel.value;
-    const grp = l => this.acts.map((a, i) => a.label === l ? `<option value="${i}">${a.name}</option>` : '').join('');
-    sel.innerHTML = `<optgroup label="Falls">${grp('fall')}</optgroup><optgroup label="Activities of daily living">${grp('adl')}</optgroup>`;
+    const grp = l => this.acts.map((a, i) => a.label === l ? `<option value="${i}">${a.p ? a.p.id + ' · ' : ''}${a.name}</option>` : '').join('');
+    sel.innerHTML = `<optgroup label="Falls (must alert)">${grp('fall')}</optgroup><optgroup label="Everyday (must stay quiet)">${grp('adl')}</optgroup>`;
     if (prev && +prev < this.acts.length) sel.value = prev;
-    this.renderCoverage();
+    this.renderCard(); this.renderCoverage(); this.renderScore(); this.renderSys();
+  },
+  cur_act() { return this.acts[+$('#act').value]; },
+  renderCard() {
+    const a = this.cur_act(), p = a && a.p, v = $('#var');
+    if (!p) { $('#tcard').innerHTML = '<div class="why">Custom activity: no instructions.</div>'; v.innerHTML = '<option>—</option>'; return; }
+    v.innerHTML = p.vars.map(x => `<option>${x}</option>`).join('');
+    $('#dur').value = /35 s/.test(v.value) ? 50 : p.secs;
+    const expTxt = { fall: 'must alert', soft: 'must alert (soft)', none: 'must stay quiet' }[p.expect];
+    $('#tcard').innerHTML = `<div class="hd"><span class="tag">${p.id}</span><b>${p.name}</b><span class="exp ${p.expect}">${expTxt}</span></div>
+      <div class="flow"><span>Start</span><div>${p.start} — hold still 3 s</div><span>Do</span><div>${p.act}</div><span>End</span><div>${p.end}</div></div>
+      ${p.safety ? `<div class="safety">⚠ ${p.safety}</div>` : ''}${p.why ? `<div class="why">${p.why}</div>` : ''}`;
+  },
+  verdictOf(t) {
+    const al = (t.vest || []).filter(e => e.k === 'FALL' || e.k === 'SOFT');
+    if (al.length) return al[0].k;
+    const other = (t.vest || []).filter(e => e.k !== 'RECOVER').at(-1);
+    return other ? other.k : 'quiet';
+  },
+  passOf(t) {
+    const p = protoByName(t.activity); if (!p || !t.vest) return null;
+    const v = this.verdictOf(t), alert = v === 'FALL' || v === 'SOFT';
+    return p.expect === 'none' ? !alert : alert;
+  },
+  /* a decision line from the vest (F / E). It belongs to the trial being recorded, or to the one that just ended. */
+  onVest(line) {
+    const p = line.split(','), c = line[0];
+    let ev = null;
+    if (c === 'F') ev = { k: p[12] === 'soft' ? 'SOFT' : 'FALL', sev: +p[2], peak: +p[3], turn: +p[4], d: p.slice(2).join(',') };
+    else if (c === 'E' && ['RISE', 'NOFALL', 'STUMBLE', 'RECOVER'].includes(p[2])) ev = { k: p[2] === 'NOFALL' ? 'NOFALL:' + p[3] : p[2], d: p.slice(3).join(',') };
+    if (!ev) return;
+    if (this.seenIds.has(p[1])) return; this.seenIds.add(p[1]);
+    const tgt = this.cur || (this.last && performance.now() - this.last.stoppedAt < 4000 ? this.last : null);
+    if (!tgt) return;
+    (tgt.vest = tgt.vest || []).push(ev);
+    if (this.cur) this.showCue(ev.k === 'FALL' || ev.k === 'SOFT' ? 'go' : 'hold', 'Vest: ' + ev.k + (ev.peak ? ` · ${ev.peak.toFixed(1)} g` : ''), 2500);
+    else { this.renderTrials(); this.renderScore(); }
+  },
+  seenIds: new Set(),
+  cueT: null,
+  showCue(cls, text, ms) {
+    const el = $('#cue'); el.className = 'cue on ' + cls; el.textContent = text;
+    clearTimeout(this.cueT); if (ms) this.cueT = setTimeout(() => el.classList.remove('on'), ms);
+  },
+  beep(f = 880, d = .15) { try { const A = this.ac = this.ac || new AudioContext(), o = A.createOscillator(), g = A.createGain(); o.frequency.value = f; o.connect(g); g.connect(A.destination); g.gain.setValueAtTime(.2, A.currentTime); g.gain.exponentialRampToValueAtTime(.001, A.currentTime + d); o.start(); o.stop(A.currentTime + d); } catch {} },
+  phase(c) {      // spoken-free cues: hold start pose -> GO -> hold end pose
+    const p = protoByName(c.activity); if (!p || !c.autoMs) return;
+    const s = c.durMs / 1000, endHold = p.expect === 'soft' || /35 s/.test(c.variation) ? 37 : Math.min(10, c.autoMs / 1000 - 5);
+    const ph = s < 3 ? 'start' : s < c.autoMs / 1000 - endHold ? 'go' : 'end';
+    if (ph === c.ph) return; c.ph = ph;
+    if (ph === 'start') this.showCue('hold', 'Hold still · ' + p.start);
+    else if (ph === 'go') { this.beep(1046, .25); this.showCue('go', 'GO · ' + p.act); }
+    else { this.beep(660, .2); this.showCue('hold', 'Hold still · ' + p.end); }
+  },
+  renderScore() {
+    const keep = this.trials.filter(t => !t.bad && protoByName(t.activity) && t.vest);
+    const f = keep.filter(t => protoByName(t.activity).expect !== 'none'), a = keep.filter(t => protoByName(t.activity).expect === 'none');
+    const fOk = f.filter(t => this.passOf(t)).length, aBad = a.filter(t => !this.passOf(t)).length;
+    const pct = (x, n) => n ? Math.round(100 * x / n) + '%' : '—';
+    $('#score').innerHTML = `<div><b>${fOk}/${f.length}</b><span>falls caught · ${pct(fOk, f.length)}</span></div>
+      <div><b>${aBad}/${a.length}</b><span>false alarms · ${pct(a.length - aBad, a.length)} quiet</span></div>
+      <div><b>${new Set(keep.map(t => t.subject)).size}</b><span>wearers</span></div>`;
+  },
+  renderSys() {
+    const st = store.get('vg_sys', {});
+    $('#sysChk').innerHTML = SYSTEM_CHECKS.map(([id, n, d]) => `<div class="it"><div><b>${id} · ${n}</b><small>${d}</small></div>
+      <div class="b"><button class="btn sm${st[id] === 'pass' ? ' on pass' : ''}" data-sys="${id}" data-r="pass">Pass</button><button class="btn sm${st[id] === 'fail' ? ' on fail' : ''}" data-sys="${id}" data-r="fail">Fail</button></div></div>`).join('');
   },
   counts() { const c = {}; this.trials.forEach(t => { if (!t.bad) c[t.activity] = (c[t.activity] || 0) + 1; }); return c; },
   renderCoverage() {
@@ -966,8 +1115,9 @@ const Collect = {
   },
   renderTrials() {
     if (!this.trials.length) { $('#trials').innerHTML = '<div class="empty">No trials recorded yet</div>'; return; }
-    $('#trials').innerHTML = `<table><tr><th>#</th><th>Activity</th><th></th><th>Subj</th><th>Dur</th><th>N</th><th>Drop</th><th></th></tr>${
-      this.trials.slice().reverse().map(t => `<tr class="${t.bad ? 'bad' : ''}"><td class="mono">${t.id}</td><td>${t.activity}</td><td><span class="lb ${t.label}">${t.label}</span></td><td class="mono">${t.subject}</td><td class="mono">${(t.durMs / 1000).toFixed(1)}s</td><td class="mono">${t.rows.length}</td><td class="mono">${t.drops}</td><td><button class="btn sm ghost" data-bad="${t.id}">${t.bad ? 'Keep' : 'Discard'}</button></td></tr>`).join('')}</table>`;
+    $('#trials').innerHTML = `<table><tr><th>#</th><th>Test</th><th>Vest said</th><th></th><th>Subj</th><th>Dur</th><th>N</th><th>Drop</th><th></th></tr>${
+      this.trials.slice().reverse().map(t => { const v = this.verdictOf(t), ok = this.passOf(t); return `<tr class="${t.bad ? 'bad' : ''}"><td class="mono">${t.id}</td><td>${t.testId ? t.testId + ' ' : ''}${t.activity}${t.variation ? `<br><small class="muted">${t.variation}</small>` : ''}</td>
+        <td><span class="vd${v === 'FALL' || v === 'SOFT' ? ' al' : ''}">${v}</span></td><td>${ok === null ? '' : ok ? '<span class="ok-t">✓ pass</span>' : '<span class="no-t">✗ fail</span>'}</td><td class="mono">${t.subject}</td><td class="mono">${(t.durMs / 1000).toFixed(1)}s</td><td class="mono">${t.rows.length}</td><td class="mono">${t.drops}</td><td><button class="btn sm ghost" data-bad="${t.id}">${t.bad ? 'Keep' : 'Discard'}</button></td></tr>`; }).join('')}</table>`;
   },
   arm() {
     if (this.cur) return this.stop();
@@ -985,6 +1135,7 @@ const Collect = {
     const a = this.acts[+$('#act').value];
     const prevN = this.trials.filter(t => t.activity === a.name && t.subject === $('#subj').value.trim()).length;
     this.cur = { id: this.nextId++, subject: $('#subj').value.trim() || 'S00', activity: a.name, label: a.label, rep: prevN + 1,
+      testId: a.p ? a.p.id : '', variation: $('#var').value || '', expect: a.p ? a.p.expect : '', vest: [],
       rows: [], t0: null, durMs: 0, drops0: S.drops, rate: S.target, started: new Date().toISOString(), autoMs: Math.max(0, +$('#dur').value || 0) * 1000,
       link: S.mode, calibration: Cal.u ? { ...Cal.u } : null };
     if (!Cal.u) toast('Recording without upright calibration — tilt columns will be empty');
@@ -997,10 +1148,13 @@ const Collect = {
     c.rows.push([seq, t, t - c.t0, ...v.slice(0, 12), Cal.tilt(0, v), Cal.tilt(1, v)]);
     c.durMs = t - c.t0;
     if ((S.frozen[0] === 50 || S.frozen[1] === 50)) toast('⚠ Sensor data FROZEN — this trial will be discarded');
+    this.phase(c);
     if (c.autoMs && c.durMs >= c.autoMs) this.stop();
   },
   stop() {
     const c = this.cur; if (!c) return; this.cur = null;
+    c.stoppedAt = performance.now(); this.last = c;
+    $('#cue').classList.remove('on'); this.beep(523, .12);
     c.drops = S.drops - c.drops0; delete c.drops0;
     $('#recBtn').classList.remove('on'); $('#recTitle').textContent = 'Saved · ' + c.activity;
     $('#recSub').innerHTML = `${c.rows.length} samples · ${(c.durMs / 1000).toFixed(1)} s${c.drops ? ` · <span class="warn-t">${c.drops} dropped</span>` : ''}`;
@@ -1018,16 +1172,18 @@ const Collect = {
     if (c.autoMs && c.durMs < c.autoMs * .5 && !c.bad) toast('Short trial — check it before keeping');
     this.trials.push(c); this.unsaved = true;
     if ($('#autoDl').checked) download(`vg_${c.subject}_${c.activity.replace(/\W+/g, '_')}_t${c.rep}_${stamp()}.csv`, this.csv([c]));
-    this.renderTrials(); this.renderCoverage();
+    this.renderTrials(); this.renderCoverage(); this.renderScore();
+    setTimeout(() => { this.renderTrials(); this.renderScore(); }, 4100);   // a late verdict can still arrive
   },
   csv(list) {
-    const h = 'trial_id,subject,activity,label,rep,seq,t_ms,t_rel_ms,s1_ax,s1_ay,s1_az,s1_gx,s1_gy,s1_gz,s2_ax,s2_ay,s2_az,s2_gx,s2_gy,s2_gz,s1_tilt_deg,s2_tilt_deg';
+    const h = 'trial_id,subject,activity,label,rep,seq,t_ms,t_rel_ms,s1_ax,s1_ay,s1_az,s1_gx,s1_gy,s1_gz,s2_ax,s2_ay,s2_az,s2_gx,s2_gy,s2_gz,s1_tilt_deg,s2_tilt_deg,test_id,variation,expect,vest_verdict,pass';
     const out = [h];
     for (const t of list) {
       const pre = `${t.id},${t.subject},"${t.activity}",${t.label},${t.rep}`;
+      const ok = this.passOf(t), post = `,${t.testId || ''},"${(t.variation || '').replace(/"/g, "'")}",${t.expect || ''},${t.vest ? this.verdictOf(t) : ''},${ok === null ? '' : ok ? 1 : 0}`;
       for (const r of t.rows) {
         out.push(pre + ',' + r[0] + ',' + r[1] + ',' + r[2] + ',' +
-          r.slice(3).map((x, k) => Number.isFinite(x) ? x.toFixed(k >= 12 ? 1 : (k % 6) < 3 ? 4 : 2) : '').join(','));
+          r.slice(3).map((x, k) => Number.isFinite(x) ? x.toFixed(k >= 12 ? 1 : (k % 6) < 3 ? 4 : 2) : '').join(',') + post);
       }
     }
     return out.join('\n');
@@ -1042,18 +1198,21 @@ const Collect = {
     if (!this.trials.length) return toast('Nothing to export');
     const meta = { exported: new Date().toISOString(), firmware: S.fw, units: { accel: 'g', gyro: 'deg/s' }, ranges: { accel: '±16 g', gyro: '±2000 dps' },
       placement: { s1: 'thoracic (0x68)', s2: 'lumbar (0x69)', note: 'both boards mounted in the same orientation; axes defined by calibration up-vectors u1/u2 (unit vectors in sensor frame, measured standing upright)' },
-      trials: this.trials.map(({ rows, autoMs, ...t }) => ({ ...t, samples: rows.length })) };
+      trials: this.trials.map(({ rows, autoMs, ...t }) => ({ ...t, samples: rows.length, verdict: this.verdictOf(t), pass: this.passOf(t) })),
+      system_checks: store.get('vg_sys', {}), protocol: PROTOCOL };
     download(`vestguard_meta_${stamp()}.json`, JSON.stringify(meta, null, 2), 'application/json');
   }
 };
 $('#recBtn').onclick = () => Collect.arm();
 $('#expCsv').onclick = () => Collect.exportAll();
 $('#expJson').onclick = () => Collect.exportMeta();
-$('#act').onchange = () => Collect.renderCoverage();
-$('#chips').onclick = e => { const c = e.target.closest('.chip'); if (c) { $('#act').value = c.dataset.i; Collect.renderCoverage(); } };
-$('#trials').onclick = e => { const b = e.target.closest('[data-bad]'); if (!b) return; const t = Collect.trials.find(x => x.id === +b.dataset.bad); t.bad = !t.bad; Collect.renderTrials(); Collect.renderCoverage(); };
-$('#actSave').onclick = () => { store.set('vg_acts', $('#actEdit').value.split('\n')); Collect.loadActs(); toast('Activity list saved'); };
-$('#actReset').onclick = () => { store.set('vg_acts', DEFAULT_ACTS); Collect.loadActs(); };
+$('#act').onchange = () => { Collect.renderCard(); Collect.renderCoverage(); };
+$('#var').onchange = () => { const p = Collect.cur_act()?.p; if (p) $('#dur').value = /35 s/.test($('#var').value) ? 50 : p.secs; };
+$('#sysChk').onclick = e => { const b = e.target.closest('[data-sys]'); if (!b) return; const st = store.get('vg_sys', {}); st[b.dataset.sys] = st[b.dataset.sys] === b.dataset.r ? null : b.dataset.r; store.set('vg_sys', st); Collect.renderSys(); };
+$('#chips').onclick = e => { const c = e.target.closest('.chip'); if (c) { $('#act').value = c.dataset.i; Collect.renderCard(); Collect.renderCoverage(); } };
+$('#trials').onclick = e => { const b = e.target.closest('[data-bad]'); if (!b) return; const t = Collect.trials.find(x => x.id === +b.dataset.bad); t.bad = !t.bad; Collect.renderTrials(); Collect.renderCoverage(); Collect.renderScore(); };
+$('#actSave').onclick = () => { store.set('vg_acts_extra', $('#actEdit').value.split('\n')); Collect.loadActs(); toast('Activity list saved'); };
+$('#actReset').onclick = () => { store.set('vg_acts_extra', []); Collect.loadActs(); };
 addEventListener('beforeunload', e => { if (Collect.unsaved && Collect.trials.some(t => !t.bad)) { e.preventDefault(); e.returnValue = ''; } });
 
 /* =========================================================
@@ -1220,7 +1379,7 @@ if (/^https?:$/.test(location.protocol) && location.host && !/claude/.test(locat
   class NativeSource {
     async open() {
       this.h1 = await VN.addListener('data', e => { const t = e.lines || ''; let i = 0, j; while ((j = t.indexOf('\n', i)) >= 0) { handleLine(t.slice(i, j)); i = j + 1; } });
-      this.h2 = await VN.addListener('line', e => { const c = e.line[0]; if (c === 'H' || c === 'I') handleLine(e.line); });
+      this.h2 = await VN.addListener('line', e => { const c = e.line[0]; if (c === 'H' || c === 'I' || c === 'F' || c === 'E') handleLine(e.line); });
       await VN.start();
       await VN.setResearch({ on: true });
       S.linkUp = true; logLine('# raw data from the vest through this phone');

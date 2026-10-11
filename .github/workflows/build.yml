@@ -95,6 +95,10 @@ jobs:
           echo "--- upper sensor unplugged: lower sensor alone ---" | tee -a detector_report.txt
           ./detector_test data/vestguard_dataset_2026-10-06_clean.csv --lower | tee -a detector_report.txt
           ./detector_test data/vestguard_dataset_2026-10-08.csv --lower | tee -a detector_report.txt
+          echo "--- Path B: every trial with its impact smoothed away (soft collapse), then 40 s still ---" | tee -a detector_report.txt
+          ./detector_test data/vestguard_dataset_2026-10-08.csv --slow | tee -a detector_report.txt
+          echo "--- Path B: lying restless afterwards must not alarm ---" | tee -a detector_report.txt
+          ./detector_test data/vestguard_dataset_2026-10-08.csv --padmove | tee -a detector_report.txt
 
       - uses: arduino/setup-arduino-cli@v2
 

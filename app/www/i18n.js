@@ -366,3 +366,20 @@ Object.assign(window.I18N.hi, {
   nofall_upright_active: '{g} g का झटका जाँचा: गिरना नहीं (सीधे रहे, सिर्फ़ {turn}° मुड़े)',
   rise: 'जल्दी से उठे ({from}° → {to}°): गिरना नहीं',
 });
+/* ---- v2.3: Path B soft collapse ---- */
+Object.assign(window.I18N.en, {
+  ov_title_soft: '{name} may have collapsed', collapse_detected: 'Possible collapse: went down and is not moving', st_detected_soft: 'Vest detected a collapse', st_detected_soft_d: 'Went down and has not moved for {n} s',
+  why_sub_soft: 'soft collapse · 3 checks',
+  why_soft_down: 'Went down quickly', why_soft_down_d: 'From upright to lying, without a hard impact', why_soft_down_l: 'within 3 s',
+  why_soft_lying: 'Ended lying down', why_soft_lying_d: 'Body angle from upright', why_soft_lying_l: 'needs ≥ 60°',
+  why_soft_still: 'Has not moved since', why_soft_still_d: 'No movement at all, not even shifting position', why_soft_still_l: 'needs 30 s',
+  why_soft_note: 'No hard impact ({g} g), so the four impact checks did not apply. Lying down on purpose and then staying perfectly still looks the same, so the home phone asks first.',
+});
+Object.assign(window.I18N.hi, {
+  ov_title_soft: '{name} शायद बेहोश होकर गिरे हैं', collapse_detected: 'शायद बेहोश होकर गिरे: नीचे गए और हिल नहीं रहे', st_detected_soft: 'वेस्ट ने अचानक गिरना पहचाना', st_detected_soft_d: 'नीचे गए और {n} सेकंड से हिले नहीं',
+  why_sub_soft: 'धीमा गिरना · 3 जाँचें',
+  why_soft_down: 'जल्दी नीचे गए', why_soft_down_d: 'सीधे से लेटने तक, बिना ज़ोर के झटके के', why_soft_down_l: '3 सेकंड में',
+  why_soft_lying: 'लेटे हुए हैं', why_soft_lying_d: 'सीधे खड़े होने से शरीर का कोण', why_soft_lying_l: 'कम से कम 60°',
+  why_soft_still: 'तब से हिले नहीं', why_soft_still_d: 'ज़रा भी हलचल नहीं, करवट भी नहीं', why_soft_still_l: '30 सेकंड',
+  why_soft_note: 'ज़ोर का झटका नहीं था ({g} g), इसलिए झटके वाली चार जाँचें लागू नहीं हुईं। जान-बूझकर लेटकर बिल्कुल स्थिर रहना भी ऐसा ही दिखता है, इसलिए घर का फ़ोन पहले पूछता है।',
+});

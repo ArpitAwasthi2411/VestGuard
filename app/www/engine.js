@@ -263,6 +263,9 @@
       if (a && p.length >= 12 && !a.ev) {
         const n = i => { const v = parseFloat(p[i]); return Number.isFinite(v) && v >= 0 ? v : null; };
         a.ev = { peak: n(3), turn: n(4), ta: n(5), lying: p[6] === '1', tb: n(7), p1: n(8), p2: n(9), turnLower: n(10), still: n(11) };
+        // firmware 3.6: Path B (soft collapse, no hard impact): "...,soft,<down ms>,<still ms>"
+        if (p[12] === 'soft') { a.ev.soft = true; a.ev.downS = (n(13) || 0) / 1000; a.ev.stillS = (n(14) || 0) / 1000; a.soft = true; }
+        if (a.soft) for (const f of this.feed) if (f.ref === a.id && f.key === 'fall_detected') { f.key = 'collapse_detected'; f.text = 'Possible collapse — not moving'; }
         this._changed();
       }
     }

@@ -525,7 +525,11 @@ public class VestService extends Service {
             try {
                 ev.put("line", line);
                 ev.put("ts", now);
-                if (line.startsWith("F,")) {
+                if (line.startsWith("F,") && research) {
+                    // Test & record mode: the fall is the experiment. Don't ring, text or wake the family;
+                    // the research page shows the vest's verdict instead.
+                    ev.put("test", true);
+                } else if (line.startsWith("F,")) {
                     Location loc = lastLocation();
                     if (loc != null) {
                         ev.put("lat", loc.getLatitude());
@@ -548,7 +552,7 @@ public class VestService extends Service {
             } catch (Exception e) {
                 Log.w(TAG, "event", e);
             }
-            if (!line.contains(",ACT,")) storePending(ev);
+            if (!line.contains(",ACT,") && !(research && line.startsWith("F,"))) storePending(ev);
             if (line.contains(",RECOVER")) wearerUp();
         } else if (line.startsWith("S,")) {
             String[] p = line.split(",");
