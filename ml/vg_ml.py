@@ -243,10 +243,10 @@ tree = DecisionTreeClassifier(max_depth=3, class_weight='balanced', random_state
 print('\nDecision tree (depth 3) learned these rules:'); print(export_text(tree, feature_names=FEATS, decimals=1))
 
 # %% [markdown]
-# ## What this says (11 Oct 2026, 2 sessions, 1 wearer, 21 falls)
-# * **On new sessions and new fall types the four checks are still the best.** They were written from physics, not fitted to these 21 falls, so nothing to forget.
-# * **Readable models come close.** Logistic regression and the monotonic gradient-boosting model catch unseen fall types, but raise more false alarms on an unseen session (jogging, bending, played-backwards getting up).
-# * **The CNN memorises.** It never catches a fall type it was not trained on. 21 falls are far too few for deep learning; it needs hundreds of falls from many people.
-# * **The models agree with the physics.** The strongest learned signals are: the body ends lower than it started (`tilt_delta`), a **free-fall dip** just before the impact (`dip1`, low = falling), lying still afterwards, and both sensors feeling it. The first, third and fourth are already vest checks; the free-fall dip is a good candidate for the next one.
+# ## What this says (12 Oct 2026: 3 sessions, 1 wearer, 81 falls, 134 everyday trials)
+# * **The real test, a new day it never saw (11 Oct, 60 falls of 12 types, trained only on 6 + 8 Oct with 3 fall types):** the vest's own rules caught **60/60** with **3/46** false alarms (all lying down on a bed). The monotonic gradient-boosting model caught 56/60 with 2 false alarms; logistic regression 57/60 with more false alarms. The readable models transfer surprisingly well; the CNN does not (0/60 on the new day, 0 on every unseen fall type).
+# * **ML as a second opinion did not pay off.** Letting the model veto the vest's alarms removed 1 bed-flop false alarm but cost 2 real falls (a slip and a fall from bed). Missing falls is worse, so the vest keeps its rules.
+# * **The bed flop is physically a fall.** Every model also scored the hard bed flop as a fall (gbm 0.98). No feature we have separates it; the home phone asking "Are you OK?" first is the right answer.
+# * **The free-fall dip is the strongest learned signal** (largest logistic weight). It separates walking from falling well, but not a bed flop from a fall, so it stays a candidate, not a rule.
 #
-# **Next:** record with the Test & record page (many wearers, all 35 tests), drop the CSVs in this folder and run again. When falls reach a few hundred, try the CNN again, ideally pre-trained on a public fall dataset (e.g. SisFall or FallAllD, waist sensor) and fine-tuned on VestGuard data.
+# **Next:** more wearers. Every result here is one person; a second and third wearer is worth more than any model change.
