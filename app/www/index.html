@@ -504,7 +504,7 @@ const store = {
 const S = {
   me: store.get('vgc_me', null),
   lang: store.get('vgc_lang', 'en'), theme: store.get('vgc_theme', 'system'), size: store.get('vgc_size', 'normal'),
-  showVitals: store.get('vgc_vitals', true), feedAll: false,
+  showVitals: store.get('vgc_vitals', false), feedAll: false,
   snap: null, live: null, tab: 'home',
   ws: null, up: false, lastMsg: 0, tries: 0,
   outbox: store.get('vgc_outbox', []), seenAlerts: store.get('vgc_seen', {}),

@@ -383,3 +383,6 @@ Object.assign(window.I18N.hi, {
   why_soft_still: 'तब से हिले नहीं', why_soft_still_d: 'ज़रा भी हलचल नहीं, करवट भी नहीं', why_soft_still_l: '30 सेकंड',
   why_soft_note: 'ज़ोर का झटका नहीं था ({g} g), इसलिए झटके वाली चार जाँचें लागू नहीं हुईं। जान-बूझकर लेटकर बिल्कुल स्थिर रहना भी ऐसा ही दिखता है, इसलिए घर का फ़ोन पहले पूछता है।',
 });
+/* ---- v2.4: testing ---- */
+Object.assign(window.I18N.en, { demo_tools: 'Testing & demo', research: 'Test & record', research_d: 'Run the 35-test protocol and record labelled data with the vest\'s verdict. The family is not rung while testing.' });
+Object.assign(window.I18N.hi, { demo_tools: 'टेस्टिंग और डेमो', research: 'टेस्ट और रिकॉर्ड', research_d: '35 टेस्ट चलाएँ और वेस्ट के फ़ैसले के साथ डेटा रिकॉर्ड करें। टेस्ट के दौरान परिवार को फ़ोन नहीं बजता।' });
