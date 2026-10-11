@@ -105,6 +105,7 @@ const char* DEFAULT_SSID = NETWORKS[0].ssid;
 #define BAT_DIVIDER  2.0f       // (100k + 100k) / 100k
 #define BAT_CAL      1.00f      // default only: calibrate from the app (Profile > Vest > Battery) instead
 #define BAT_LOAD_V   0.06f      // the cell sags ~0.06 V while powering the vest; added back before % is worked out
+float batCal = BAT_CAL;          // set from the app, saved in the vest
 
 // ---------------- BMI323 ----------------
 #define REG_CHIP_ID   0x00
@@ -497,7 +498,7 @@ static float nz(float v) { return isnan(v) ? -1.0f : v; }    // "unknown" -> -1 
 // Li-ion resting voltage -> remaining charge, for a light load (~100-150 mA, what the vest draws).
 const float BAT_V[]   = {3.30f, 3.50f, 3.61f, 3.67f, 3.71f, 3.75f, 3.79f, 3.84f, 3.90f, 3.97f, 4.05f, 4.15f};
 const uint8_t BAT_P[] = {0,     5,     10,    20,    30,    40,    50,    60,    70,    80,    90,    100};
-float batMv = -1; int batPct = -1; int batChg = -1; uint32_t lastBat = 0; float batCal = BAT_CAL; float batRaw = -1;
+float batMv = -1; int batPct = -1; int batChg = -1; uint32_t lastBat = 0; float batRaw = -1;
 int pctFromVolts(float v) {
   if (v <= BAT_V[0]) return 0;
   for (int i = 1; i < 12; i++) if (v < BAT_V[i])

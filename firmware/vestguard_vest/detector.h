@@ -71,7 +71,7 @@ struct Event {
   float still = NAN;       // movement after the impact (sd of |a|, g); ~0 = lying still
   float downMs = 0;        // SOFT: seconds*1000 from upright to lying
   float stillMs = 0;       // SOFT: how long they then lay still
-  const char* why = "";    // NOFALL: "one_sensor" (only one sensor felt it) | "upright_active" (stayed upright, jogging/jumping)
+  const char* why = "";    // NOFALL: "one_sensor" | "upright_active" (jogging/jumping) | "upright_still" (jolt while not walking)
   int8_t from = ACT_NONE;  // ACTIVITY
   int8_t to = ACT_NONE;    // ACTIVITY
 };
@@ -372,8 +372,10 @@ class Detector {
       e.kind = Event::NOFALL; e.why = "one_sensor";          // 3.2: only one sensor felt the hit (wiring glitch)
     } else if (act == ACT_ACTIVE || actCand == ACT_ACTIVE) {
       e.kind = Event::NOFALL; e.why = "upright_active";      // 3.2: stayed upright while jogging / jumping
+    } else if (act != ACT_WALKING && actCand != ACT_WALKING) {
+      e.kind = Event::NOFALL; e.why = "upright_still";       // 3.8: a jolt while not walking (kneeling, sitting hard) is not a stumble
     } else {
-      e.kind = Event::STUMBLE;                               // hit, both sensors felt it, stayed upright
+      e.kind = Event::STUMBLE;                               // hit while walking, both sensors felt it, stayed upright
     }
     push(e);
   }
