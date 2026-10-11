@@ -63,10 +63,12 @@ public class VestService extends Service {
     static final String ACTION_REFRESH = "com.silvershield.vestguard.REFRESH";
 
     static final int DATA_PORT = 4210, CMD_PORT = 4211, SYNC_PORT = 4212;
-    static final long ONLINE_MS = 5000, LOST_MS = 20000, ESCALATE_MS = 60000;
+    static final long ONLINE_MS = 5000, LOST_MS = 45000, ESCALATE_MS = 60000;   // a short Wi-Fi hiccup is not worth a notification
     static final long HUB_RING_MS = 30000;      // Home Hub: speak first, ring loudly after 30 s without "I'm OK"
     static final long CALL_AFTER_MS = 60000;    // Home Hub: start calling contacts after 60 s without a response
     static final long CALL_GAP_MS = 60000;      // ...then the next contact every 60 s
+    static final long CHECK_MS = 30000;         // caregiver phones: while a Home Hub asks the wearer, wait this long before ringing
+    static final long CG_VOICE_GAP_MS = 20000;  // caregiver phones: repeat "Kamla may have fallen" over the alarm
 
     interface Listener { void onLine(String line, long ts); }
     interface DataListener { void onData(String lines); }
@@ -97,6 +99,8 @@ public class VestService extends Service {
     private String alertKind = "fall";            // fall | sos
     private String alertFrom = "";                // who raised an SOS
     private boolean hubRang = false;
+    private boolean alertChecking = false;          // caregiver phone, a Home Hub is asking the wearer first
+    private long checkUntil = 0;
     private int callIdx = 0, voiceCount = 0;
     private long lastVoice = 0;
 
@@ -104,6 +108,17 @@ public class VestService extends Service {
     private DatagramSocket syncSock;
     private final java.util.concurrent.ConcurrentHashMap<String, InetAddress> peers = new java.util.concurrent.ConcurrentHashMap<>();
     private final java.util.concurrent.ConcurrentHashMap<String, Long> peerSeen = new java.util.concurrent.ConcurrentHashMap<>();
+    private final java.util.concurrent.ConcurrentHashMap<String, String> peerKind = new java.util.concurrent.ConcurrentHashMap<>();
+
+    /** a Home Hub phone of this family was heard in the last 15 s */
+    boolean hubOnline() {
+        long now = System.currentTimeMillis();
+        for (java.util.Map.Entry<String, String> e : peerKind.entrySet()) {
+            Long seenAt = peerSeen.get(e.getKey());
+            if ("hub".equals(e.getValue()) && seenAt != null && now - seenAt < 15000) return true;
+        }
+        return false;
+    }
     private long lastPresence = 0, lastDiscover = 0;
 
     // ------------------------------------------------------------------ lifecycle
@@ -414,6 +429,9 @@ public class VestService extends Service {
         peers.put(p[2], from);
         peerSeen.put(p[2], System.currentTimeMillis());
         long now = System.currentTimeMillis();
+        if (p[0].equals("CG")) {
+            try { peerKind.put(p[2], new JSONObject(unb64(p[3])).optString("kind", "caregiver")); } catch (Exception ignored) { }
+        }
         if (p[0].equals("CS")) {
             JSONObject body;
             try { body = new JSONObject(unb64(p[3])); } catch (Exception e) { return; }
@@ -425,7 +443,7 @@ public class VestService extends Service {
                 while (seen.size() > 300) seen.remove(seen.iterator().next());
             }
             switch (t) {
-                case "resp": remoteResponded(aid); break;
+                case "resp": remoteResponded(aid, body.optString("who", "")); break;
                 case "res": clearAlert(aid); break;
                 case "sos": raiseSos(aid, body.optString("who"), now); break;
                 case "fall": raiseRemoteFall(aid, body.optInt("sev", 3), body.optBoolean("demo"), now); break;
@@ -458,7 +476,7 @@ public class VestService extends Service {
             for (InetAddress a : broadcastAddrs()) sendTo(s, a, SYNC_PORT, line);
         }
         for (java.util.Map.Entry<String, Long> e : peerSeen.entrySet()) {
-            if (now - e.getValue() > 60000) { peers.remove(e.getKey()); peerSeen.remove(e.getKey()); }
+            if (now - e.getValue() > 60000) { peers.remove(e.getKey()); peerSeen.remove(e.getKey()); peerKind.remove(e.getKey()); }
         }
         // vest not heard for a while: shout "PH" on the network so a vest on the same Wi-Fi links to this phone too
         boolean online = lastRx > 0 && now - lastRx < ONLINE_MS;
@@ -531,6 +549,7 @@ public class VestService extends Service {
                 Log.w(TAG, "event", e);
             }
             if (!line.contains(",ACT,")) storePending(ev);
+            if (line.contains(",RECOVER")) wearerUp();
         } else if (line.startsWith("S,")) {
             String[] p = line.split(",");
             if (p.length > 3) lastAct = p[3];
@@ -570,6 +589,12 @@ public class VestService extends Service {
         synchronized (this) {
             if (alertId != null && !alertAcked) {
                 long age = now - alertTs;
+                if (alertChecking && now >= checkUntil) {          // the wearer didn't answer the Home Hub: ring now
+                    alertChecking = false;
+                    postAlert();
+                    ringCaregiver();
+                }
+                if (!isHub() && !alertChecking && Alarm.isRinging() && voiceCount < 4 && now - lastVoice > CG_VOICE_GAP_MS) speakToCaregiver();
                 if (isHub()) {
                     // 1) speak to the wearer  2) ring loudly  3) call the family one by one (speakerphone)
                     if (!hubRang && age > HUB_RING_MS) { hubRang = true; Alarm.start(this, 0); }
@@ -586,6 +611,7 @@ public class VestService extends Service {
                 }
                 if (!alertEscalated && age > ESCALATE_MS) {
                     alertEscalated = true;
+                    alertChecking = false;
                     postAlert();
                     if (!isHub() || callIdx == 0) Alarm.start(this, 0);
                 }
@@ -652,15 +678,49 @@ public class VestService extends Service {
         callIdx = 0;
         voiceCount = 0;
         lastVoice = 0;
+        // caregiver phone + a Home Hub at home: let the hub ask the wearer first; one soft chime now,
+        // the full alarm only if the wearer doesn't answer within 30 s (false alarms then cost the family nothing)
+        alertChecking = !isHub() && !"sos".equals(kind) && hubOnline() && System.currentTimeMillis() - ts < CHECK_MS;
+        checkUntil = ts + CHECK_MS;
         postAlert();
         if (isHub() && !"sos".equals(kind)) {
             Voice.say(Strings.t(lang(), "tts_fall", "name", wearerFirst()), lang());
             lastVoice = System.currentTimeMillis();
             voiceCount = 1;
+        } else if (alertChecking) {
+            Alarm.chime(this);
         } else {
-            Alarm.start(this, 0);
-            if (isHub()) hubRang = true;
+            if (isHub()) { Alarm.start(this, 0); hubRang = true; }
+            else ringCaregiver();
         }
+    }
+
+    /** caregiver phone: alarm tone + a spoken line over it */
+    private void ringCaregiver() {
+        Alarm.start(this, 0);
+        lastVoice = System.currentTimeMillis() - CG_VOICE_GAP_MS + 2500;     // speak ~2.5 s after the tone starts
+    }
+
+    private void speakToCaregiver() {
+        lastVoice = System.currentTimeMillis();
+        voiceCount++;
+        String key = "sos".equals(alertKind) ? "tts_cg_sos" : "tts_cg_fall";
+        Alarm.duck(6000);
+        Voice.say(Strings.t(lang(), key, "name", alertFrom.isEmpty() ? wearerFirst() : alertFrom), lang());
+    }
+
+    /** the app asks for the alarm (overlay opened): respect the "asking the wearer" window */
+    synchronized void ringFor(String id) {
+        if (id != null && id.equals(alertId) && (alertChecking || alertAcked)) return;
+        if (isHub()) Alarm.start(this, 0); else ringCaregiver();
+    }
+
+    /** vest: the wearer is back on their feet after the fall */
+    private synchronized void wearerUp() {
+        if (alertId == null || alertAcked || !isHub() || "sos".equals(alertKind)) return;
+        Alarm.duck(6000);
+        Voice.say(Strings.t(lang(), "tts_up", "name", wearerFirst()), lang());
+        lastVoice = System.currentTimeMillis();
     }
 
     /** SOS pressed on another phone (usually the Home Hub) */
@@ -680,12 +740,15 @@ public class VestService extends Service {
     }
 
     /** another caregiver is responding: stop ringing here too */
-    synchronized void remoteResponded(String id) {
+    synchronized void remoteResponded(String id, String who) {
         if (id != null && id.equals(alertId)) {
             Alarm.stop();
             Voice.stop();
             alertAcked = true;
+            alertChecking = false;
             postAlert();
+            // the wearer hears that help is coming, by name
+            if (isHub() && who != null && !who.isEmpty()) Voice.say(Strings.t(lang(), "tts_coming", "who", who), lang());
         }
     }
 
@@ -726,6 +789,7 @@ public class VestService extends Service {
                 ? Strings.t(lang, "sos_title", "name", alertFrom.isEmpty() ? wearerFirst() : alertFrom)
                 : Strings.t(lang, alertDemo ? "fall_title_demo" : "fall_title", "name", wearerFirst());
         String body = alertAcked ? Strings.t(lang, "fall_ack")
+                : alertChecking ? Strings.t(lang, "fall_checking", "name", wearerFirst())
                 : alertEscalated ? Strings.t(lang, "fall_esc", "sev", sev)
                 : Strings.t(lang, "fall_body", "sev", sev);
 

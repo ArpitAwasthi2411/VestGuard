@@ -7,6 +7,9 @@
     FALL     impact > 2.5 g, then within 1.5 s the upper-body posture changes >= 45 deg
              (mean accel 1.5..0.4 s before impact vs last 0.5 s), and the lower sensor agrees.
              Severity 3: peak >= 4 g, or lying and still.  2: peak >= 3 g or lying.  1: otherwise.
+             3.4: NOT a fall if the body ends MORE upright than it started (getting up quickly
+             from bed / floor): a real fall always ends further from upright.
+    RECOVER  3.4: after a fall, the wearer is upright again for 5 s (within 2 min) -> one event.
     STUMBLE  impact > 2.5 g but posture didn't change (stayed upright).
     ACTIVITY resting / light / walking / active / lying, debounced 8 s.
     POSTURE  upright < 30 deg, bending < 60 deg, lying >= 60 deg from the calibrated "standing" vector.
@@ -45,12 +48,13 @@ inline const char* postureName(int8_t p) {
 }
 
 struct Event {
-  enum Kind : uint8_t { NONE, FALL, STUMBLE, ACTIVITY, CAL_OK, CAL_FAIL } kind = NONE;
+  enum Kind : uint8_t { NONE, FALL, STUMBLE, ACTIVITY, CAL_OK, CAL_FAIL, RISE, RECOVER } kind = NONE;
   uint32_t t = 0;          // sample time of the event
   uint8_t severity = 0;    // FALL
   float peak = 0;          // FALL / STUMBLE, g
   float tiltChange = 0;    // FALL, deg
   float tiltAfter = NAN;   // FALL, deg from upright (NAN if not calibrated)
+  float tiltBefore = NAN;  // FALL / RISE, deg from upright before the impact
   bool lying = false;      // FALL
   int8_t from = ACT_NONE;  // ACTIVITY
   int8_t to = ACT_NONE;    // ACTIVITY
@@ -79,6 +83,10 @@ class Detector {
   float u1[3] = {0, 0, 1}, u2[3] = {0, 0, 1};
   void setCalibration(const float* a, const float* b) { memcpy(u1, a, 12); memcpy(u2, b, 12); calibrated = true; }
   void clearCalibration() { calibrated = false; }
+  // 3.4: upper sensor offline -> keep detecting with the lower sensor alone (its own "standing" vector)
+  bool lowerPrimary = false;
+  void setLowerPrimary(bool on) { if (on != lowerPrimary) { lowerPrimary = on; reset(); } }
+  const float* up() const { return lowerPrimary ? u2 : u1; }
   void startCalibration() { calRun = true; calStarted = false; calN = 0; calMotion = 0; memset(calS1, 0, 12); memset(calS2, 0, 12); }
   bool calibrating() const { return calRun; }
 
@@ -122,7 +130,7 @@ class Detector {
 
     float aNow[3];
     if (calibrated && meanVec(1, tEnd - 1000, tEnd, aNow)) {
-      float tl = angleDeg(u1, aNow);
+      float tl = angleDeg(up(), aNow);
       tilt = isnan(tl) ? -1 : (int16_t)lroundf(tl);
       posture = tilt < 0 ? POST_NONE : tilt < 30 ? POST_UPRIGHT : tilt < 60 ? POST_BENDING : POST_LYING;
     } else { tilt = -1; posture = POST_NONE; }
@@ -134,6 +142,18 @@ class Detector {
     else if (sd < 0.35f) cls = ACT_WALKING;
     else cls = ACT_ACTIVE;
 
+    // 3.4: back on their feet after a fall?
+    if (watchRecover) {
+      if (!after(recoverUntil, now)) watchRecover = false;
+      else if (posture == POST_UPRIGHT) {
+        if (!upSince) upSince = now;
+        else if (now - upSince >= 5000) {
+          watchRecover = false;
+          Event e; e.kind = Event::RECOVER; e.t = now; e.tiltAfter = tilt; push(e);
+        }
+      } else upSince = 0;
+    }
+
     if (cls != actCand) { actCand = cls; actCandSince = now; }
     if (cls != act && (now - actCandSince) >= (act == ACT_NONE ? 2000u : ACT_DEBOUNCE_MS)) {
       int8_t prev = act;
@@ -144,6 +164,10 @@ class Detector {
 
   // Data stopped (vest lost both sensors) -> forget the window so stale data can't trigger anything.
   void reset() { count = 0; head = 0; st = IDLE; hasData = false; }
+
+  // 3.4: thresholds exposed so tests can report them
+  static constexpr float RISE_END_MAX = 40;   // ends at most this far from upright
+  static constexpr float RISE_GAIN = 20;      // and at least this much more upright than before
 
   bool pop(Event& e) {
     if (qn == 0) return false;
@@ -225,6 +249,7 @@ class Detector {
   enum { IDLE, ANALYZING } st = IDLE;
   uint32_t cool = 0; bool coolSet = false;
   struct Cand { uint32_t t; float p1, p2, w; float pre1[3], pre2[3]; bool hasPre1, hasPre2; } c;
+  bool watchRecover = false; uint32_t recoverUntil = 0, upSince = 0;
 
   void detect(uint32_t t, const Row& r) {
     if (st == IDLE) {
@@ -246,16 +271,25 @@ class Detector {
     st = IDLE; cool = t + 2500; coolSet = true;
     if (isnan(a1)) return;
 
+    float tiltBefore = (calibrated && c.hasPre1) ? angleDeg(up(), c.pre1) : NAN;
+    float tiltAfter = (calibrated && hp1) ? angleDeg(up(), post1) : NAN;
+    // 3.4: ended up MORE upright than before (e.g. jumped up from bed) -> getting up, not a fall
+    if (!isnan(tiltBefore) && !isnan(tiltAfter) && tiltAfter < RISE_END_MAX && tiltAfter < tiltBefore - RISE_GAIN) {
+      Event e; e.kind = Event::RISE; e.t = t; e.peak = fmaxf(c.p1, c.p2); e.tiltBefore = tiltBefore; e.tiltAfter = tiltAfter;
+      push(e);
+      return;
+    }
+
     bool dual = c.p2 >= IMPACT_G * 0.6f && (isnan(a2) || a2 >= 27);
     float peak = fmaxf(c.p1, c.p2);
     Event e; e.t = t; e.peak = peak;
     // 3.2: a very hard impact with a smaller posture change still counts (e.g. fell and stayed kneeling)
     bool postureChanged = a1 >= 45 || (a1 >= 30 && c.p1 >= 6);
     if (postureChanged && dual) {
-      float tiltAfter = (calibrated && hp1) ? angleDeg(u1, post1) : NAN;
       bool lying = !isnan(tiltAfter) ? tiltAfter >= 60 : a1 >= 70;
       uint8_t sev = (c.p1 >= 4 || (lying && still < 0.05f)) ? 3 : (c.p1 >= 3 || lying) ? 2 : 1;
-      e.kind = Event::FALL; e.severity = sev; e.tiltChange = a1; e.tiltAfter = tiltAfter; e.lying = lying;
+      e.kind = Event::FALL; e.severity = sev; e.tiltChange = a1; e.tiltAfter = tiltAfter; e.tiltBefore = tiltBefore; e.lying = lying;
+      watchRecover = calibrated; recoverUntil = t + 120000; upSince = 0;
     } else {
       // 3.2: not a stumble if only one sensor felt it (wiring glitch) or during jogging / jumping
       if (c.p2 < IMPACT_G * 0.6f || act == ACT_ACTIVE || actCand == ACT_ACTIVE) return;

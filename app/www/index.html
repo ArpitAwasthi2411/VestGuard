@@ -243,34 +243,65 @@ nav.tabs button.on::before{content:"";position:absolute;top:0;width:36px;height:
 .badge[hidden]{display:none}
 .badge{position:absolute;top:8px;left:calc(50% + 6px);min-width:20px;height:20px;border-radius:10px;background:var(--red);color:#fff;font-size:12px;display:grid;place-items:center;padding:0 5px}
 
-/* full-screen fall override */
-.override{position:fixed;inset:0;z-index:100;background:#D2263B;color:#fff;display:none;flex-direction:column;overflow:auto;padding:calc(var(--sat) + 16px) 18px calc(var(--sab) + 18px)}
+/* full-screen fall alert (v2): coloured hero = what's happening, white card = what to do */
+.override{position:fixed;inset:0;z-index:100;background:var(--mist);color:var(--ink);display:none;flex-direction:column;overflow:auto}
 .override.on{display:flex}
+.ov-hero{--h1:#D2263B;--h2:#9E1426;background:linear-gradient(160deg,var(--h1),var(--h2));color:#fff;padding:calc(var(--sat) + 14px) 20px 54px;position:relative;flex:none}
+.override[data-phase=check] .ov-hero{--h1:#C77A00;--h2:#8F5200}
+.override[data-phase=responding] .ov-hero{--h1:#1F8A6A;--h2:#145A46}
+.ov-hero::after{content:"";position:absolute;inset:auto 0 0 0;height:30px;background:var(--mist);border-radius:28px 28px 0 0}
 .override .top{display:flex;align-items:center;gap:10px}
-.override .top button{margin-left:auto;background:rgba(255,255,255,.18);border:0;color:#fff;padding:9px 14px;border-radius:999px;font-weight:700;font-size:15px}
-.ring{width:88px;height:88px;border-radius:50%;margin:16px auto 6px;display:grid;place-items:center;background:rgba(255,255,255,.16);position:relative;flex:none}
-.ring::before,.ring::after{content:"";position:absolute;inset:0;border-radius:50%;border:3px solid rgba(255,255,255,.55);animation:ping 1.6s ease-out infinite}
-.ring::after{animation-delay:.8s}
-.ring svg{width:42px;height:42px}
-@keyframes ping{from{transform:scale(1);opacity:1}to{transform:scale(1.7);opacity:0}}
-.override h2{font-size:38px;margin:8px 0 0;text-align:center;line-height:1.1}
-.override .sub{text-align:center;font-size:18px;opacity:.95;margin-top:6px}
-.override .facts{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin-top:12px}
-.override .facts span{background:rgba(255,255,255,.16);padding:5px 12px;border-radius:999px;font-size:15px}
-.map{height:180px;border-radius:var(--r-lg);overflow:hidden;margin-top:16px;background:#B5182B;position:relative;flex:none}
-.map .fallback{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;gap:6px;text-align:center;padding:16px;background:#B5182B;z-index:500}
-.map.nomap .fallback{display:flex}
-.map a{color:#fff;font-weight:700}
-.responders{margin-top:14px;padding:12px 14px;border-radius:var(--r-md);background:rgba(0,0,0,.16);font-size:16px}
-.escalate{margin-top:12px;padding:12px 14px;border-radius:var(--r-md);background:#fff;color:#D2263B;font-weight:700;display:none}
-.escalate.on{display:block}
-.oactions{display:grid;gap:10px;margin-top:16px}
-.oactions .big{min-height:62px;font-size:20px;border-radius:18px;border:0;background:#fff;color:#D2263B;font-weight:700}
-.oactions .big.done{background:rgba(255,255,255,.25);color:#fff}
-.oactions .pair{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.oactions .call{min-height:56px;border-radius:16px;border:2px solid rgba(255,255,255,.7);background:transparent;color:#fff;font-weight:700;font-size:17px;display:flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;padding:0 8px;text-align:center}
-.oactions .call svg{width:20px;height:20px;flex:none}
-.oactions .resolve{background:transparent;border:0;color:#fff;text-decoration:underline;font-weight:700;min-height:44px;font-size:16px}
+.ov-chip{display:inline-flex;align-items:center;gap:7px;font-weight:700;font-size:14px;padding:6px 12px;border-radius:999px;background:rgba(255,255,255,.18);letter-spacing:.2px}
+.ov-chip::before{content:"";width:8px;height:8px;border-radius:50%;background:#fff;animation:blink 1s steps(2) infinite}
+.override[data-phase=responding] .ov-chip::before{animation:none}
+@keyframes blink{50%{opacity:.25}}
+.override .top button{margin-left:auto;background:rgba(255,255,255,.18);border:0;color:#fff;padding:9px 16px;border-radius:999px;font-weight:700;font-size:15px}
+.ov-headrow{display:flex;align-items:center;gap:16px;margin-top:20px}
+.ov-pulse{width:76px;height:76px;border-radius:24px;display:grid;place-items:center;background:rgba(255,255,255,.16);position:relative;flex:none}
+.ov-pulse::before{content:"";position:absolute;inset:0;border-radius:24px;border:2px solid rgba(255,255,255,.6);animation:ping 1.6s ease-out infinite}
+.override[data-phase=responding] .ov-pulse::before{animation:none;opacity:0}
+.ov-pulse svg{width:44px;height:44px}
+@keyframes ping{from{transform:scale(1);opacity:1}to{transform:scale(1.35);opacity:0}}
+.ov-clock{margin-left:auto;text-align:right}
+.ov-el{font-size:44px;font-weight:700;line-height:1;letter-spacing:-1px;font-variant-numeric:tabular-nums}
+.ov-ell{font-size:14px;opacity:.85;margin-top:2px}
+.override h2{font-size:32px;margin:18px 0 0;line-height:1.12}
+.override .sub{font-size:17px;opacity:.92;margin-top:6px}
+.ov-now{display:inline-flex;align-items:center;gap:8px;margin-top:14px;padding:8px 14px;border-radius:14px;background:rgba(0,0,0,.18);font-size:16px;font-weight:700}
+.ov-now:empty{display:none}
+.ov-now i{width:9px;height:9px;border-radius:50%;background:#7CF0C3;flex:none}
+.ov-now.off i{background:rgba(255,255,255,.5)}
+.ov-now.good{background:#fff;color:#145A46}
+.ov-now.good i{background:#1F8A6A}
+.ov-card{flex:1;padding:0 18px calc(var(--sab) + 20px);margin-top:-12px;position:relative;z-index:1;display:flex;flex-direction:column;gap:12px}
+.ov-steps{list-style:none;margin:0;padding:6px 16px;background:var(--surface);border-radius:var(--r-lg);box-shadow:var(--shadow)}
+.ov-steps li{display:flex;gap:12px;padding:11px 0;position:relative}
+.ov-steps li+li{border-top:1px solid var(--line)}
+.ov-steps .dot{width:26px;height:26px;border-radius:50%;flex:none;display:grid;place-items:center;background:var(--sunk);color:var(--ink3);border:2px solid var(--line);margin-top:1px}
+.ov-steps .dot svg{width:15px;height:15px}
+.ov-steps li.done .dot{background:var(--pine);border-color:var(--pine);color:#fff}
+.ov-steps li.now .dot{background:var(--red);border-color:var(--red);color:#fff;box-shadow:0 0 0 5px var(--red-soft)}
+.override[data-phase=check] .ov-steps li.now .dot{background:var(--saffron);border-color:var(--saffron);box-shadow:0 0 0 5px var(--saffron-soft)}
+.ov-steps b{display:block;font-size:17px;line-height:1.3}
+.ov-steps li.wait b{color:var(--ink2);font-weight:400}
+.ov-steps span{display:block;font-size:14px;color:var(--ink2);margin-top:2px}
+.ov-steps time{margin-left:auto;font-size:14px;color:var(--ink3);white-space:nowrap;padding-left:8px;font-variant-numeric:tabular-nums}
+.ov-loc{display:flex;align-items:center;gap:12px;padding:14px 16px;background:var(--surface);border-radius:var(--r-lg);box-shadow:var(--shadow);color:var(--ink);text-decoration:none}
+.ov-loc .ic{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;background:var(--blue-soft);color:var(--blue);flex:none}
+.ov-loc .ic svg{width:22px;height:22px}
+.ov-loc b{display:block;font-size:16px}
+.ov-loc span{font-size:13px;color:var(--ink2)}
+.ov-loc em{margin-left:auto;font-style:normal;font-weight:700;color:var(--blue);font-size:15px;white-space:nowrap}
+.ov-escal{display:none;padding:13px 16px;border-radius:var(--r-md);background:var(--red-soft);color:var(--red);font-weight:700;font-size:16px;line-height:1.35}
+.ov-escal.on{display:block}
+.ov-go{min-height:66px;font-size:21px;border-radius:20px;border:0;background:var(--red);color:#fff;font-weight:700;box-shadow:0 12px 24px -12px rgba(210,38,59,.8);width:100%}
+.override[data-phase=check] .ov-go{background:#B86E00;box-shadow:0 12px 24px -12px rgba(184,110,0,.8)}
+.ov-go.done{background:var(--pine-soft);color:var(--pine);box-shadow:none}
+.ov-pair{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.ov-call{min-height:58px;border-radius:18px;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);font-weight:700;font-size:17px;display:flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;padding:0 8px;text-align:center}
+.ov-call svg{width:20px;height:20px;flex:none;color:var(--pine)}
+.ov-call.e svg{color:var(--red)}
+.ov-res{background:transparent;border:0;color:var(--ink2);text-decoration:underline;font-weight:700;min-height:46px;font-size:16px}
 
 /* sheets + onboarding */
 .scrim{position:fixed;inset:0;background:rgba(10,18,30,.5);z-index:120;display:none;align-items:flex-end;justify-content:center}
@@ -342,6 +373,21 @@ nav.tabs button.on::before{content:"";position:absolute;top:0;width:36px;height:
 .hub-okbtn{width:100%;min-height:120px;border-radius:28px;border:0;background:#fff;color:#1D7A5F;font-size:40px;font-weight:700;margin-top:auto;box-shadow:0 14px 30px -12px rgba(0,0,0,.45)}
 .hub-nowbtn{width:100%;min-height:64px;border-radius:20px;border:2px solid rgba(255,255,255,.75);background:transparent;color:#fff;font-size:20px;font-weight:700;margin-top:12px}
 .hub-resp{margin-top:16px;padding:14px 16px;border-radius:16px;background:rgba(0,0,0,.18);font-size:18px}
+.hub.alert{background:linear-gradient(170deg,#C8203A,#8E1022)}
+.hub.alert.coming{background:linear-gradient(170deg,#1F8A6A,#145A46)}
+.hub-help{font-size:19px;line-height:1.4;opacity:.95;max-width:30ch}
+.hub-countwrap{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:18px 0;min-height:230px}
+.hub-count2{position:relative;width:min(52vw,200px);aspect-ratio:1}
+.hub-count2>svg{width:100%;height:100%;transform:rotate(-90deg)}
+.hub-count2 circle{fill:none;stroke-width:9}
+.hub-count2 .bg{stroke:rgba(255,255,255,.18)}
+.hub-count2 .fg{stroke:#fff;stroke-linecap:round;transition:stroke-dashoffset 1s linear}
+.hub-countwrap.ok .fg{stroke:#7CF0C3}
+.hc-in{position:absolute;inset:0;display:grid;place-items:center}
+.hc-n{font-size:64px;font-weight:700;letter-spacing:-2px;font-variant-numeric:tabular-nums}
+.hc-ic svg{width:64px;height:64px}
+.hub-countwrap.ok .hc-ic{color:#7CF0C3}
+.hc-label{font-size:20px;font-weight:700;text-align:center}
 .hubback{position:fixed;right:14px;bottom:calc(var(--nav-h) + var(--sab) + 14px);z-index:45;display:none;border:0;border-radius:999px;background:var(--ink);color:var(--surface);font-weight:700;padding:12px 18px;box-shadow:var(--shadow)}
 .hubback.on{display:block}
 /* family */
@@ -390,22 +436,27 @@ nav.tabs button.on::before{content:"";position:absolute;top:0;width:36px;height:
   </div>
 </nav>
 
-<div class="override" id="ov" role="alertdialog" aria-labelledby="ovTitle">
-  <div class="top"><span id="ovSev" style="font-weight:700"></span><button id="ovMin" data-i18n="ov_hide"></button></div>
-  <div class="ring"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg></div>
-  <h2 id="ovTitle" data-i18n="ov_title"></h2>
-  <div class="sub" id="ovSub"></div>
-  <div class="facts" id="ovFacts"></div>
-  <div class="map" id="ovMap"><div class="fallback" id="ovMapFb"></div></div>
-  <div class="responders" id="ovResp"></div>
-  <div class="escalate" id="ovEsc" data-i18n="ov_escalate"></div>
-  <div class="oactions">
-    <button class="big" id="ovAck"></button>
-    <div class="pair">
-      <a class="call" id="ovCall112" href="tel:112"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7l.7 2.7-1.8 3.4a16 16 0 0 0 6 6l3.4-1.8 2.7.7a2 2 0 0 1 1.7 2z"/></svg><span data-i18n="call_112"></span></a>
-      <a class="call" id="ovCallW" href="tel:"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7l.7 2.7-1.8 3.4a16 16 0 0 0 6 6l3.4-1.8 2.7.7a2 2 0 0 1 1.7 2z"/></svg><span id="ovCallWTxt"></span></a>
+<div class="override" id="ov" role="alertdialog" aria-labelledby="ovTitle" data-phase="alarm">
+  <div class="ov-hero">
+    <div class="top"><span class="ov-chip" id="ovSev"></span><button id="ovMin" data-i18n="ov_hide"></button></div>
+    <div class="ov-headrow">
+      <div class="ov-pulse" id="ovIcon"></div>
+      <div class="ov-clock"><div class="ov-el" id="ovEl">0:00</div><div class="ov-ell" id="ovElL"></div></div>
     </div>
-    <button class="resolve" id="ovResolve" data-i18n="ov_resolve"></button>
+    <h2 id="ovTitle"></h2>
+    <div class="sub" id="ovSub"></div>
+    <div class="ov-now" id="ovNow"></div>
+  </div>
+  <div class="ov-card">
+    <ol class="ov-steps" id="ovSteps"></ol>
+    <div class="ov-escal" id="ovEsc"></div>
+    <button class="ov-go" id="ovAck"></button>
+    <div class="ov-pair">
+      <a class="ov-call" id="ovCallW" href="tel:"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7l.7 2.7-1.8 3.4a16 16 0 0 0 6 6l3.4-1.8 2.7.7a2 2 0 0 1 1.7 2z"/></svg><span id="ovCallWTxt"></span></a>
+      <a class="ov-call e" id="ovCall112" href="tel:112"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7l.7 2.7-1.8 3.4a16 16 0 0 0 6 6l3.4-1.8 2.7.7a2 2 0 0 1 1.7 2z"/></svg><span data-i18n="call_112"></span></a>
+    </div>
+    <a class="ov-loc" id="ovLoc" target="_blank" rel="noopener"></a>
+    <button class="ov-res" id="ovResolve" data-i18n="ov_resolve"></button>
   </div>
 </div>
 
@@ -643,6 +694,7 @@ function renderConn() {
   const stale = S.up && Date.now() - S.lastMsg > 4000, dev = S.live?.device;
   if (!S.up) { c.className = 'conn retry'; const at = S.cachedAt || S.lastMsg; x.textContent = at ? t('conn_offline', { ago: ago(at / 1000) }) : t('conn_retry'); }
   else if (stale) { c.className = 'conn retry'; x.textContent = t('conn_wait'); }
+  else if (dev && !dev.online && dev.link === 'reconnecting') { c.className = 'conn retry'; x.textContent = t('conn_reconnecting'); }
   else if (dev && !dev.online) { c.className = 'conn'; x.textContent = S.mode === 'vest' && !dev.ever ? t('conn_hotspot') : t('conn_vest_off'); }
   else { c.className = 'conn live'; x.textContent = t('conn_live'); }
   renderBand();
@@ -741,9 +793,9 @@ function renderLive() {
     $('#vHr').textContent = L.vitals.hr; $('#vSp').textContent = L.vitals.spo2; $('#vTp').textContent = L.vitals.temp.toFixed(1);
     $('#heart')?.classList.toggle('beat', !!L.device.online);
   }
-  const a = L.activity, online = L.device.online;
-  $('#aState').textContent = online ? (a.state ? t('act_' + a.state) : t('act_starting')) : t('act_nodata');
-  $('#aSince').textContent = online && a.state ? t('for_dur', { d: dur(L.ts - a.since) }) : (L.device.last_rx ? t('last_seen', { ago: ago(L.device.last_rx) }) : t('r_not_connected'));
+  const a = L.activity, online = L.device.online, shown = online || L.device.link === 'reconnecting';
+  $('#aState').textContent = shown ? (a.state ? t('act_' + a.state) : t('act_starting')) : t('act_nodata');
+  $('#aSince').textContent = shown && a.state ? t('for_dur', { d: dur(L.ts - a.since) }) : (L.device.last_rx ? t('last_seen', { ago: ago(L.device.last_rx) }) : t('r_not_connected'));
   $('#aPost').innerHTML = a.posture ? `${esc(t('post_' + a.posture))}<small>${a.tilt}°</small>` : `—<small>${t('needs_cal_short')}</small>`;
   $('#aFig').innerHTML = postureSvg(a.posture || 'upright');
   $('#aSteps').textContent = a.steps.toLocaleString(locale());
@@ -752,8 +804,11 @@ function renderLive() {
   $('#rWhy').textContent = r.reasons.map(tm).join(' · ');
   $('#rIc').style.background = `var(${col[0]})`; $('#rIc').style.color = `var(${col[1]})`;
   const d = L.device, okN = d.sensors.filter(Boolean).length;
-  $('#dT').textContent = online ? t('dev_connected') : d.ever ? t('dev_offline') : t('dev_never');
-  $('#dD').textContent = online ? t('dev_sensors', { n: okN }) + (okN < 2 ? ' — ' + t('dev_check') : '') : d.last_rx ? t('dev_last', { ago: ago(d.last_rx) }) : t('dev_hint');
+  const recon = !online && d.link === 'reconnecting';
+  $('#dT').textContent = online ? t('dev_connected') : recon ? t('dev_reconnecting') : d.ever ? t('dev_offline') : t('dev_never');
+  const boot = d.boot && Date.now() / 1000 - d.boot.ts < 86400 && ['brownout', 'crash', 'watchdog'].includes(d.boot.why)
+    ? ' · ' + t(d.boot.why === 'brownout' ? 'dev_boot_power' : 'dev_boot_crash') : '';
+  $('#dD').textContent = online || recon ? t('dev_sensors', { n: okN }) + (okN < 2 ? ' — ' + t('dev_check') : '') + boot : d.last_rx ? t('dev_last', { ago: ago(d.last_rx) }) : t('dev_hint');
   const lv = !online ? 0 : !d.rssi ? 4 : d.rssi > -55 ? 4 : d.rssi > -67 ? 3 : d.rssi > -78 ? 2 : 1;
   $('#dSig').innerHTML = `<span class="bars" aria-label="WiFi ${lv}/4">${[1, 2, 3, 4].map(i => `<i class="${i <= lv ? 'on' : ''}" style="height:${i * 4}px"></i>`).join('')}</span>`;
   $('#actUpd').textContent = online ? t('live') : '';
@@ -903,7 +958,9 @@ function renderProfile() {
         <a class="iconbtn" href="tel:${esc(c.phone.replace(/\s/g, ''))}" aria-label="${esc(t('call_x', { name: c.name }))}" data-callname="${esc(c.name)}">${svg('call')}</a>
         <button class="iconbtn" data-delc="${i}" aria-label="${esc(t('remove', { name: c.name }))}">${svg('trash')}</button></div>`).join('') || `<div class="empty">${t('no_contacts')}</div>`}</div></div>
     <div class="sec"><div class="sec-h"><h2>${t('alerts_phone')}</h2></div>
-      <div class="panel rows"><div class="row"><div><div class="t">${t('test_alarm')}</div><div class="d">${t('test_alarm_d')}</div></div><span class="end"><button class="btn sm" id="pTest">${t('play')}</button></span></div></div>
+      <div class="panel rows"><div class="row"><div><div class="t">${t('test_alarm')}</div><div class="d">${t('test_alarm_d')}</div></div><span class="end"><button class="btn sm" id="pTest">${t('play')}</button></span></div>
+        ${NATIVE ? `<div class="row"><div style="flex:1"><div class="t">${t('alarm_sound')}</div><div class="d">${t('alarm_sound_d')}</div>
+          <div class="seg" style="margin-top:10px">${['chime', 'phone'].map(k => `<button data-snd="${k}" class="${(S.snap?.alarmSound || 'chime') === k ? 'on' : ''}">${t('snd_' + k)}</button>`).join('')}</div></div></div>` : ''}</div>
       <p class="note">${t('bg_note')}</p></div>
     <div class="sec"><div class="sec-h"><h2>${t('demo_tools')}</h2></div>
       <div class="panel rows">
@@ -1011,6 +1068,14 @@ function startAlarm() {
 }
 function ringNative() { const a = S.snap?.alerts.find(x => x.id === S.ovId); VN.raiseAlarm({ id: S.ovId, sev: a?.severity || 3, demo: !!a?.demo, ringOnly: true }).catch(() => {}); }
 function stopAlarm() { if (VN) VN.stopAlarm().catch(() => {}); clearInterval(alarmTimer); clearInterval(vibTimer); alarmTimer = vibTimer = null; if (navigator.vibrate) navigator.vibrate(0); }
+const CHECK_S = 30, CALL_S = 60;
+/** check = Home Hub is asking the wearer (family not rung yet) · alarm = family ringing · responding = someone is going */
+function phaseOf(a) {
+  if (!a || a.status === 'resolved') return 'done';
+  if (a.responders.length) return 'responding';
+  if (a.kind !== 'sos' && a.hub && Date.now() / 1000 - a.ts < CHECK_S) return 'check';
+  return 'alarm';
+}
 function checkOverride(changed) {
   if (isHub()) { renderHub(); return; }
   const open = (S.snap?.alerts || []).filter(a => a.status !== 'resolved');
@@ -1024,39 +1089,82 @@ function showOverride(id, alarm) {
   S.ovId = id; $('#ov').classList.add('on'); document.body.style.overflow = 'hidden';
   renderOverride(); initMap();
   const a = S.snap.alerts.find(x => x.id === id);
-  if (alarm && !a?.responders.some(r => r.name === S.me?.name)) startAlarm();
+  if (alarm && !a?.responders.some(r => r.name === S.me?.name)) {
+    if (phaseOf(a) === 'check') S.ringLater = id;          // the hub asks the wearer first; ring when that window ends
+    else startAlarm();
+  }
+}
+/* called every second: the "asking the wearer" window just ended without an answer -> ring now */
+function ringIfDue() {
+  if (!S.ringLater || S.ringLater !== S.ovId) return;
+  const a = S.snap?.alerts.find(x => x.id === S.ringLater);
+  if (!a || phaseOf(a) === 'done') { S.ringLater = null; return; }
+  if (phaseOf(a) === 'check') return;
+  S.ringLater = null;
+  if (!a.responders.some(r => r.name === S.me?.name)) startAlarm();
 }
 function closeOverride(silence = true) { S.ovId = null; $('#ov').classList.remove('on'); document.body.style.overflow = ''; if (silence) stopAlarm(); }
 const locLabel = a => a.location.source === 'phone' ? t('loc_phone') : a.location.label;
+const OV_ICON = {
+  fall: '<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="29" r="4"/><path d="M15 32h13l7 6M21 32l4-8 8-3"/><path d="M6 42h36"/><path d="M33 9l3-4M39 13l4-2M28 8l-1-4"/></svg>',
+  sos: '<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M24 6 4 40h40z"/><path d="M24 19v9M24 34h.01"/></svg>',
+  ok: '<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="11" r="4.5"/><path d="M10 42l5-14 6 5v9M8 24l7-7 7 2 5 6"/><path d="M30 26l5 5 9-10"/></svg>',
+};
+const TICK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"/></svg>';
+const mmss = s => { s = Math.max(0, Math.floor(s)); const m = Math.floor(s / 60); return m >= 60 ? `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}` : `${m}:${String(s % 60).padStart(2, '0')}`; };
+function stepHtml(state, title, detail, time) {
+  return `<li class="${state}"><span class="dot">${state === 'done' ? TICK : ''}</span><div><b>${esc(title)}</b>${detail ? `<span>${esc(detail)}</span>` : ''}</div>${time ? `<time>${esc(time)}</time>` : ''}</li>`;
+}
 function renderOverride() {
   const a = S.snap?.alerts.find(x => x.id === S.ovId); if (!a) return;
-  const w = S.snap.profile.wearer, mine = a.responders.some(r => r.name === S.me?.name);
+  const w = S.snap.profile.wearer, wf = first(w.name), mine = a.responders.some(r => r.name === S.me?.name);
   if (mine && !S.quiet[a.id]) { S.quiet[a.id] = 1; stopAlarm(); }
-  $('#ovSev').textContent = (a.kind === 'sos' ? 'SOS' : t('ov_sev', { sev: t('sev_' + a.severity) })) + (a.demo ? ' · ' + t('ov_demo') : '');
-  $('#ovTitle').textContent = a.kind === 'sos' ? t('ov_title_sos') : t('ov_title');
-  $('#ovSub').textContent = `${a.kind === 'sos' && a.from ? a.from : w.name} · ${ago(a.ts)}`;
-  $('#ovFacts').innerHTML = a.kind === 'sos' ? '' : `<span>${t('ov_impact', { g: a.peak_g })}</span><span>${t('ov_posture', { d: a.tilt_change })}</span>${a.tilt_after != null && a.tilt_after >= 60 ? `<span>${t('ov_floor')}</span>` : ''}`;
-  $('#ovResp').innerHTML = a.responders.length ? a.responders.map(r => esc(t('ov_resp_line', { who: r.name, role: role(r.role), time: hhmm(r.ts) }))).join('<br>') : esc(t('ov_none'));
-  $('#ovEsc').classList.toggle('on', a.escalated && !a.responders.length);
-  $('#ovAck').textContent = mine ? t('ov_ack_done') : t('ov_ack');
-  $('#ovAck').classList.toggle('done', mine); $('#ovAck').disabled = mine;
-  $('#ovCallW').href = 'tel:' + (w.phone || '').replace(/\s/g, ''); $('#ovCallWTxt').textContent = t('call_x', { name: first(w.name) });
-  $('#ovMapFb').innerHTML = `<b>${esc(locLabel(a))}</b><span>${a.location.lat}, ${a.location.lon}</span><a href="https://maps.google.com/?q=${a.location.lat},${a.location.lon}" target="_blank" rel="noopener">${t('map_open')}</a><span style="font-size:13px;opacity:.85">${a.location.source === 'phone' ? (a.location.acc ? '± ' + Math.round(a.location.acc) + ' m' : '') : t('loc_home')}</span>`;
-  if (map && marker) { marker.setLatLng([a.location.lat, a.location.lon]); map.setView([a.location.lat, a.location.lon], 16); }
-}
-function initMap() {
-  const a = S.snap.alerts.find(x => x.id === S.ovId); if (!a) return;
-  const el = $('#ovMap');
-  if (!window.L) { el.classList.add('nomap'); return; }
-  if (!map) {
-    el.classList.add('nomap');            // show the address until map tiles actually load
-    map = L.map(el, { zoomControl: false }).setView([a.location.lat, a.location.lon], 16);
-    const tiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(map);
-    tiles.on('tileload', () => el.classList.remove('nomap'));
-    marker = L.circleMarker([a.location.lat, a.location.lon], { radius: 11, color: '#fff', weight: 3, fillColor: '#D2263B', fillOpacity: 1 }).addTo(map);
+  const nowS = Date.now() / 1000, age = nowS - a.ts, ph = phaseOf(a), sos = a.kind === 'sos';
+  $('#ov').dataset.phase = ph;
+  $('#ovIcon').innerHTML = a.recovered && !sos ? OV_ICON.ok : sos ? OV_ICON.sos : OV_ICON.fall;
+  $('#ovSev').textContent = (sos ? t('ov_chip_sos') : ph === 'check' ? t('ov_chip_check') : ph === 'responding' ? t('ov_chip_resp') : t('ov_sev', { sev: t('sev_' + a.severity) })) + (a.demo ? ' · ' + t('ov_demo') : '');
+  $('#ovEl').textContent = mmss(age);
+  $('#ovElL').textContent = sos ? t('ov_since_sos') : t('ov_since');
+  $('#ovTitle').textContent = sos ? t('ov_title_sos2', { name: a.from || wf }) : t('ov_title2', { name: wf });
+  $('#ovSub').textContent = sos ? t('ov_sub_sos', { time: hhmm(a.ts) })
+    : ph === 'check' ? t('ov_sub_check', { name: wf, n: Math.ceil(CHECK_S - age) })
+    : t('ov_sub_fall', { time: hhmm(a.ts), how: t(a.tilt_after != null && a.tilt_after >= 60 ? 'ov_how_floor' : 'ov_how_' + a.severity) });
+  // right now, from the vest
+  const L = S.live, nowEl = $('#ovNow'), link = L?.device?.link || (L?.device?.online ? 'live' : 'offline');
+  if (a.recovered && !sos) { nowEl.className = 'ov-now good'; nowEl.innerHTML = `<i></i>${esc(t('ov_up_again', { name: wf }))}`; }
+  else if (L && link === 'live' && L.activity?.state) { nowEl.className = 'ov-now'; nowEl.innerHTML = `<i></i>${esc(t('ov_now', { act: t('act_' + L.activity.state) }))}`; }
+  else if (L && L.device?.ever) { nowEl.className = 'ov-now off'; nowEl.innerHTML = `<i></i>${esc(t('ov_now_off'))}`; }
+  else nowEl.innerHTML = '';
+  // what is happening, step by step
+  const contacts = S.snap.profile.contacts || [], calls = (S.snap.feed || []).filter(e => e.key === 'auto_called' && e.ref === a.id);
+  const autoCall = S.snap.autoCall !== false && contacts.length && (a.hub || sos);
+  const steps = [];
+  if (sos) steps.push(stepHtml('done', t('st_sos_pressed', { name: a.from || wf }), '', hhmm(a.ts)));
+  else steps.push(stepHtml('done', t('st_detected'), t('ov_impact', { g: a.peak_g }), hhmm(a.ts)));
+  if (a.hub && !sos) steps.push(ph === 'check'
+    ? stepHtml('now', t('st_asking', { name: wf }), t('st_asking_d', { n: Math.ceil(CHECK_S - age) }), '')
+    : stepHtml('done', t('st_no_answer', { name: wf }), '', hhmm(a.ts + CHECK_S)));
+  const ringing = ph === 'alarm';
+  steps.push(ph === 'check' ? stepHtml('wait', t('st_ring_later'), t('st_ring_in', { n: Math.ceil(CHECK_S - age) }), '')
+    : stepHtml(ringing ? 'now' : 'done', t(ringing ? 'st_ringing' : 'st_rang'), ringing ? t('st_ringing_d', { n: (S.snap.caregivers || []).length || 1 }) : '', ''));
+  if (autoCall) {
+    const callAt = sos ? 15 : CALL_S;
+    if (calls.length) calls.forEach(c => steps.push(stepHtml('done', t('st_called', { who: c.p.who }), '', hhmm(c.ts))));
+    else if (!a.responders.length) steps.push(stepHtml(age >= callAt ? 'now' : 'wait', age >= callAt ? t('st_calling', { who: first(contacts[0].name) }) : t('st_call_at', { who: first(contacts[0].name) }), age >= callAt ? '' : t('st_call_in', { n: mmss(callAt - age) }), ''));
   }
-  setTimeout(() => map.invalidateSize(), 60);
+  a.responders.forEach(r => steps.push(stepHtml('done', t('st_going', { who: r.name === S.me?.name ? t('you') : r.name }), role(r.role), hhmm(r.ts))));
+  $('#ovSteps').innerHTML = steps.join('');
+  const esc1 = a.escalated && !a.responders.length;
+  $('#ovEsc').classList.toggle('on', esc1); $('#ovEsc').textContent = esc1 ? t('ov_escalate2', { name: wf }) : '';
+  $('#ovAck').textContent = mine ? t('ov_ack_done2') : t('ov_ack2');
+  $('#ovAck').classList.toggle('done', mine); $('#ovAck').disabled = mine;
+  $('#ovCallW').href = 'tel:' + (w.phone || '').replace(/\s/g, ''); $('#ovCallW').hidden = !w.phone;
+  $('#ovCallWTxt').textContent = t('call_x', { name: wf });
+  const ll = `${a.location.lat},${a.location.lon}`;
+  $('#ovLoc').href = `https://maps.google.com/?q=${ll}`;
+  $('#ovLoc').innerHTML = `<span class="ic">${svg('pin')}</span><div><b>${esc(locLabel(a) || t('location'))}</b><span>${a.location.source === 'phone' ? (a.location.acc ? '± ' + Math.round(a.location.acc) + ' m' : t('loc_phone_short')) : t('loc_home')}</span></div><em>${t('map_open')}</em>`;
 }
+function initMap() {}
 $('#ovAck').onclick = () => {
   const a = S.snap.alerts.find(x => x.id === S.ovId); if (!a) return;
   S.seenAlerts[a.id] = true; store.set('vgc_seen', S.seenAlerts);
@@ -1132,6 +1240,8 @@ document.addEventListener('click', e => {
   if (d.log === 'note') return formSheet(t('add_note'), [{ k: 'text', label: t('note_q'), type: 'textarea', ph: t('note_ph2') }], v => { if (!v.text) return false; send({ t: 'log', kind: 'note', text: v.text }); toast(t('note_done')); }, t('note_btn'));
   if (d.delc !== undefined) { const c = S.snap.profile.contacts.slice(); c.splice(+d.delc, 1); return saveProfile({ contacts: c }); }
   if (d.callname) send({ t: 'call', target: d.callname });
+  if (d.snd) { send({ t: 'settings', alarmSound: d.snd }, false); if (S.snap) S.snap.alarmSound = d.snd;
+    document.querySelectorAll('[data-snd]').forEach(x => x.classList.toggle('on', x === b)); setTimeout(() => VN?.testAlarm().catch(() => {}), 250); return; }
   switch (b.id) {
     case 'pVit': return setPref('showVitals', !S.showVitals);
     case 'pMe': return onboard(1);
@@ -1300,18 +1410,28 @@ function renderHub() {
   const open = (snap?.alerts || []).filter(a => a.status !== 'resolved').at(-1);
   const online = !!L?.device?.online;
   el.classList.toggle('alert', !!open);
+  el.classList.toggle('coming', !!open?.responders.length);
   const gear = `<button class="hub-gear" data-hub="settings" aria-label="${esc(t('hub_settings'))}">${svg('gear')}</button>`;
   if (open) {
-    const age = Math.max(0, Math.floor(Date.now() / 1000 - open.ts)), left = Math.max(0, 60 - age);
-    const coming = open.responders.length ? t('hub_coming', { who: open.responders.map(r => r.name).join(', ') }) : '';
-    const sos = open.kind === 'sos';
-    const count = coming ? '' : sos ? t('hub_sos_sent') : left > 0 ? t('hub_calling_in', { n: left }) : t('hub_calling');
+    const age = Math.max(0, Math.floor(Date.now() / 1000 - open.ts)), sos = open.kind === 'sos';
+    const callAt = sos ? 15 : CALL_S, left = Math.max(0, callAt - age);
+    const coming = open.responders.length ? open.responders.map(r => first(r.name)).join(', ') : '';
+    const calls = (snap?.feed || []).filter(e => e.key === 'auto_called' && e.ref === open.id);
+    const canCall = contacts.length && snap?.autoCall !== false;
+    const C = 2 * Math.PI * 54, frac = coming ? 1 : Math.min(1, age / callAt);
+    let center, label;
+    if (coming) { center = `<span class="hc-ic">${TICK}</span>`; label = t('hub_coming', { who: coming }); }
+    else if (!canCall) { center = `<span class="hc-n">${mmss(age)}</span>`; label = t('hub_family_alerted'); }
+    else if (left > 0) { center = `<span class="hc-n">${left}</span>`; label = t('hub_calling_in2', { who: first(contacts[0].name) }); }
+    else { center = `<span class="hc-ic">${svg('call')}</span>`; label = calls.length ? t('hub_called', { who: calls.at(-1).p.who }) : t('hub_calling'); }
     el.innerHTML = `<div class="hub-top"><div><div class="hub-time">${fmtClock()}</div><div class="hub-date">${fmtDate()}</div></div>${gear}</div>
       <div class="hub-q">${sos ? t('hub_sos_q') : esc(t('hub_q', { name: first(w) }))}</div>
-      <div class="hub-count">${esc(count)}</div>
-      ${coming ? `<div class="hub-resp">${esc(coming)}</div>` : ''}
-      <div style="flex:1"></div>
-      <button class="hub-okbtn" data-hub="ok">${t('hub_ok')}</button>
+      <div class="hub-help">${esc(sos ? t('hub_sos_help') : open.recovered ? t('hub_up_help') : t('hub_fall_help'))}</div>
+      <div class="hub-countwrap ${coming ? 'ok' : ''}"><div class="hub-count2">
+        <svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="54" class="bg"/><circle cx="60" cy="60" r="54" class="fg" style="stroke-dasharray:${C};stroke-dashoffset:${C * (1 - frac)}"/></svg>
+        <div class="hc-in">${center}</div></div>
+        <div class="hc-label">${esc(label)}</div></div>
+      <button class="hub-okbtn" data-hub="ok">${sos ? t('hub_cancel_sos') : t('hub_ok')}</button>
       ${contacts.length ? `<button class="hub-nowbtn" data-hub="callnow">${t('hub_callnow')}</button>` : ''}`;
     return;
   }
@@ -1350,7 +1470,7 @@ $('#hubBack').onclick = () => { S.hubHidden = false; renderHub(); };
 
 async function wake() { try { if (navigator.wakeLock && document.visibilityState === 'visible') await navigator.wakeLock.request('screen'); } catch {} }
 document.addEventListener('visibilitychange', wake);
-setInterval(() => { renderConn(); if (S.ovId) renderOverride(); renderSetup(); if (isHub() && !S.hubHidden && !$('#sosBtn')?.classList.contains('holding')) renderHub(); }, 1000);
+setInterval(() => { renderConn(); if (S.ovId) { renderOverride(); ringIfDue(); } renderSetup(); if (isHub() && !S.hubHidden && !$('#sosBtn')?.classList.contains('holding')) renderHub(); }, 1000);
 applyStatic();
 if (!S.me || !S.me.family) onboard();
 startNative();

@@ -45,6 +45,11 @@ final class Strings {
         EN.put("sos_title", "SOS from {name}");
         EN.put("tts_fall", "{name}, are you okay? If you are fine, press I am OK on the screen. Otherwise your family is being called.");
         EN.put("tts_sos", "Help is on the way. Your family is being called.");
+        EN.put("tts_cg_fall", "{name} may have fallen. Please check on them now.");
+        EN.put("tts_cg_sos", "{name} is asking for help.");
+        EN.put("tts_coming", "{who} is coming to help you.");
+        EN.put("tts_up", "You are up again. If you are fine, press I am OK.");
+        EN.put("fall_checking", "Checking on {name} first: the home phone is asking if they're OK. Your phone rings in 30 s if they don't answer.");
 
         HI.put("ch_alert", "गिरने के अलार्म");
         HI.put("ch_status", "वेस्ट कनेक्शन");
@@ -80,6 +85,11 @@ final class Strings {
         HI.put("sos_title", "{name} ने मदद माँगी (SOS)");
         HI.put("tts_fall", "{name}, क्या आप ठीक हैं? ठीक हैं तो स्क्रीन पर मैं ठीक हूँ दबाइए। नहीं तो परिवार को फ़ोन किया जा रहा है।");
         HI.put("tts_sos", "मदद आ रही है। परिवार को फ़ोन किया जा रहा है।");
+        HI.put("tts_cg_fall", "{name} शायद गिर गए हैं। कृपया अभी देखिए।");
+        HI.put("tts_cg_sos", "{name} मदद माँग रहे हैं।");
+        HI.put("tts_coming", "{who} आपकी मदद के लिए आ रहे हैं।");
+        HI.put("tts_up", "आप फिर से खड़े हैं। ठीक हैं तो मैं ठीक हूँ दबाइए।");
+        HI.put("fall_checking", "पहले {name} से पूछा जा रहा है कि वे ठीक हैं। जवाब न मिला तो 30 सेकंड में आपका फ़ोन बजेगा।");
     }
 
     static String t(String lang, String key, String... kv) {

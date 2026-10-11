@@ -13,8 +13,11 @@
   'use strict';
   const ESCALATE_AFTER_S = 60;
   const ONLINE_S = 4;
+  const LOST_S = 30;          // a short Wi-Fi hiccup shows "reconnecting"; only after 30 s is the vest "offline"
+  const CHECK_S = 30;         // with a Home Hub: first ask the wearer, ring the family after 30 s
+  const SENSOR_GRACE_S = 4;   // a sensor must stay down this long before we report it
   const IMPORTANT = new Set(['fall_detected', 'escalated', 'responding', 'resolved', 'stumble', 'meal', 'note', 'called',
-    'vest_lost', 'sensor_offline', 'sensor_frozen', 'act_feed_lying', 'act_feed_gotup']);
+    'vest_lost', 'sensor_offline', 'sensor_frozen', 'act_feed_lying', 'act_feed_gotup', 'recovered', 'vest_power', 'vest_crash']);
   const ACT_EN = { resting: 'Resting', light: 'Moving lightly', walking: 'Walking', active: 'Very active', lying: 'Lying down' };
   const DEFAULT_PROFILE = {
     wearer: { name: 'Kamla Devi', age: 76, phone: '', notes: 'Uses a walking stick. Hearing aid in left ear.' },
@@ -48,12 +51,14 @@
       this.calib = !!st.calib;
       this.vestWifi = st.vestWifi || null;
       this.fw = st.fw || null;
+      this.lastBoot = st.lastBoot || null;
       this.autoSms = !!st.autoSms;
       this.autoCall = st.autoCall !== false;
+      this.alarmSound = st.alarmSound === 'phone' ? 'phone' : 'chime';
       this.peers = {};                   // other phones of this family: device -> {name, role, kind, ts, vest}
 
       this.lastRx = 0; this.everConnected = !!st.ever; this.wasOnline = false;
-      this.sensorOk = [false, false]; this.hbSeen = false; this.rssi = 0; this.frozenUntil = 0;
+      this.sensorOk = [false, false]; this.sensorDownAt = [0, 0]; this.sensorReported = [true, true]; this.hbSeen = false; this.rssi = 0; this.frozenUntil = 0;
       this.act = null; this.actSince = now(); this.posture = null; this.tilt = null; this.calibrating = false;
       this.lyingSince = null; this.vestIp = null; this.fallBoost = 0;
       this.minuteAcc = null;
@@ -72,11 +77,33 @@
     _save() {
       save('vge_state', { profile: this.profile, alerts: this.alerts.slice(-200), feed: this.feed.slice(-400), steps: this.steps,
         stumbles: this.stumbles, seenEv: this.seenEv.slice(-300), calib: this.calib, vestWifi: this.vestWifi, fw: this.fw,
-        ever: this.everConnected, autoSms: this.autoSms, autoCall: this.autoCall });
+        ever: this.everConnected, autoSms: this.autoSms, autoCall: this.autoCall, lastBoot: this.lastBoot, alarmSound: this.alarmSound });
       save('vge_actmin', this.actMin.slice(-7 * 24 * 60));
       this.persistDirty = false; this.lastSave = now();
     }
     online() { return !!(this.lastRx && now() - this.lastRx < ONLINE_S); }
+    /** 'live' | 'reconnecting' (short gap, nothing to worry about) | 'offline' | 'never' */
+    link() {
+      if (!this.everConnected || !this.lastRx) return 'never';
+      const gap = now() - this.lastRx;
+      return gap < ONLINE_S ? 'live' : gap < LOST_S ? 'reconnecting' : 'offline';
+    }
+    /** a Home Hub phone of this family is around (it asks the wearer first after a fall) */
+    hubPresent() {
+      if (this.me && this.me.kind === 'hub') return true;
+      const t = now();
+      for (const k in this.peers) if (this.peers[k].kind === 'hub' && t - this.peers[k].ts < 15) return true;
+      return false;
+    }
+    /** where an open alert is in its life: check (asking the wearer) -> alarm (family ringing) -> calling */
+    phase(a) {
+      if (!a || a.status === 'resolved') return 'done';
+      if (a.kind === 'sos') return 'alarm';
+      const age = now() - a.ts;
+      if (a.responders.length) return 'responding';
+      if (a.hub && age < CHECK_S) return 'check';
+      return 'alarm';
+    }
 
     addFeed(kind, key, text, p = {}, source = 'vest', by = null, ref = null, ts = null) {
       const e = { id: uid(), ts: ts || now(), kind, key, p, text, source, imp: IMPORTANT.has(key) };
@@ -145,9 +172,21 @@
     _heartbeat(p) {
       const ok = [p[1] === '1', p[2] === '1'];
       this.rssi = parseInt(p[5], 10) || 0;
-      if (this.hbSeen) for (let i = 0; i < 2; i++) {
-        if (ok[i] !== this.sensorOk[i]) this.addFeed('device', ok[i] ? 'sensor_online' : 'sensor_offline', ok[i] ? 'Sensor back online' : 'Sensor offline', { s: i ? 'lower' : 'upper' });
+      const t = now();
+      for (let i = 0; i < 2; i++) {
+        if (!ok[i] && this.sensorOk[i]) this.sensorDownAt[i] = t;
+        if (ok[i] && !this.sensorOk[i] && this.hbSeen && this.sensorReported[i] === false) this.sensorReported[i] = true;
+        if (ok[i] && !this.sensorOk[i] && this.hbSeen && this.sensorReported[i] === 'down') {
+          this.addFeed('device', 'sensor_online', 'Sensor back online', { s: i ? 'lower' : 'upper' });
+          this.sensorReported[i] = true;
+        }
+        // only report a sensor that stays down (a one-second blip is not worth a notice)
+        if (!ok[i] && this.hbSeen && this.sensorReported[i] === true && t - this.sensorDownAt[i] >= SENSOR_GRACE_S) {
+          this.addFeed('device', 'sensor_offline', 'Sensor offline', { s: i ? 'lower' : 'upper' });
+          this.sensorReported[i] = 'down';
+        }
       }
+      if (!this.hbSeen) for (let i = 0; i < 2; i++) if (!ok[i]) this.sensorDownAt[i] = t;
       this.hbSeen = true; this.sensorOk = ok;
     }
 
@@ -186,6 +225,19 @@
           this.addFeed('device', 'calibrated', 'Vest calibrated', {}, 'caregiver', this.me ? this.me.name : null, null, ts);
           this.toast('toast_cal_ok');
         } else this.toast('toast_cal_fail');
+      } else if (kind === 'RISE') {
+        // 3.4 vest: a quick get-up that older firmware would have called a fall
+        this.addFeed('activity', 'rise', 'Got up quickly (not a fall)', {}, 'vest', null, null, ts);
+      } else if (kind === 'RECOVER') {
+        const a = this.alerts.filter(x => x.kind === 'fall' && x.status !== 'resolved' && ts >= x.ts).at(-1);
+        if (a && !a.recovered) { a.recovered = ts; this.emit({ t: 'alert', alert: a }); }
+        this.addFeed('activity', 'recovered', 'Back on their feet after the fall', {}, 'vest', null, a ? a.id : null, ts);
+      } else if (kind === 'BOOT') {
+        const why = p[3] || 'other';
+        if (why === 'brownout') this.addFeed('device', 'vest_power', 'Vest restarted — the battery voltage dipped', { why }, 'vest', null, null, ts);
+        else if (why === 'crash' || why === 'watchdog') this.addFeed('device', 'vest_crash', 'Vest restarted after an error', { why }, 'vest', null, null, ts);
+        else this.addFeed('device', 'vest_restart', 'Vest switched on', { why }, 'vest', null, null, ts);
+        this.lastBoot = { why, ts }; this.persistDirty = true;
       } else if (kind === 'FROZEN') {
         this.frozenUntil = now() + 10;
         this.addFeed('device', 'sensor_frozen', 'Sensor stopped updating — restarting it', { s: p[3] === 'lower' ? 'lower' : 'upper' }, 'vest', null, null, ts);
@@ -211,6 +263,7 @@
         tilt_change: Math.round(tiltChange), tilt_after: tiltAfter == null || isNaN(tiltAfter) ? null : Math.round(tiltAfter),
         status: 'active', responders: [], escalated: false, resolution: null, resolved_by: null, resolved_ts: null, note: '',
         location: loc || Object.assign({}, this.profile.home, { source: 'home' }), demo: !!demo,
+        hub: kind === 'fall' && this.hubPresent(), recovered: null,
       };
       if (now() - a.ts > ESCALATE_AFTER_S) a.escalated = true;
       this.alerts.push(a);
@@ -305,9 +358,11 @@
 
     // ------------------------------------------------------------ periodic
     _loop() {
-      const t = now(), online = this.online();
-      if (this.everConnected && !online && this.wasOnline) this.addFeed('device', 'vest_lost', 'Vest connection lost');
+      const t = now(), online = this.link() !== 'offline';
+      if (this.everConnected && !online && this.wasOnline) this.addFeed('device', 'vest_lost', 'Vest connection lost', {}, 'vest', null, null, this.lastRx);
       this.wasOnline = online;
+      // an open alert crossing from "asking the wearer" to "ringing the family" needs a fresh render
+      for (const a of this.alerts) if (a.status === 'active' && a.hub && !a.phased && t - a.ts >= CHECK_S) { a.phased = true; this.emit({ t: 'alert', alert: a }); }
       this._vitals(t);
       for (const a of this.alerts) {
         if (a.status === 'active' && !a.escalated && t - a.ts > ESCALATE_AFTER_S) {
@@ -386,8 +441,13 @@
       }
       const reasons = [], online = this.online();
       if (!this.everConnected) reasons.push({ key: 'r_not_connected', p: {} });
-      else if (!online) { const mins = Math.floor((t - this.lastRx) / 60); reasons.push(mins ? { key: 'r_offline_min', p: { n: mins } } : { key: 'r_offline', p: {} }); }
-      else if (!this.sensorOk.every(Boolean) || t < this.frozenUntil) reasons.push({ key: 'r_sensor', p: {} });
+      else if (this.link() === 'offline') { const mins = Math.floor((t - this.lastRx) / 60); reasons.push(mins ? { key: 'r_offline_min', p: { n: mins } } : { key: 'r_offline', p: {} }); }
+      else if (online) {
+        const down = [0, 1].filter(i => !this.sensorOk[i] && t - this.sensorDownAt[i] >= SENSOR_GRACE_S);
+        if (down.length === 2) reasons.push({ key: 'r_sensor_both', p: {} });
+        else if (down.length) reasons.push({ key: down[0] ? 'r_sensor_lower' : 'r_sensor_upper', p: {} });
+        else if (t < this.frozenUntil) reasons.push({ key: 'r_sensor', p: {} });
+      }
       const hour = new Date().getHours();
       if (this.lyingSince && hour >= 6 && hour < 22 && t - this.lyingSince > 20 * 60) reasons.push({ key: 'r_lying_long', p: { n: Math.floor((t - this.lyingSince) / 60) } });
       if (this.fallRisk().level === 'high') reasons.push({ key: 'r_risk_high', p: {} });
@@ -398,20 +458,20 @@
       const t = now(), online = this.online();
       return {
         t: 'live', ts: t, status: this.overall(),
-        activity: { state: online ? this.act : null, since: this.actSince, posture: online ? this.posture : null, tilt: this.tilt,
+        activity: { state: this.link() === 'live' || this.link() === 'reconnecting' ? this.act : null, since: this.actSince, posture: this.link() === 'live' || this.link() === 'reconnecting' ? this.posture : null, tilt: this.tilt,
           steps: this.steps.date === today() ? this.steps.count : 0, calibrated: this.calib, calibrating: this.calibrating },
         risk: this.fallRisk(),
         vitals: { hr: Math.round(this.vit.hr), spo2: Math.round(this.vit.spo2), temp: Math.round(this.vit.temp * 10) / 10, simulated: true },
-        device: { online, last_rx: this.lastRx || null, sensors: this.sensorOk, rssi: this.rssi, ever: this.everConnected,
+        device: { online, link: this.link(), last_rx: this.lastRx || null, sensors: this.sensorOk, rssi: this.rssi, ever: this.everConnected, boot: this.lastBoot || null,
           ip: this.vestIp, fw: this.fw, wifi: this.vestWifi, mode: 'vest' },
-        peers: this.caregivers().length - 1,
+        peers: this.caregivers().length - 1, hub: this.hubPresent(),
       };
     }
     snapshot() {
       return {
         t: 'snapshot', profile: this.profile, alerts: this.alerts.slice(-100), feed: this.feed.slice(-150), sleep: this.sleep,
         calib: this.calib, caregivers: this.caregivers(),
-        autoSms: this.autoSms, autoCall: this.autoCall, live: this.live(),
+        autoSms: this.autoSms, autoCall: this.autoCall, alarmSound: this.alarmSound, live: this.live(),
       };
     }
     series(range) {
@@ -497,6 +557,7 @@
         case 'settings':
           if ('autoSms' in m) { this.autoSms = !!m.autoSms; this.pushConfig(); }
           if ('autoCall' in m) { this.autoCall = !!m.autoCall; this.pushConfig(); }
+          if ('alarmSound' in m) { this.alarmSound = m.alarmSound === 'phone' ? 'phone' : 'chime'; this.pushConfig(); }
           break;
         case 'series':
           this.emit(this.series(m.range || '24h'));
@@ -524,7 +585,7 @@
         autoSms: this.autoSms, lat: +this.profile.home.lat || 0, lon: +this.profile.home.lon || 0, homeLabel: this.profile.home.label,
         me: this.me ? this.me.name : '', meRole: this.me ? this.me.role : 'family',
         kind: this.me ? (this.me.kind || 'caregiver') : 'caregiver', family: this.me ? (this.me.family || '') : '',
-        device: this.me ? this.me.id : '', autoCall: this.autoCall,
+        device: this.me ? this.me.id : '', autoCall: this.autoCall, alarmSound: this.alarmSound,
       }).catch(() => {});
     }
   }

@@ -89,6 +89,12 @@ jobs:
           g++ -O2 -std=c++17 -Wall -Ifirmware/vestguard_vest firmware/test/detector_test.cpp -o detector_test
           ./detector_test data/vestguard_dataset_2026-10-06_clean.csv | tee detector_report.txt
           ./detector_test data/vestguard_dataset_2026-10-08.csv | tee -a detector_report.txt
+          echo "--- every trial played backwards (= getting up fast); none may alarm ---" | tee -a detector_report.txt
+          ./detector_test data/vestguard_dataset_2026-10-06_clean.csv --reverse | tee -a detector_report.txt
+          ./detector_test data/vestguard_dataset_2026-10-08.csv --reverse | tee -a detector_report.txt
+          echo "--- upper sensor unplugged: lower sensor alone ---" | tee -a detector_report.txt
+          ./detector_test data/vestguard_dataset_2026-10-06_clean.csv --lower | tee -a detector_report.txt
+          ./detector_test data/vestguard_dataset_2026-10-08.csv --lower | tee -a detector_report.txt
 
       - uses: arduino/setup-arduino-cli@v2
 

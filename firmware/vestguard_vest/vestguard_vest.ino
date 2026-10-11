@@ -1,8 +1,16 @@
 /*
   ============================================================
-   VestGuard V2 vest firmware                      v3.0
+   VestGuard V2 vest firmware                      v3.4
    ESP32-S3 + 2x BMI323   ->   phone app (or laptop)
   ============================================================
+
+  WHAT'S NEW IN 3.4
+    * Getting up quickly (from bed / floor) no longer raises a fall alarm.
+    * After a fall the vest reports when the wearer is back on their feet (E,..,RECOVER).
+    * If the upper sensor drops out, detection continues on the lower sensor alone.
+    * Steadier sensors: I2C at 100 kHz with timeouts and bus recovery (long / flexing wires).
+    * Reports WHY it restarted (I,BOOT,brownout = battery / boost converter dipped).
+    * Wi-Fi transmit power slightly lower (smaller current spikes on battery, same range indoors).
 
   WHAT'S NEW IN 3.0
     * Fall detection runs ON THE VEST (detector.h). The vest buzzes by itself the moment
@@ -45,6 +53,7 @@
 #include <stdarg.h>
 #include "detector.h"
 #include "vest_types.h"
+#include <esp_system.h>
 
 // ================= DEFAULT WI-FI (fallback) =================
 // The vest tries these networks in order (15 s each) and keeps cycling until one works.
@@ -60,12 +69,14 @@ const int NETWORK_COUNT = sizeof(NETWORKS) / sizeof(NETWORKS[0]);
 const char* DEFAULT_SSID = NETWORKS[0].ssid;
 // ============================================================
 
-#define FW_VERSION  "3.3"
+#define FW_VERSION  "3.4"
 #define DATA_PORT   4210
 #define CMD_PORT    4211
 #define I2C_SDA     8
 #define I2C_SCL     9
 #define BUZZER_PIN  10          // -1 if no buzzer
+#define I2C_HZ      100000      // 3.4: 100 kHz copes far better with long / flexing vest wires than 400 kHz
+#define I2C_TIMEOUT_MS 20
 
 // ---------------- BMI323 ----------------
 #define REG_CHIP_ID   0x00
@@ -273,6 +284,25 @@ bool initImu(Imu& s, uint8_t idx) {
   return s.ok;
 }
 
+// A sensor that lost power mid-transfer can hold SDA low and freeze the whole bus.
+// Clock SCL until it lets go, send a STOP, then restart the I2C driver.
+void i2cRecover() {
+  Wire.end();
+  pinMode(I2C_SDA, INPUT_PULLUP);
+  pinMode(I2C_SCL, OUTPUT_OPEN_DRAIN);
+  for (int i = 0; i < 9 && digitalRead(I2C_SDA) == LOW; i++) {
+    digitalWrite(I2C_SCL, LOW); delayMicroseconds(5);
+    digitalWrite(I2C_SCL, HIGH); delayMicroseconds(5);
+  }
+  pinMode(I2C_SDA, OUTPUT_OPEN_DRAIN);
+  digitalWrite(I2C_SDA, LOW); delayMicroseconds(5);
+  digitalWrite(I2C_SCL, HIGH); delayMicroseconds(5);
+  digitalWrite(I2C_SDA, HIGH); delayMicroseconds(5);
+  Wire.begin(I2C_SDA, I2C_SCL);
+  Wire.setClock(I2C_HZ);
+  Wire.setTimeOut(I2C_TIMEOUT_MS);
+}
+
 void i2cScan() {
   char b[160]; int n = snprintf(b, sizeof b, "I,SCAN");
   for (uint8_t a = 1; a < 127 && n < 150; a++) {
@@ -282,8 +312,22 @@ void i2cScan() {
   emitInfo("%s", b);
 }
 
+const char* bootReason() {
+  switch (esp_reset_reason()) {
+    case ESP_RST_POWERON:  return "power-on";
+    case ESP_RST_BROWNOUT: return "brownout";
+    case ESP_RST_PANIC:    return "crash";
+    case ESP_RST_INT_WDT: case ESP_RST_TASK_WDT: case ESP_RST_WDT: return "watchdog";
+    case ESP_RST_SW:       return "software";
+    case ESP_RST_EXT:      return "reset-pin";
+    case ESP_RST_DEEPSLEEP: return "deep-sleep";
+    default:               return "other";
+  }
+}
+
 void printInfo() {
   emitInfo("I,FW,VestGuard-Vest,%s", FW_VERSION);
+  emitInfo("I,BOOT,%s", bootReason());
   emitInfo("I,WIFI,STA,%s,%s", curSsid(), WiFi.localIP().toString().c_str());
   emitInfo("I,WIFICFG,%s,%s", netUp() ? curSsid() : (hasCustomWifi() ? savedSsid.c_str() : DEFAULT_SSID), hasCustomWifi() ? "custom" : "default");
   emitInfo("I,RANGE,ACC_16G,GYR_2000DPS");
@@ -355,6 +399,7 @@ void startWifi() {
   WiFi.mode(WIFI_STA);
   WiFi.setSleep(false);
   WiFi.setAutoReconnect(true);
+  WiFi.setTxPower(WIFI_POWER_17dBm);      // 3.4: smaller current spikes on battery
   netIdx = hasCustomWifi() ? 0 : 1;
   wifiBegin();
   uint32_t t0 = millis();
@@ -413,7 +458,8 @@ void sampleAndSend() {
   appendImu(p, imu[0]); appendImu(p, imu[1]);
   *p++ = '\n';
   emitData(line, p - line);
-  if (imu[0].ok) det.feed(t, imu[0].a, imu[0].g, imu[1].a, imu[1].ok);
+  if (imu[0].ok) { det.setLowerPrimary(false); det.feed(t, imu[0].a, imu[0].g, imu[1].a, imu[1].ok); }
+  else if (imu[1].ok) { det.setLowerPrimary(true); det.feed(t, imu[1].a, imu[1].g, imu[1].a, false); }
 }
 
 void handleDetectorEvents() {
@@ -425,6 +471,8 @@ void handleDetectorEvents() {
         eventf(true, "%u,%.2f,%.0f,%.0f,%d", e.severity, e.peak, e.tiltChange, isnan(e.tiltAfter) ? -1.0f : e.tiltAfter, e.lying ? 1 : 0);
         break;
       case vg::Event::STUMBLE:  eventf(false, "STUMBLE,%.2f", e.peak); break;
+      case vg::Event::RISE:     eventf(false, "RISE,%.2f,%.0f,%.0f", e.peak, e.tiltBefore, e.tiltAfter); break;
+      case vg::Event::RECOVER:  eventf(false, "RECOVER,%.0f", e.tiltAfter); break;
       case vg::Event::ACTIVITY: eventf(false, "ACT,%s,%s", vg::actName(e.from), vg::actName(e.to)); break;
       case vg::Event::CAL_OK:
         saveCalibration();
@@ -513,13 +561,15 @@ void setup() {
 
   loadSettings();
   Wire.begin(I2C_SDA, I2C_SCL);
-  Wire.setClock(400000);
+  Wire.setClock(I2C_HZ);
+  Wire.setTimeOut(I2C_TIMEOUT_MS);
 
   startWifi();
   i2cScan();
   initImu(imu[0], 0);
   initImu(imu[1], 1);
   printInfo();
+  eventf(false, "BOOT,%s", bootReason());      // reliable: reaches the phone once it links (brownout = power problem)
 
   if (BUZZER_PIN >= 0) tone(BUZZER_PIN, 2400, 120);       // boot chirp
   nextSampleUs = micros();
@@ -542,7 +592,7 @@ void loop() {
   uint32_t ms = millis();
   if (ms - lastTick >= 500) {
     lastTick = ms;
-    if (imu[0].ok) det.tick(ms); else det.reset();
+    if (imu[0].ok || imu[1].ok) det.tick(ms); else det.reset();
   }
   handleDetectorEvents();
   resendEvents();
@@ -563,6 +613,7 @@ void loop() {
   }
   if ((!imu[0].ok || !imu[1].ok) && ms - lastReinitTry > 3000) {
     lastReinitTry = ms;
+    if (!imu[0].ok && !imu[1].ok) i2cRecover();      // both gone at once = the bus itself is stuck
     if (!imu[0].ok) initImu(imu[0], 0);
     if (!imu[1].ok) initImu(imu[1], 1);
   }
