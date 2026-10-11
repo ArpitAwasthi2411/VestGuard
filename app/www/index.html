@@ -827,7 +827,7 @@ function renderLive() {
   $('#dT').textContent = online ? t('dev_connected') : recon ? t('dev_reconnecting') : d.ever ? t('dev_offline') : t('dev_never');
   const boot = d.boot && Date.now() / 1000 - d.boot.ts < 86400 && ['brownout', 'crash', 'watchdog'].includes(d.boot.why)
     ? ' · ' + t(d.boot.why === 'brownout' ? 'dev_boot_power' : 'dev_boot_crash') : '';
-  const bat = d.battery ? ' · ' + t(d.battery.chg ? 'dev_bat_chg' : 'dev_bat', { n: d.battery.pct }) : '';
+  const bat = d.battery ? ' · ' + t(d.battery.chg ? 'dev_bat_chg' : 'dev_bat', { n: d.battery.pct }) + (d.battery.mv > 0 ? ` (${(d.battery.mv / 1000).toFixed(2)} V)` : '') : '';
   $('#dD').textContent = online || recon ? t('dev_sensors', { n: okN }) + (okN < 2 ? ' — ' + t('dev_check') : '') + bat + boot : d.last_rx ? t('dev_last', { ago: ago(d.last_rx) }) : t('dev_hint');
   const lv = !online ? 0 : !d.rssi ? 4 : d.rssi > -55 ? 4 : d.rssi > -67 ? 3 : d.rssi > -78 ? 2 : 1;
   $('#dSig').innerHTML = `<span class="bars" aria-label="WiFi ${lv}/4">${[1, 2, 3, 4].map(i => `<i class="${i <= lv ? 'on' : ''}" style="height:${i * 4}px"></i>`).join('')}</span>`;
@@ -1001,6 +1001,8 @@ function vestRows(L) {
   if (d.fw) bits.push(t('fw_v', { v: d.fw }));
   return `<div class="row"><div><div class="t">${t('connection')}</div><div class="d">${esc(bits.join(' · '))}</div><div class="d2">${t('hotspot_help')}</div></div>
       ${NATIVE ? `<span class="end"><button class="btn sm" data-perm="hotspot">${t('open_hotspot')}</button></span>` : ''}</div>
+    ${d.battery ? `<div class="row"><div><div class="t">${t('bat_row')}</div><div class="d">${esc(t('bat_row_d', { n: d.battery.pct, v: (d.battery.mv / 1000).toFixed(2) }))}</div></div>
+      <span class="end"><button class="btn sm" id="pBatCal">${t('bat_cal')}</button></span></div>` : ''}
     <div class="row"><div><div class="t">${t('vest_wifi')}</div><div class="d">${d.wifi ? esc(t('vest_wifi_d', { ssid: d.wifi })) : t('vest_wifi_unknown')}</div></div>
       <span class="end"><button class="btn sm" id="pWifi">${t('wifi_change')}</button></span></div>` + modeRow();
 }
@@ -1299,6 +1301,10 @@ document.addEventListener('click', e => {
   switch (b.id) {
     case 'pVit': return setPref('showVitals', !S.showVitals);
     case 'pMe': return onboard(1);
+    case 'pBatCal': return formSheet(t('bat_cal_t'), [{ k: 'v', label: t('bat_cal_q'), mode: 'decimal', ph: '3.82' }], v => {
+      const x = parseFloat(String(v.v).replace(',', '.')); if (!(x > 2.8 && x < 4.4)) { toast(t('toast_batcal_bad')); return false; }
+      send({ t: 'batcal', v: x }, false); toast(t('bat_cal_sent'));
+    }, t('bat_cal_go'));
     case 'pHub': S.hubHidden = false; return renderHub();
     case 'pAutoCall': { const want = b.getAttribute('aria-checked') !== 'true';
       if (want && S.perms && !S.perms.calls) { VN?.requestPermission({ name: 'calls' }).catch(() => {}); setTimeout(refreshPerms, 1500); }

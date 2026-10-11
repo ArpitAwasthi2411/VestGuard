@@ -4,6 +4,10 @@
    ESP32-S3 + 2x BMI323   ->   phone app (or laptop)
   ============================================================
 
+  WHAT'S NEW IN 3.8
+    * Battery calibration from the app (command B<volts>, e.g. B3.82 = "my multimeter reads 3.82 V").
+      Saved in the vest. Readings also compensate for the voltage the cell loses while powering the vest.
+
   WHAT'S NEW IN 3.7
     * Battery level: one 18650 cell measured through a 100k/100k divider on GPIO4 (see BATTERY below).
       Sent in every heartbeat: H,...,<battery mV>,<battery %>,<charging 0/1/-1>. -1 = no divider fitted.
@@ -87,7 +91,7 @@ const int NETWORK_COUNT = sizeof(NETWORKS) / sizeof(NETWORKS[0]);
 const char* DEFAULT_SSID = NETWORKS[0].ssid;
 // ============================================================
 
-#define FW_VERSION  "3.7"
+#define FW_VERSION  "3.8"
 #define DATA_PORT   4210
 #define CMD_PORT    4211
 #define I2C_SDA     8
@@ -99,7 +103,8 @@ const char* DEFAULT_SSID = NETWORKS[0].ssid;
 #define BAT_PIN      4          // ADC1 pin with the 100k/100k divider; -1 = no battery reading
 #define BAT_CHG_PIN  -1         // TP4056 CHRG pin (LOW while charging); -1 = not wired
 #define BAT_DIVIDER  2.0f       // (100k + 100k) / 100k
-#define BAT_CAL      1.00f      // fine-tune: multimeter volts / app volts (e.g. 4.02 / 3.96 = 1.015)
+#define BAT_CAL      1.00f      // default only: calibrate from the app (Profile > Vest > Battery) instead
+#define BAT_LOAD_V   0.06f      // the cell sags ~0.06 V while powering the vest; added back before % is worked out
 
 // ---------------- BMI323 ----------------
 #define REG_CHIP_ID   0x00
@@ -390,6 +395,7 @@ void loadSettings() {
   prefs.begin("vg", true);
   savedSsid = prefs.getString("ssid", "");
   savedPass = prefs.getString("pass", "");
+  batCal = prefs.getFloat("batcal", BAT_CAL);
   if (prefs.getBool("cal", false)) {
     float u1[3], u2[3];
     if (prefs.getBytes("u1", u1, 12) == 12 && prefs.getBytes("u2", u2, 12) == 12) det.setCalibration(u1, u2);
@@ -491,7 +497,7 @@ static float nz(float v) { return isnan(v) ? -1.0f : v; }    // "unknown" -> -1 
 // Li-ion resting voltage -> remaining charge, for a light load (~100-150 mA, what the vest draws).
 const float BAT_V[]   = {3.30f, 3.50f, 3.61f, 3.67f, 3.71f, 3.75f, 3.79f, 3.84f, 3.90f, 3.97f, 4.05f, 4.15f};
 const uint8_t BAT_P[] = {0,     5,     10,    20,    30,    40,    50,    60,    70,    80,    90,    100};
-float batMv = -1; int batPct = -1; int batChg = -1; uint32_t lastBat = 0;
+float batMv = -1; int batPct = -1; int batChg = -1; uint32_t lastBat = 0; float batCal = BAT_CAL; float batRaw = -1;
 int pctFromVolts(float v) {
   if (v <= BAT_V[0]) return 0;
   for (int i = 1; i < 12; i++) if (v < BAT_V[i])
@@ -502,10 +508,11 @@ void readBattery() {
   if (BAT_PIN < 0) return;
   uint32_t sum = 0;
   for (int i = 0; i < 16; i++) sum += analogReadMilliVolts(BAT_PIN);
-  float mv = sum / 16.0f * BAT_DIVIDER * BAT_CAL;
-  if (mv < 2500) { batMv = -1; batPct = -1; return; }          // nothing on the pin: no divider fitted
-  batMv = batMv < 0 ? mv : batMv * 0.8f + mv * 0.2f;           // smooth out Wi-Fi current spikes
-  int p = pctFromVolts(batMv / 1000.0f);
+  float raw = sum / 16.0f * BAT_DIVIDER;
+  if (raw * batCal < 2500) { batMv = -1; batPct = -1; batRaw = -1; return; }   // nothing on the pin: no divider fitted
+  batRaw = batRaw < 0 ? raw : batRaw * 0.8f + raw * 0.2f;      // smooth out Wi-Fi current spikes
+  batMv = batRaw * batCal;
+  int p = pctFromVolts(batMv / 1000.0f + BAT_LOAD_V);
   // no jumping up and down by 1 % while on battery: move only on a 2 % change
   if (batPct < 0 || abs(p - batPct) >= 2 || p == 0 || p == 100) batPct = p;
   if (BAT_CHG_PIN >= 0) batChg = digitalRead(BAT_CHG_PIN) == LOW ? 1 : 0;
@@ -562,6 +569,17 @@ void handleCommand(String cmd) {
   else if (c == 'I') { i2cScan(); initImu(imu[0], 0); initImu(imu[1], 1); }
   else if (c == 'A') { int l = cmd.substring(1).toInt(); if (l <= 0) buzzerStop(); else buzzerStart(constrain(l, 1, 3)); emitInfo("I,ALERT,%d", l); }
   else if (c == 'S') i2cScan();
+  else if (c == 'B') {                                    // B3.82 = the multimeter reads 3.82 V on the cell right now
+    float v = cmd.substring(1).toFloat();
+    if (batRaw > 0 && v > 2.8f && v < 4.4f) {
+      float k = v * 1000.0f / batRaw;
+      if (k > 0.75f && k < 1.35f) {
+        batCal = k; prefs.begin("vg", false); prefs.putFloat("batcal", k); prefs.end();
+        lastBat = 0; batPct = -1;
+        emitInfo("I,BATCAL,OK,%.3f", k);
+      } else emitInfo("I,BATCAL,REJECTED,%.3f", k);
+    } else emitInfo("I,BATCAL,REJECTED,no reading");
+  }
   else if (c == 'W') {
     int tab = cmd.indexOf('\t');
     String s = tab < 0 ? cmd.substring(1) : cmd.substring(1, tab);

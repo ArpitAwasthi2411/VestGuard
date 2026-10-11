@@ -389,3 +389,10 @@ Object.assign(window.I18N.hi, { demo_tools: 'टेस्टिंग और ड
 /* ---- v2.5: vest battery ---- */
 Object.assign(window.I18N.en, { dev_bat: 'battery {n}%', dev_bat_chg: 'charging {n}%', battery_low: 'Vest battery low ({n}%). Charge it today.', r_battery: 'Vest battery low ({n}%)' });
 Object.assign(window.I18N.hi, { dev_bat: 'बैटरी {n}%', dev_bat_chg: 'चार्ज हो रही {n}%', battery_low: 'वेस्ट की बैटरी कम है ({n}%)। आज चार्ज करें।', r_battery: 'वेस्ट की बैटरी कम ({n}%)' });
+/* ---- v2.6: battery calibration ---- */
+Object.assign(window.I18N.en, { bat_row: 'Vest battery', bat_row_d: '{n}% · the vest measures {v} V', bat_cal: 'Calibrate', bat_cal_t: 'Calibrate the battery reading',
+  bat_cal_q: 'Measure the cell (TP4056 OUT+ to GND) with a multimeter while the vest is on, and type the volts', bat_cal_go: 'Send to vest',
+  bat_cal_sent: 'Sent. The new % appears in about 5 s.', toast_batcal_ok: 'Battery reading calibrated', toast_batcal_bad: 'Calibration rejected: check the number and the wiring' });
+Object.assign(window.I18N.hi, { bat_row: 'वेस्ट की बैटरी', bat_row_d: '{n}% · वेस्ट {v} V माप रही है', bat_cal: 'कैलिब्रेट', bat_cal_t: 'बैटरी रीडिंग कैलिब्रेट करें',
+  bat_cal_q: 'वेस्ट चालू रखकर मल्टीमीटर से सेल (TP4056 OUT+ से GND) मापें और वोल्ट लिखें', bat_cal_go: 'वेस्ट को भेजें',
+  bat_cal_sent: 'भेज दिया। नया % लगभग 5 सेकंड में दिखेगा।', toast_batcal_ok: 'बैटरी रीडिंग कैलिब्रेट हो गई', toast_batcal_bad: 'कैलिब्रेशन नहीं हुआ: संख्या और तार जाँचें' });

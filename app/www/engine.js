@@ -206,6 +206,7 @@
       else if (p[1] === 'WIFI' && p[2] === 'REJECTED') this.toast('wifi_bad');
       else if (p[1] === 'WIFI' && p[2] === 'RESET') { this.vestWifi = p[3]; this._changed(); }
       else if (p[1] === 'ERR' && /calibrate/.test(p.slice(2).join(','))) this.toast('toast_cal_fail');
+      else if (p[1] === 'BATCAL') this.toast(p[2] === 'OK' ? 'toast_batcal_ok' : 'toast_batcal_bad');
     }
 
     _seen(id) {
@@ -572,6 +573,10 @@
         case 'calibrate':
           if (!this.online()) this.toast('toast_no_vest');
           else { this.io.sendVest('C'); this.toast('toast_cal_start'); this.calibrating = true; this.dirty = true; }
+          return;
+        case 'batcal':
+          if (!this.online()) { this.toast('wifi_need_vest'); return; }
+          this.io.sendVest('B' + (+m.v).toFixed(2));
           return;
         case 'wifi':
           if (!this.online()) { this.toast('wifi_need_vest'); return; }
