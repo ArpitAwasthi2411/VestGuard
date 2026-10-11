@@ -339,3 +339,30 @@ Object.assign(window.I18N.hi, {
   dev_reconnecting: 'वेस्ट से फिर जुड़ रहे हैं…', dev_boot_power: 'पिछली बार बैटरी गिरने से बंद हुई', dev_boot_crash: 'पिछली बार गड़बड़ी से बंद हुई',
   alarm_sound: 'अलर्ट की आवाज़', alarm_sound_d: 'गिरने के अलर्ट पर देखभालकर्ता के फ़ोन में क्या बजे।', snd_chime: 'VestGuard धुन', snd_phone: 'फ़ोन का अलार्म',
 });
+/* ---- v2.2: explainable detection ---- */
+Object.assign(window.I18N.en, {
+  why_title: 'Why the vest raised this', why_sub: '4 checks',
+  why_impact: 'Hard impact', why_impact_d: 'A sudden jolt, much bigger than walking (about 1.5 g)', why_impact_l: 'needs > 2.5 g',
+  why_dir: 'Went down, not up', why_dir_d: 'Body angle from upright, before → after. Getting up quickly is ignored.', why_dir_l: 'must end lower',
+  why_turn: 'Upper back turned over', why_turn_d: 'How far the chest tipped within 1.5 s of the impact', why_turn_l: 'needs ≥ 45°',
+  why_lower: 'Lower back agreed', why_lower_d: 'The second sensor felt the same fall (rules out a loose wire or a bump)', why_lower_l: 'needs ≥ 1.5 g, ≥ 27°',
+  why_sev3_g: 'impact of {g} g (4 g or more)', why_sev3_still: 'ended lying down and not moving', why_sev2_lying: 'ended lying down',
+  why_sev2_g: 'impact of 3 g or more', why_sev1: 'smaller impact and not lying down', why_still: 'no movement afterwards',
+  why_old_fw: 'Update the vest to firmware 3.5 to see every check with its numbers.',
+  nofall_one_sensor: 'Checked a {g} g bump: not a fall (only one sensor felt it)',
+  nofall_upright_active: 'Checked a {g} g impact: not a fall (stayed upright, turned {turn}°)',
+  rise: 'Got up quickly ({from}° → {to}°): not a fall',
+});
+Object.assign(window.I18N.hi, {
+  why_title: 'वेस्ट ने यह अलर्ट क्यों दिया', why_sub: '4 जाँचें',
+  why_impact: 'ज़ोर का झटका', why_impact_d: 'अचानक लगा झटका, चलने (लगभग 1.5 g) से बहुत ज़्यादा', why_impact_l: '2.5 g से ज़्यादा चाहिए',
+  why_dir: 'नीचे गए, ऊपर नहीं', why_dir_d: 'सीधे खड़े होने से शरीर का कोण, पहले → बाद में। जल्दी उठना गिनती में नहीं।', why_dir_l: 'अंत में नीचे होना चाहिए',
+  why_turn: 'ऊपरी पीठ पलटी', why_turn_d: 'झटके के 1.5 सेकंड में छाती कितनी झुकी', why_turn_l: 'कम से कम 45°',
+  why_lower: 'निचली पीठ ने भी पुष्टि की', why_lower_d: 'दूसरे सेंसर ने भी वही गिरना महसूस किया (ढीला तार या हल्की टक्कर नहीं)', why_lower_l: '≥ 1.5 g, ≥ 27°',
+  why_sev3_g: '{g} g का झटका (4 g या ज़्यादा)', why_sev3_still: 'लेटे हुए हैं और हिल नहीं रहे', why_sev2_lying: 'अंत में लेटे हुए',
+  why_sev2_g: '3 g या ज़्यादा का झटका', why_sev1: 'छोटा झटका, लेटे नहीं', why_still: 'बाद में कोई हलचल नहीं',
+  why_old_fw: 'हर जाँच के आँकड़े देखने के लिए वेस्ट को फ़र्मवेयर 3.5 पर अपडेट करें।',
+  nofall_one_sensor: '{g} g का झटका जाँचा: गिरना नहीं (सिर्फ़ एक सेंसर ने महसूस किया)',
+  nofall_upright_active: '{g} g का झटका जाँचा: गिरना नहीं (सीधे रहे, सिर्फ़ {turn}° मुड़े)',
+  rise: 'जल्दी से उठे ({from}° → {to}°): गिरना नहीं',
+});

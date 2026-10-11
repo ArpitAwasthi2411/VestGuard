@@ -4,6 +4,8 @@
   Same logic as the laptop engine (laptop/care.py), tuned in 3.2 on the 6 + 8 Oct recordings
   (121 trials incl. jogging, jumping, lying down, bending, three fall types):
 
+    3.5: every impact it checks is reported WITH its numbers (FALL / RISE / STUMBLE / NOFALL),
+         so the app can show which check passed or failed and by how much.
     FALL     impact > 2.5 g, then within 1.5 s the upper-body posture changes >= 45 deg
              (mean accel 1.5..0.4 s before impact vs last 0.5 s), and the lower sensor agrees.
              Severity 3: peak >= 4 g, or lying and still.  2: peak >= 3 g or lying.  1: otherwise.
@@ -48,7 +50,7 @@ inline const char* postureName(int8_t p) {
 }
 
 struct Event {
-  enum Kind : uint8_t { NONE, FALL, STUMBLE, ACTIVITY, CAL_OK, CAL_FAIL, RISE, RECOVER } kind = NONE;
+  enum Kind : uint8_t { NONE, FALL, STUMBLE, ACTIVITY, CAL_OK, CAL_FAIL, RISE, RECOVER, NOFALL } kind = NONE;
   uint32_t t = 0;          // sample time of the event
   uint8_t severity = 0;    // FALL
   float peak = 0;          // FALL / STUMBLE, g
@@ -56,6 +58,11 @@ struct Event {
   float tiltAfter = NAN;   // FALL, deg from upright (NAN if not calibrated)
   float tiltBefore = NAN;  // FALL / RISE, deg from upright before the impact
   bool lying = false;      // FALL
+  // 3.5 evidence: every impact the vest checks carries the numbers behind its decision
+  float p1 = 0, p2 = 0;    // peak g, upper / lower sensor
+  float a2 = NAN;          // lower-back turn, deg
+  float still = NAN;       // movement after the impact (sd of |a|, g); ~0 = lying still
+  const char* why = "";    // NOFALL: "one_sensor" (only one sensor felt it) | "upright_active" (stayed upright, jogging/jumping)
   int8_t from = ACT_NONE;  // ACTIVITY
   int8_t to = ACT_NONE;    // ACTIVITY
 };
@@ -273,27 +280,35 @@ class Detector {
 
     float tiltBefore = (calibrated && c.hasPre1) ? angleDeg(up(), c.pre1) : NAN;
     float tiltAfter = (calibrated && hp1) ? angleDeg(up(), post1) : NAN;
-    // 3.4: ended up MORE upright than before (e.g. jumped up from bed) -> getting up, not a fall
+    float peak = fmaxf(c.p1, c.p2);
+    // every outcome below carries the same evidence, so the app can show WHY
+    Event e; e.t = t; e.peak = peak; e.p1 = c.p1; e.p2 = c.p2; e.tiltChange = a1; e.a2 = a2; e.still = still;
+    e.tiltBefore = tiltBefore; e.tiltAfter = tiltAfter;
+    // CHECK 2b (3.4): ended up MORE upright than before (e.g. jumped up from bed) -> getting up, not a fall
     if (!isnan(tiltBefore) && !isnan(tiltAfter) && tiltAfter < RISE_END_MAX && tiltAfter < tiltBefore - RISE_GAIN) {
-      Event e; e.kind = Event::RISE; e.t = t; e.peak = fmaxf(c.p1, c.p2); e.tiltBefore = tiltBefore; e.tiltAfter = tiltAfter;
+      e.kind = Event::RISE;
       push(e);
       return;
     }
 
+    // CHECK 3: the lower back felt it too (a fall moves the whole trunk; a loose wire or a bump moves one sensor)
     bool dual = c.p2 >= IMPACT_G * 0.6f && (isnan(a2) || a2 >= 27);
-    float peak = fmaxf(c.p1, c.p2);
-    Event e; e.t = t; e.peak = peak;
     // 3.2: a very hard impact with a smaller posture change still counts (e.g. fell and stayed kneeling)
+    // CHECK 2: the upper body turned (standing -> on the floor), or turned less but after a very hard hit
     bool postureChanged = a1 >= 45 || (a1 >= 30 && c.p1 >= 6);
     if (postureChanged && dual) {
       bool lying = !isnan(tiltAfter) ? tiltAfter >= 60 : a1 >= 70;
       uint8_t sev = (c.p1 >= 4 || (lying && still < 0.05f)) ? 3 : (c.p1 >= 3 || lying) ? 2 : 1;
-      e.kind = Event::FALL; e.severity = sev; e.tiltChange = a1; e.tiltAfter = tiltAfter; e.tiltBefore = tiltBefore; e.lying = lying;
+      e.kind = Event::FALL; e.severity = sev; e.lying = lying;
       watchRecover = calibrated; recoverUntil = t + 120000; upSince = 0;
+    } else if (postureChanged) {
+      e.kind = Event::NOFALL; e.why = "one_sensor";          // turned, but the lower back didn't agree
+    } else if (c.p2 < IMPACT_G * 0.6f) {
+      e.kind = Event::NOFALL; e.why = "one_sensor";          // 3.2: only one sensor felt the hit (wiring glitch)
+    } else if (act == ACT_ACTIVE || actCand == ACT_ACTIVE) {
+      e.kind = Event::NOFALL; e.why = "upright_active";      // 3.2: stayed upright while jogging / jumping
     } else {
-      // 3.2: not a stumble if only one sensor felt it (wiring glitch) or during jogging / jumping
-      if (c.p2 < IMPACT_G * 0.6f || act == ACT_ACTIVE || actCand == ACT_ACTIVE) return;
-      e.kind = Event::STUMBLE;
+      e.kind = Event::STUMBLE;                               // hit, both sensors felt it, stayed upright
     }
     push(e);
   }

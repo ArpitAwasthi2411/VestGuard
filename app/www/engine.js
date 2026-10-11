@@ -210,10 +210,15 @@
     _event(p, ts) {
       if (p.length < 3 || this._seen(p[1])) return;
       const kind = p[2];
+      const num = i => { const v = parseFloat(p[i]); return Number.isFinite(v) ? Math.round(v * 10) / 10 : null; };
       if (kind === 'STUMBLE') {
-        const g = Math.round(parseFloat(p[3]) * 10) / 10;
+        const g = num(3);
         this.stumbles.push(ts);
-        this.addFeed('stumble', 'stumble', `Stumble — impact ${g} g, stayed upright`, { g }, 'vest', null, null, ts);
+        this.addFeed('stumble', 'stumble', `Stumble — impact ${g} g, stayed upright`, { g, turn: num(4) }, 'vest', null, null, ts);
+      } else if (kind === 'NOFALL') {
+        // 3.5: an impact the vest checked and decided was NOT a fall, with the reason
+        const why = p[3] === 'one_sensor' ? 'one_sensor' : 'upright_active';
+        this.addFeed('activity', 'nofall_' + why, 'Checked an impact: not a fall', { g: num(4), turn: Math.round(num(5) || 0), g2: num(6) }, 'vest', null, null, ts);
       } else if (kind === 'ACT') {
         const from = p[3], to = p[4];
         if (!ACT_EN[to]) return;
@@ -227,7 +232,7 @@
         } else this.toast('toast_cal_fail');
       } else if (kind === 'RISE') {
         // 3.4 vest: a quick get-up that older firmware would have called a fall
-        this.addFeed('activity', 'rise', 'Got up quickly (not a fall)', {}, 'vest', null, null, ts);
+        this.addFeed('activity', 'rise', 'Got up quickly (not a fall)', { g: num(3), from: Math.round(num(4) || 0), to: Math.round(num(5) || 0) }, 'vest', null, null, ts);
       } else if (kind === 'RECOVER') {
         const a = this.alerts.filter(x => x.kind === 'fall' && x.status !== 'resolved' && ts >= x.ts).at(-1);
         if (a && !a.recovered) { a.recovered = ts; this.emit({ t: 'alert', alert: a }); }
@@ -253,7 +258,13 @@
       if (extra && extra.lat != null && extra.lon != null) {
         loc = { label: '', lat: +extra.lat.toFixed(5), lon: +extra.lon.toFixed(5), source: 'phone', acc: extra.acc };
       }
-      this.createAlert(sev, parseFloat(p[3]), parseFloat(p[4]), ta >= 0 ? ta : null, false, p[1], ts, loc);
+      const a = this.createAlert(sev, parseFloat(p[3]), parseFloat(p[4]), ta >= 0 ? ta : null, false, p[1], ts, loc);
+      // firmware 3.5+: the numbers behind the decision (F,id,sev,peak,turn,ta,lying,tb,p1,p2,turnLower,still)
+      if (a && p.length >= 12 && !a.ev) {
+        const n = i => { const v = parseFloat(p[i]); return Number.isFinite(v) && v >= 0 ? v : null; };
+        a.ev = { peak: n(3), turn: n(4), ta: n(5), lying: p[6] === '1', tb: n(7), p1: n(8), p2: n(9), turnLower: n(10), still: n(11) };
+        this._changed();
+      }
     }
 
     createAlert(severity, peak, tiltChange, tiltAfter, demo, id, ts, loc, kind = 'fall', from = '') {

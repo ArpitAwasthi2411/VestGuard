@@ -292,6 +292,22 @@ nav.tabs button.on::before{content:"";position:absolute;top:0;width:36px;height:
 .ov-loc b{display:block;font-size:16px}
 .ov-loc span{font-size:13px;color:var(--ink2)}
 .ov-loc em{margin-left:auto;font-style:normal;font-weight:700;color:var(--blue);font-size:15px;white-space:nowrap}
+.ov-why{background:var(--surface);border-radius:var(--r-lg);box-shadow:var(--shadow);padding:0 16px}
+.ov-why:empty{display:none}
+.ov-why summary{list-style:none;display:flex;align-items:center;gap:10px;min-height:54px;font-weight:700;font-size:16px;cursor:pointer}
+.ov-why summary::-webkit-details-marker{display:none}
+.ov-why summary::after{content:"";margin-left:auto;width:9px;height:9px;border-right:2px solid var(--ink3);border-bottom:2px solid var(--ink3);transform:rotate(45deg);transition:transform .2s}
+.ov-why[open] summary::after{transform:rotate(-135deg)}
+.ov-why summary small{font-weight:400;color:var(--ink2);font-size:14px}
+.why-row{display:grid;grid-template-columns:26px 1fr auto;gap:10px;align-items:start;padding:11px 0;border-top:1px solid var(--line)}
+.why-row .ck{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;background:var(--pine);color:#fff}
+.why-row .ck svg{width:14px;height:14px}
+.why-row.na .ck{background:var(--sunk);color:var(--ink3);border:1.5px solid var(--line)}
+.why-row b{display:block;font-size:15px}
+.why-row div>span{display:block;font-size:13px;line-height:1.35;color:var(--ink2);margin-top:2px}
+.why-row .v{font-weight:700;font-size:15px;text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+.why-row .v small{display:block;font-weight:400;font-size:12px;color:var(--ink3)}
+.why-sev{padding:12px 0 14px;border-top:1px solid var(--line);font-size:14px;color:var(--ink2)}
 .ov-escal{display:none;padding:13px 16px;border-radius:var(--r-md);background:var(--red-soft);color:var(--red);font-weight:700;font-size:16px;line-height:1.35}
 .ov-escal.on{display:block}
 .ov-go{min-height:66px;font-size:21px;border-radius:20px;border:0;background:var(--red);color:#fff;font-weight:700;box-shadow:0 12px 24px -12px rgba(210,38,59,.8);width:100%}
@@ -449,6 +465,7 @@ nav.tabs button.on::before{content:"";position:absolute;top:0;width:36px;height:
   </div>
   <div class="ov-card">
     <ol class="ov-steps" id="ovSteps"></ol>
+    <details class="ov-why" id="ovWhy"></details>
     <div class="ov-escal" id="ovEsc"></div>
     <button class="ov-go" id="ovAck"></button>
     <div class="ov-pair">
@@ -1154,6 +1171,8 @@ function renderOverride() {
   }
   a.responders.forEach(r => steps.push(stepHtml('done', t('st_going', { who: r.name === S.me?.name ? t('you') : r.name }), role(r.role), hhmm(r.ts))));
   $('#ovSteps').innerHTML = steps.join('');
+  const why = $('#ovWhy'), wh = whyHtml(a);
+  if (why.dataset.for !== a.id + ':' + !!a.ev) { why.dataset.for = a.id + ':' + !!a.ev; why.innerHTML = wh; }   // keep it open/closed between refreshes
   const esc1 = a.escalated && !a.responders.length;
   $('#ovEsc').classList.toggle('on', esc1); $('#ovEsc').textContent = esc1 ? t('ov_escalate2', { name: wf }) : '';
   $('#ovAck').textContent = mine ? t('ov_ack_done2') : t('ov_ack2');
@@ -1165,6 +1184,28 @@ function renderOverride() {
   $('#ovLoc').innerHTML = `<span class="ic">${svg('pin')}</span><div><b>${esc(locLabel(a) || t('location'))}</b><span>${a.location.source === 'phone' ? (a.location.acc ? '± ' + Math.round(a.location.acc) + ' m' : t('loc_phone_short')) : t('loc_home')}</span></div><em>${t('map_open')}</em>`;
 }
 function initMap() {}
+/* Why did the vest call this a fall? The same four checks the vest runs, with the measured numbers. */
+function whyHtml(a) {
+  const e = a.ev; if (a.kind === 'sos') return '';
+  const r1 = x => x == null ? '—' : (Math.round(x * 10) / 10).toString(), deg = x => x == null ? '—' : Math.round(x) + '°';
+  const row = (ok, title, help, val, lim) => `<div class="why-row${ok ? '' : ' na'}"><span class="ck">${ok ? TICK : '·'}</span><div><b>${esc(title)}</b><span>${esc(help)}</span></div><div class="v">${val}<small>${esc(lim)}</small></div></div>`;
+  let rows;
+  if (e) {
+    const turnOk = e.turn != null && (e.turn >= 45 || (e.turn >= 30 && (e.p1 || 0) >= 6));
+    rows = row(true, t('why_impact'), t('why_impact_d'), r1(e.peak) + ' g', t('why_impact_l'))
+      + row(true, t('why_dir'), t('why_dir_d'), e.tb != null && e.ta != null ? `${deg(e.tb)} → ${deg(e.ta)}` : '—', t('why_dir_l'))
+      + row(turnOk, t('why_turn'), t('why_turn_d'), deg(e.turn), t('why_turn_l'))
+      + row(true, t('why_lower'), t('why_lower_d'), `${r1(e.p2)} g · ${deg(e.turnLower)}`, t('why_lower_l'));
+  } else {
+    rows = row(true, t('why_impact'), t('why_impact_d'), r1(a.peak_g) + ' g', t('why_impact_l'))
+      + row(true, t('why_turn'), t('why_turn_d'), deg(a.tilt_change), t('why_turn_l'))
+      + `<div class="why-sev">${esc(t('why_old_fw'))}</div>`;
+  }
+  const peak = e ? e.peak : a.peak_g, lying = e ? e.lying : a.tilt_after != null && a.tilt_after >= 60, still = e && e.still != null && e.still < 0.05;
+  const sevWhy = a.severity === 3 ? (peak >= 4 ? t('why_sev3_g', { g: r1(peak) }) : t('why_sev3_still')) : a.severity === 2 ? (lying ? t('why_sev2_lying') : t('why_sev2_g')) : t('why_sev1');
+  return `<summary>${t('why_title')}<small>${t('why_sub')}</small></summary>${rows}
+    <div class="why-sev"><b>${esc(t('ov_sev', { sev: t('sev_' + a.severity) }))}</b> — ${esc(sevWhy)}${still ? ' · ' + esc(t('why_still')) : ''}</div>`;
+}
 $('#ovAck').onclick = () => {
   const a = S.snap.alerts.find(x => x.id === S.ovId); if (!a) return;
   S.seenAlerts[a.id] = true; store.set('vgc_seen', S.seenAlerts);

@@ -19,6 +19,9 @@ int main(int argc, char** argv) {
   bool reverse = argc > 2 && !strcmp(argv[2], "--reverse");
   // --lower: pretend the upper sensor is dead; the vest must still work on the lower sensor alone
   bool lowerOnly = argc > 2 && !strcmp(argv[2], "--lower");
+  // --events: one CSV line per checked impact with all its evidence (for the explainer)
+  bool evCsv = argc > 2 && !strcmp(argv[2], "--events");
+  if (evCsv) printf("trial,label,activity,kind,why,sev,p1,p2,turn_upper,turn_lower,tilt_before,tilt_after,still\n");
   std::ifstream f(argv[1]); std::string line; std::getline(f, line);
   std::vector<S> rows;
   while (std::getline(f, line)) {
@@ -60,9 +63,15 @@ int main(int argc, char** argv) {
       if (r.t - lastTick >= 500) { d->tick(r.t); lastTick = r.t; }
       vg::Event e;
       while (d->pop(e)) {
+        if (evCsv && (e.kind == vg::Event::FALL || e.kind == vg::Event::STUMBLE || e.kind == vg::Event::RISE || e.kind == vg::Event::NOFALL)) {
+          const char* k = e.kind == vg::Event::FALL ? "FALL" : e.kind == vg::Event::STUMBLE ? "STUMBLE" : e.kind == vg::Event::RISE ? "RISE" : "NOFALL";
+          printf("%d,%s,%s,%s,%s,%u,%.2f,%.2f,%.0f,%.0f,%.0f,%.0f,%.3f\n", r.trial, label.c_str(), act.c_str(), k, e.why, e.severity,
+                 e.p1, e.p2, e.tiltChange, e.a2, e.tiltBefore, e.tiltAfter, e.still);
+        }
         char b[96];
         if (e.kind == vg::Event::FALL) { falls++; snprintf(b, sizeof b, " FALL(sev%u %.1fg %.0fdeg after%.0f)", e.severity, e.peak, e.tiltChange, e.tiltAfter); detail += b; }
         if (e.kind == vg::Event::RISE) { snprintf(b, sizeof b, " rise(%.1fg %.0f->%.0f)", e.peak, e.tiltBefore, e.tiltAfter); detail += b; }
+        if (e.kind == vg::Event::NOFALL) { snprintf(b, sizeof b, " nofall:%s(%.1fg)", e.why, e.peak); detail += b; }
         if (e.kind == vg::Event::RECOVER) { detail += " recovered"; }
         if (e.kind == vg::Event::STUMBLE) { stumbles++; snprintf(b, sizeof b, " stumble(%.1fg)", e.peak); detail += b; }
       }
@@ -70,8 +79,8 @@ int main(int argc, char** argv) {
     // flush pending analysis window with no-op (trial ended)
     bool isFall = label == "fall";
     if (isFall) { if (falls) tp++; else fn++; } else { if (falls) fp++; else tn++; }
-    printf("%3d %-5s %-28s falls=%d stumbles=%d%s\n", trial, label.c_str(), act.c_str(), falls, stumbles, detail.c_str());
+    if (!evCsv) printf("%3d %-5s %-28s falls=%d stumbles=%d%s\n", trial, label.c_str(), act.c_str(), falls, stumbles, detail.c_str());
     delete d;
   }
-  printf("\nfall trials detected: %d/%d   non-fall trials with false alarm: %d/%d\n", tp, tp + fn, fp, fp + tn);
+  if (!evCsv) printf("\nfall trials detected: %d/%d   non-fall trials with false alarm: %d/%d\n", tp, tp + fn, fp, fp + tn);
 }

@@ -4,6 +4,11 @@
    ESP32-S3 + 2x BMI323   ->   phone app (or laptop)
   ============================================================
 
+  WHAT'S NEW IN 3.5
+    * Explainable decisions: every impact the vest checks is sent with its numbers
+      (impact g of both sensors, upper/lower turn, tilt before/after, stillness) and the
+      outcome: FALL, RISE (got up), STUMBLE, or NOFALL with the reason. Thresholds unchanged.
+
   WHAT'S NEW IN 3.4
     * Getting up quickly (from bed / floor) no longer raises a fall alarm.
     * After a fall the vest reports when the wearer is back on their feet (E,..,RECOVER).
@@ -69,7 +74,7 @@ const int NETWORK_COUNT = sizeof(NETWORKS) / sizeof(NETWORKS[0]);
 const char* DEFAULT_SSID = NETWORKS[0].ssid;
 // ============================================================
 
-#define FW_VERSION  "3.4"
+#define FW_VERSION  "3.5"
 #define DATA_PORT   4210
 #define CMD_PORT    4211
 #define I2C_SDA     8
@@ -462,16 +467,21 @@ void sampleAndSend() {
   else if (imu[1].ok) { det.setLowerPrimary(true); det.feed(t, imu[1].a, imu[1].g, imu[1].a, false); }
 }
 
+static float nz(float v) { return isnan(v) ? -1.0f : v; }    // "unknown" -> -1 on the wire
+
 void handleDetectorEvents() {
   vg::Event e;
   while (det.pop(e)) {
     switch (e.kind) {
       case vg::Event::FALL:
         buzzerStart(e.severity);
-        eventf(true, "%u,%.2f,%.0f,%.0f,%d", e.severity, e.peak, e.tiltChange, isnan(e.tiltAfter) ? -1.0f : e.tiltAfter, e.lying ? 1 : 0);
+        // F,id,sev,peak,turn,tiltAfter,lying | tiltBefore,p1,p2,turnLower,still   (first 7 fields unchanged)
+        eventf(true, "%u,%.2f,%.0f,%.0f,%d,%.0f,%.2f,%.2f,%.0f,%.3f", e.severity, e.peak, e.tiltChange, nz(e.tiltAfter), e.lying ? 1 : 0,
+               nz(e.tiltBefore), e.p1, e.p2, nz(e.a2), isnan(e.still) ? -1.0f : e.still);
         break;
-      case vg::Event::STUMBLE:  eventf(false, "STUMBLE,%.2f", e.peak); break;
-      case vg::Event::RISE:     eventf(false, "RISE,%.2f,%.0f,%.0f", e.peak, e.tiltBefore, e.tiltAfter); break;
+      case vg::Event::STUMBLE:  eventf(false, "STUMBLE,%.2f,%.0f,%.2f,%.0f", e.peak, e.tiltChange, e.p2, nz(e.a2)); break;
+      case vg::Event::RISE:     eventf(false, "RISE,%.2f,%.0f,%.0f,%.0f", e.peak, nz(e.tiltBefore), nz(e.tiltAfter), e.tiltChange); break;
+      case vg::Event::NOFALL:   eventf(false, "NOFALL,%s,%.2f,%.0f,%.2f,%.0f", e.why, e.peak, e.tiltChange, e.p2, nz(e.a2)); break;
       case vg::Event::RECOVER:  eventf(false, "RECOVER,%.0f", e.tiltAfter); break;
       case vg::Event::ACTIVITY: eventf(false, "ACT,%s,%s", vg::actName(e.from), vg::actName(e.to)); break;
       case vg::Event::CAL_OK:
