@@ -4,6 +4,10 @@
    ESP32-S3 + 2x BMI323   ->   phone app (or laptop)
   ============================================================
 
+  WHAT'S NEW IN 3.7
+    * Battery level: one 18650 cell measured through a 100k/100k divider on GPIO4 (see BATTERY below).
+      Sent in every heartbeat: H,...,<battery mV>,<battery %>,<charging 0/1/-1>. -1 = no divider fitted.
+
   WHAT'S NEW IN 3.6  (hybrid: the project report's soft-fall system + the 3.x impact checks)
     * Path B, soft collapse: catches a collapse with no hard impact (sliding down a wall, slumping off
       a chair): upright -> lying within 3 s, then completely still for 30 s. Sent as a fall alert
@@ -41,12 +45,15 @@
     BMI323 #1 THORACIC: VIN->3.3V GND->GND SDA->GPIO8 SCL->GPIO9 SDO->GND  (0x68)
     BMI323 #2 LUMBAR  : VIN->3.3V GND->GND SDA->GPIO8 SCL->GPIO9 SDO->VIN  (0x69)
     Buzzer: (+)->GPIO10 (-)->GND
+    BATTERY (one 18650): cell + (TP4056 B+/OUT+, AFTER the on/off switch) -> 100k -> GPIO4 -> 100k -> GND
+                         plus a 100 nF capacitor from GPIO4 to GND (steadier readings). Optional: TP4056 CHRG
+                         pin (the red "charging" LED pad) -> GPIO5, set BAT_CHG_PIN to 5.
 
   NO EXTRA LIBRARIES (WiFi, UDP, Preferences are part of the ESP32 core).
 
   PROTOCOL  (UDP, text lines)  vest -> port 4210,  commands -> vest port 4211
     D,seq,t_ms,s1_ax..s1_gz,s2_ax..s2_gz         raw data (only to laptops / research)
-    H,ok1,ok2,err1,err2,rssi,linked              heartbeat 1/s
+    H,ok1,ok2,err1,err2,rssi,linked,bat_mv,bat_pct,charging   heartbeat 1/s (battery -1 = unknown)
     S,posture,tilt,act,steps,cal,uptime_s,calibrating   live status 2/s
     F,id,sev,peak_g,tilt_change,tilt_after,lying fall      (repeated until acked with K<id>)
     E,id,STUMBLE,peak_g | E,id,ACT,from,to | E,id,CAL,OK|FAIL | E,id,FROZEN,upper|lower
@@ -80,7 +87,7 @@ const int NETWORK_COUNT = sizeof(NETWORKS) / sizeof(NETWORKS[0]);
 const char* DEFAULT_SSID = NETWORKS[0].ssid;
 // ============================================================
 
-#define FW_VERSION  "3.6"
+#define FW_VERSION  "3.7"
 #define DATA_PORT   4210
 #define CMD_PORT    4211
 #define I2C_SDA     8
@@ -88,6 +95,11 @@ const char* DEFAULT_SSID = NETWORKS[0].ssid;
 #define BUZZER_PIN  10          // -1 if no buzzer
 #define I2C_HZ      100000      // 3.4: 100 kHz copes far better with long / flexing vest wires than 400 kHz
 #define I2C_TIMEOUT_MS 20
+// ---- battery (one 18650 Li-ion cell) ----
+#define BAT_PIN      4          // ADC1 pin with the 100k/100k divider; -1 = no battery reading
+#define BAT_CHG_PIN  -1         // TP4056 CHRG pin (LOW while charging); -1 = not wired
+#define BAT_DIVIDER  2.0f       // (100k + 100k) / 100k
+#define BAT_CAL      1.00f      // fine-tune: multimeter volts / app volts (e.g. 4.02 / 3.96 = 1.015)
 
 // ---------------- BMI323 ----------------
 #define REG_CHIP_ID   0x00
@@ -475,6 +487,30 @@ void sampleAndSend() {
 
 static float nz(float v) { return isnan(v) ? -1.0f : v; }    // "unknown" -> -1 on the wire
 
+// ---------------- battery ----------------
+// Li-ion resting voltage -> remaining charge, for a light load (~100-150 mA, what the vest draws).
+const float BAT_V[]   = {3.30f, 3.50f, 3.61f, 3.67f, 3.71f, 3.75f, 3.79f, 3.84f, 3.90f, 3.97f, 4.05f, 4.15f};
+const uint8_t BAT_P[] = {0,     5,     10,    20,    30,    40,    50,    60,    70,    80,    90,    100};
+float batMv = -1; int batPct = -1; int batChg = -1; uint32_t lastBat = 0;
+int pctFromVolts(float v) {
+  if (v <= BAT_V[0]) return 0;
+  for (int i = 1; i < 12; i++) if (v < BAT_V[i])
+    return (int)lroundf(BAT_P[i - 1] + (BAT_P[i] - BAT_P[i - 1]) * (v - BAT_V[i - 1]) / (BAT_V[i] - BAT_V[i - 1]));
+  return 100;
+}
+void readBattery() {
+  if (BAT_PIN < 0) return;
+  uint32_t sum = 0;
+  for (int i = 0; i < 16; i++) sum += analogReadMilliVolts(BAT_PIN);
+  float mv = sum / 16.0f * BAT_DIVIDER * BAT_CAL;
+  if (mv < 2500) { batMv = -1; batPct = -1; return; }          // nothing on the pin: no divider fitted
+  batMv = batMv < 0 ? mv : batMv * 0.8f + mv * 0.2f;           // smooth out Wi-Fi current spikes
+  int p = pctFromVolts(batMv / 1000.0f);
+  // no jumping up and down by 1 % while on battery: move only on a 2 % change
+  if (batPct < 0 || abs(p - batPct) >= 2 || p == 0 || p == 100) batPct = p;
+  if (BAT_CHG_PIN >= 0) batChg = digitalRead(BAT_CHG_PIN) == LOW ? 1 : 0;
+}
+
 void handleDetectorEvents() {
   vg::Event e;
   while (det.pop(e)) {
@@ -579,6 +615,8 @@ void setup() {
   Serial.begin(921600);
   delay(600);
   if (BUZZER_PIN >= 0) { pinMode(BUZZER_PIN, OUTPUT); digitalWrite(BUZZER_PIN, LOW); }
+  if (BAT_PIN >= 0) analogSetPinAttenuation(BAT_PIN, ADC_11db);      // reads up to ~3.1 V (cell 4.2 V / 2 = 2.1 V)
+  if (BAT_CHG_PIN >= 0) pinMode(BAT_CHG_PIN, INPUT_PULLUP);
   bootTag = (uint16_t)(esp_random() & 0xFFFF);
 
   loadSettings();
@@ -626,9 +664,11 @@ void loop() {
   }
   if (ms - lastHeartbeat >= 1000) {
     lastHeartbeat = ms;
-    char hb[80];
-    int n = snprintf(hb, sizeof hb, "H,%d,%d,%lu,%lu,%d,%d\n", imu[0].ok, imu[1].ok, (unsigned long)imu[0].errors,
-                     (unsigned long)imu[1].errors, netUp() ? WiFi.RSSI() : 0, alivePeers() ? 1 : 0);
+    if (ms - lastBat >= 5000 || lastBat == 0) { lastBat = ms; readBattery(); }
+    char hb[96];
+    int n = snprintf(hb, sizeof hb, "H,%d,%d,%lu,%lu,%d,%d,%d,%d,%d\n", imu[0].ok, imu[1].ok, (unsigned long)imu[0].errors,
+                     (unsigned long)imu[1].errors, netUp() ? WiFi.RSSI() : 0, alivePeers() ? 1 : 0,
+                     (int)lroundf(batMv), batPct, batChg);
     sendCtl(hb, n);
     // also broadcast the heartbeat so a laptop on the same network can always find the vest
     if (netUp() && alivePeers()) sendTo(IPAddress(255, 255, 255, 255), hb, n);

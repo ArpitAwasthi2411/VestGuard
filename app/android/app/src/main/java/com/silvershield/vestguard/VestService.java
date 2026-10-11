@@ -87,6 +87,7 @@ public class VestService extends Service {
     volatile InetAddress vestAddr;
     volatile long lastRx = 0, onlineSince = 0;
     private boolean wasOnline = false, lostShown = false;
+    private int batWarned = 100;
     private String lastAct = "-";
     private String statusShown = "";
     private final LinkedHashSet<String> seen = new LinkedHashSet<>();
@@ -554,6 +555,23 @@ public class VestService extends Service {
             }
             if (!line.contains(",ACT,") && !(research && line.startsWith("F,"))) storePending(ev);
             if (line.contains(",RECOVER")) wearerUp();
+        } else if (line.startsWith("H,")) {
+            // firmware 3.7+: battery %, warn once at 20 % and again at 10 % (even with the app closed)
+            String[] p = line.split(",");
+            if (p.length > 8) {
+                try {
+                    int pct = Integer.parseInt(p[8].trim());
+                    boolean chg = p.length > 9 && "1".equals(p[9].trim());
+                    if (pct >= 0) {
+                        int lvl = pct <= 10 ? 10 : pct <= 20 ? 20 : 0;
+                        if (lvl > 0 && !chg && lvl < batWarned) {
+                            batWarned = lvl;
+                            info(Strings.t(lang(), "bat_title", "n", String.valueOf(pct)), Strings.t(lang(), "bat_body", "name", wearerFirst()));
+                        }
+                        if (pct >= 35 || chg) batWarned = 100;
+                    }
+                } catch (NumberFormatException ignored) { }
+            }
         } else if (line.startsWith("S,")) {
             String[] p = line.split(",");
             if (p.length > 3) lastAct = p[3];

@@ -368,6 +368,8 @@ nav.tabs button.on::before{content:"";position:absolute;top:0;width:36px;height:
 .hub-status i{width:12px;height:12px;border-radius:50%;background:currentColor;flex:none;animation:breathe 2.4s ease-in-out infinite}
 .hub-status.off{background:var(--saffron-soft);color:var(--saffron-ink)}
 .hub-status.off i{animation:none}
+.hub-bat{margin-left:auto;white-space:nowrap;flex:none;font-variant-numeric:tabular-nums;padding:2px 10px;border-radius:999px;background:rgba(255,255,255,.55)}
+.hub-bat.low{background:var(--red);color:#fff}
 .hub h1{font-size:32px;line-height:1.15;margin:22px 0 2px}
 .hub .now{color:var(--ink2);font-size:18px}
 .sos-wrap{flex:1;display:grid;place-items:center;padding:18px 0;min-height:250px}
@@ -825,7 +827,8 @@ function renderLive() {
   $('#dT').textContent = online ? t('dev_connected') : recon ? t('dev_reconnecting') : d.ever ? t('dev_offline') : t('dev_never');
   const boot = d.boot && Date.now() / 1000 - d.boot.ts < 86400 && ['brownout', 'crash', 'watchdog'].includes(d.boot.why)
     ? ' · ' + t(d.boot.why === 'brownout' ? 'dev_boot_power' : 'dev_boot_crash') : '';
-  $('#dD').textContent = online || recon ? t('dev_sensors', { n: okN }) + (okN < 2 ? ' — ' + t('dev_check') : '') + boot : d.last_rx ? t('dev_last', { ago: ago(d.last_rx) }) : t('dev_hint');
+  const bat = d.battery ? ' · ' + t(d.battery.chg ? 'dev_bat_chg' : 'dev_bat', { n: d.battery.pct }) : '';
+  $('#dD').textContent = online || recon ? t('dev_sensors', { n: okN }) + (okN < 2 ? ' — ' + t('dev_check') : '') + bat + boot : d.last_rx ? t('dev_last', { ago: ago(d.last_rx) }) : t('dev_hint');
   const lv = !online ? 0 : !d.rssi ? 4 : d.rssi > -55 ? 4 : d.rssi > -67 ? 3 : d.rssi > -78 ? 2 : 1;
   $('#dSig').innerHTML = `<span class="bars" aria-label="WiFi ${lv}/4">${[1, 2, 3, 4].map(i => `<i class="${i <= lv ? 'on' : ''}" style="height:${i * 4}px"></i>`).join('')}</span>`;
   $('#actUpd').textContent = online ? t('live') : '';
@@ -1488,7 +1491,7 @@ function renderHub() {
   }
   const act = L?.activity?.state ? t('act_' + L.activity.state) : '';
   el.innerHTML = `<div class="hub-top"><div><div class="hub-time">${fmtClock()}</div><div class="hub-date">${fmtDate()}</div></div>${gear}</div>
-    <div class="hub-status ${online ? '' : 'off'}"><i></i>${online ? t('hub_protected') : t('hub_not_conn')}</div>
+    <div class="hub-status ${online ? '' : 'off'}"><i></i>${online ? t('hub_protected') : t('hub_not_conn')}${online && L?.device?.battery ? `<span class="hub-bat${L.device.battery.pct <= 20 && !L.device.battery.chg ? ' low' : ''}">${L.device.battery.chg ? '⚡ ' : ''}${L.device.battery.pct}%</span>` : ''}</div>
     <h1>${esc(t('hub_greet', { name: first(w) }))}</h1>
     <div class="now">${online && act ? esc(t('hub_now', { act })) : ''}</div>
     <div class="sos-wrap"><button class="sos" id="sosBtn" aria-label="${esc(t('hub_hold'))}">

@@ -188,6 +188,15 @@
       }
       if (!this.hbSeen) for (let i = 0; i < 2; i++) if (!ok[i]) this.sensorDownAt[i] = t;
       this.hbSeen = true; this.sensorOk = ok;
+      // firmware 3.7+: H,...,bat_mv,bat_pct,charging  (-1 = no battery reading)
+      const pct = p.length > 8 ? parseInt(p[8], 10) : -1;
+      if (Number.isFinite(pct) && pct >= 0) {
+        const chg = p[9] === '1';
+        this.battery = { pct, mv: parseInt(p[7], 10), chg, ts: t };
+        const lvl = pct <= 10 ? 10 : pct <= 20 ? 20 : 0;
+        if (lvl && !chg && (this.batWarned || 100) > lvl) { this.batWarned = lvl; this.addFeed('device', 'battery_low', 'Vest battery low', { n: pct }); }
+        if (pct >= 35 || chg) this.batWarned = 0;
+      }
     }
 
     _info(p) {
@@ -456,6 +465,7 @@
       const reasons = [], online = this.online();
       if (!this.everConnected) reasons.push({ key: 'r_not_connected', p: {} });
       else if (this.link() === 'offline') { const mins = Math.floor((t - this.lastRx) / 60); reasons.push(mins ? { key: 'r_offline_min', p: { n: mins } } : { key: 'r_offline', p: {} }); }
+      else if (online && this.battery && this.battery.pct <= 15 && !this.battery.chg) reasons.push({ key: 'r_battery', p: { n: this.battery.pct } });
       else if (online) {
         const down = [0, 1].filter(i => !this.sensorOk[i] && t - this.sensorDownAt[i] >= SENSOR_GRACE_S);
         if (down.length === 2) reasons.push({ key: 'r_sensor_both', p: {} });
@@ -476,7 +486,7 @@
           steps: this.steps.date === today() ? this.steps.count : 0, calibrated: this.calib, calibrating: this.calibrating },
         risk: this.fallRisk(),
         vitals: { hr: Math.round(this.vit.hr), spo2: Math.round(this.vit.spo2), temp: Math.round(this.vit.temp * 10) / 10, simulated: true },
-        device: { online, link: this.link(), last_rx: this.lastRx || null, sensors: this.sensorOk, rssi: this.rssi, ever: this.everConnected, boot: this.lastBoot || null,
+        device: { online, link: this.link(), last_rx: this.lastRx || null, sensors: this.sensorOk, rssi: this.rssi, ever: this.everConnected, boot: this.lastBoot || null, battery: this.battery && now() - this.battery.ts < 30 ? this.battery : null,
           ip: this.vestIp, fw: this.fw, wifi: this.vestWifi, mode: 'vest' },
         peers: this.caregivers().length - 1, hub: this.hubPresent(),
       };

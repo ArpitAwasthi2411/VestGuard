@@ -386,3 +386,6 @@ Object.assign(window.I18N.hi, {
 /* ---- v2.4: testing ---- */
 Object.assign(window.I18N.en, { demo_tools: 'Testing & demo', research: 'Test & record', research_d: 'Run the 35-test protocol and record labelled data with the vest\'s verdict. The family is not rung while testing.' });
 Object.assign(window.I18N.hi, { demo_tools: 'टेस्टिंग और डेमो', research: 'टेस्ट और रिकॉर्ड', research_d: '35 टेस्ट चलाएँ और वेस्ट के फ़ैसले के साथ डेटा रिकॉर्ड करें। टेस्ट के दौरान परिवार को फ़ोन नहीं बजता।' });
+/* ---- v2.5: vest battery ---- */
+Object.assign(window.I18N.en, { dev_bat: 'battery {n}%', dev_bat_chg: 'charging {n}%', battery_low: 'Vest battery low ({n}%). Charge it today.', r_battery: 'Vest battery low ({n}%)' });
+Object.assign(window.I18N.hi, { dev_bat: 'बैटरी {n}%', dev_bat_chg: 'चार्ज हो रही {n}%', battery_low: 'वेस्ट की बैटरी कम है ({n}%)। आज चार्ज करें।', r_battery: 'वेस्ट की बैटरी कम ({n}%)' });
