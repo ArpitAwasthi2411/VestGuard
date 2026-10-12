@@ -15,6 +15,7 @@
     const g = k => JSON.parse(localStorage.getItem(k));
     const r = document.documentElement;
     r.dataset.theme = g('vgc_theme') || 'system'; r.dataset.size = g('vgc_size') || 'normal'; r.lang = g('vgc_lang') || 'en';
+    if (localStorage.getItem('vg_mode') === 'phc') location.replace('phc.html');   // this phone is a health-centre desk
   } catch (e) {}
 </script>
 <style>
@@ -987,6 +988,7 @@ function renderProfile() {
         <div class="row"><div><div class="t">${t('sim_fall')}</div><div class="d">${t('sim_fall_d')}</div></div><span class="end"><button class="btn sm danger" id="pSimF">${t('simulate')}</button></span></div>
         <div class="row"><div><div class="t">${t('sim_stumble')}</div><div class="d">${t('sim_stumble_d')}</div></div><span class="end"><button class="btn sm" id="pSimS">${t('simulate')}</button></span></div>
         ${NATIVE ? `<div class="row"><div><div class="t">${t('research')}</div><div class="d">${t('research_d')}</div></div><span class="end"><button class="btn sm" id="pResearch">${t('open')}</button></span></div>` : ''}
+        <div class="row"><div><div class="t">${t('phc_open')}</div><div class="d">${t('phc_open_d')}</div></div><span class="end"><button class="btn sm" id="pPhc">${t('open')}</button></span></div>
       </div>
       <p class="note">${t('real_vs_sim')}</p></div>`;
 }
@@ -1176,6 +1178,9 @@ function renderOverride() {
     else if (!a.responders.length) steps.push(stepHtml(age >= callAt ? 'now' : 'wait', age >= callAt ? t('st_calling', { who: first(contacts[0].name) }) : t('st_call_at', { who: first(contacts[0].name) }), age >= callAt ? '' : t('st_call_in', { n: mmss(callAt - age) }), ''));
   }
   a.responders.forEach(r => steps.push(stepHtml('done', t('st_going', { who: r.name === S.me?.name ? t('you') : r.name }), role(r.role), hhmm(r.ts))));
+  // the primary health centre / ASHA desk acting on it
+  (a.phc || []).forEach(x => steps.push(stepHtml(x.status === 'ambulance' || x.status === 'asha' ? 'now' : 'done',
+    t('st_phc_' + x.status, { who: x.who, asha: x.asha || '' }), x.eta ? t('st_phc_eta', { n: x.eta }) : '', hhmm(x.ts))));
   $('#ovSteps').innerHTML = steps.join('');
   const why = $('#ovWhy'), wh = whyHtml(a);
   if (why.dataset.for !== a.id + ':' + !!a.ev) { why.dataset.for = a.id + ':' + !!a.ev; why.innerHTML = wh; }   // keep it open/closed between refreshes
@@ -1319,6 +1324,7 @@ document.addEventListener('click', e => {
     case 'pCal': return send({ t: 'calibrate' }, false);
     case 'pWifi': return wifiSheet();
     case 'pResearch': location.href = 'research.html'; return;
+    case 'pPhc': try { localStorage.setItem('vg_mode', 'phc'); } catch {} location.href = 'phc.html'; return;
     case 'pLaptopGo': { const v = $('#pLaptop').value.trim().replace(/^\w+:\/\//, '').replace(/\/.*$/, ''); if (!v) return; store.set('vgc_laptop', v); store.set('vgc_mode', 'laptop'); return location.reload(); }
     case 'pSms': {
       const want = b.getAttribute('aria-checked') !== 'true';
@@ -1373,6 +1379,7 @@ function renderOb() {
     h = `${dots}<h1 style="margin-top:6px">${t('ob_role_q')}</h1>
       <button class="rolecard" data-obkind="caregiver"><span class="ic">${svg('people')}</span><span><b>${t('ob_role_cg_t')}</b><span>${t('ob_role_cg_d')}</span></span></button>
       <button class="rolecard hubc" data-obkind="hub"><span class="ic">${svg('room')}</span><span><b>${t('ob_role_hub_t')}</b><span>${t('ob_role_hub_d')}</span></span></button>
+      <button class="rolecard" data-obkind="phc"><span class="ic">${svg('people')}</span><span><b>${t('ob_role_phc_t')}</b><span>${t('ob_role_phc_d')}</span></span></button>
       <button class="linkbtn" data-ob="back">${t('ob_back')}</button>`;
   } else if (st === 2) {
     h = hub ? `${dots}<h1 style="margin-top:6px">${t('ob_wearer_t')}</h1>
@@ -1426,6 +1433,7 @@ function obCollect() {
 document.addEventListener('click', e => {
   const b = e.target.closest('[data-ob],[data-obkind]'); if (!b || !$('#onboard').classList.contains('on')) return;
   const a = b.dataset.ob, d = OB.d;
+  if (b.dataset.obkind === 'phc') { try { localStorage.setItem('vg_mode', 'phc'); } catch {} location.href = 'phc.html'; return; }
   if (b.dataset.obkind) { d.kind = b.dataset.obkind; OB.joining = false; OB.step = 2; return renderOb(); }
   if (a === 'back') { OB.step = Math.max(0, OB.step - 1); OB.joining = false; return renderOb(); }
   if (a === 'next') { if (!obCollect()) return; OB.step++; return renderOb(); }

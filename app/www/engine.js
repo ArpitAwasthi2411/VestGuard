@@ -349,6 +349,17 @@
         case 'profile':
           if (b.profile) { for (const k of ['wearer', 'contacts', 'home']) if (k in b.profile) this.profile[k] = b.profile[k]; this._changed(); this.pushConfig(); }
           break;
+        case 'phc':
+          // the primary health centre / ASHA desk is acting on this alert
+          if (a) {
+            a.phc = a.phc || [];
+            if (!a.phc.some(x => x.status === b.status)) {
+              a.phc.push({ status: b.status, who: b.who || 'Health centre', ts: b.ts || ts, eta: b.eta || null, asha: b.asha || '' });
+              this.addFeed('alert', 'phc_' + b.status, `${b.who || 'Health centre'}: ${b.status}`, { who: b.who || 'Health centre', eta: b.eta || '', asha: b.asha || '' }, 'caregiver', b.who || null, a.id, b.ts || ts);
+              this.emit({ t: 'alert', alert: a });
+            }
+          }
+          break;
         case 'call':
           this.addFeed('call', 'auto_called', `${b.by || 'Home hub'} called ${b.who}`, { who: b.who, by: b.by || '' }, 'caregiver', b.by || null, b.alert || null);
           break;
@@ -610,7 +621,7 @@
       if (!nat) return;
       const lang = (() => { try { return JSON.parse(localStorage.getItem('vgc_lang')) || 'en'; } catch { return 'en'; } })();
       nat.setConfig({
-        lang, wearer: this.profile.wearer.name, contacts: this.profile.contacts.map(c => ({ name: c.name, phone: c.phone })),
+        lang, wearer: this.profile.wearer.name, wearerAge: +this.profile.wearer.age || 0, contacts: this.profile.contacts.map(c => ({ name: c.name, phone: c.phone })),
         autoSms: this.autoSms, lat: +this.profile.home.lat || 0, lon: +this.profile.home.lon || 0, homeLabel: this.profile.home.label,
         me: this.me ? this.me.name : '', meRole: this.me ? this.me.role : 'family',
         kind: this.me ? (this.me.kind || 'caregiver') : 'caregiver', family: this.me ? (this.me.family || '') : '',

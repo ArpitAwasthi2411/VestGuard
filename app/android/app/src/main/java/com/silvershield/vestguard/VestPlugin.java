@@ -303,6 +303,16 @@ public class VestPlugin extends Plugin {
         call.resolve();
     }
 
+    /** health centre: send {t:..., ...} to one household (by family code) */
+    @PluginMethod
+    public void syncSendTo(PluginCall call) {
+        VestService s = VestService.instance;
+        String fam = call.getString("family", "");
+        JSObject body = call.getObject("body", new JSObject());
+        if (s != null && fam != null && !fam.trim().isEmpty()) s.broadcastSync(s.syncLineFor(fam, "CS", body));
+        call.resolve();
+    }
+
     /** SOS from this phone: notify the family, SMS, and (on the Home Hub) start calling */
     @PluginMethod
     public void sos(PluginCall call) {

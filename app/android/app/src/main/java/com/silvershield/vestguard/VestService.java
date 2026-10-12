@@ -121,6 +121,25 @@ public class VestService extends Service {
         return false;
     }
     private long lastPresence = 0, lastDiscover = 0;
+    private volatile int batPct = -1;
+    private volatile boolean batChg = false;
+    /** health-centre phone: family codes heard recently (it listens to every household) */
+    private final java.util.concurrent.ConcurrentHashMap<String, Long> famSeen = new java.util.concurrent.ConcurrentHashMap<>();
+    private final java.util.concurrent.ConcurrentHashMap<String, String> famName = new java.util.concurrent.ConcurrentHashMap<>();
+
+    /** health centre: a household raised a fall / SOS -> ring this phone (2 min) and show who it is */
+    private void phcAlert(String family, JSONObject body, long now) {
+        String who = famName.get(family);
+        if (who == null || who.isEmpty()) who = "Household " + family;
+        boolean sos = "sos".equals(body.optString("t"));
+        boolean demo = body.optBoolean("demo", false);
+        String hi = "hi".equals(lang()) ? "hi" : "en";
+        String title = hi.equals("hi") ? (sos ? "SOS — " + who : "गिरने की सूचना — " + who) : (sos ? "SOS — " + who : "Fall alert — " + who);
+        String text = hi.equals("hi") ? "हेल्थ सेंटर डैशबोर्ड खोलें" : "Open the health-centre dashboard";
+        if (demo) title = title + " (demo)";
+        info(title, text);
+        Alarm.start(this, 120000);
+    }
 
     // ------------------------------------------------------------------ lifecycle
     static void start(Context ctx) {
@@ -391,6 +410,8 @@ public class VestService extends Service {
     static String deviceId(Context c) { return config(c).optString("device", ""); }
     String role() { return config(this).optString("kind", "caregiver"); }
     boolean isHub() { return "hub".equals(role()); }
+    /** health centre (PHC / ASHA) dashboard phone: hears every household, never acts as a family member */
+    boolean isPhc() { return "phc".equals(role()); }
 
     private static String b64(String s) {
         return android.util.Base64.encodeToString(s.getBytes(StandardCharsets.UTF_8), android.util.Base64.NO_WRAP);
@@ -401,6 +422,10 @@ public class VestService extends Service {
     /** "CS,<family>,<device>,<base64 json>" */
     String syncLine(String type, JSONObject body) {
         return type + "," + familyCode(this) + "," + deviceId(this) + "," + b64(body.toString());
+    }
+    /** a line addressed to another family (the health centre answering one household) */
+    String syncLineFor(String family, String type, JSONObject body) {
+        return type + "," + family.trim().toUpperCase(Locale.US) + "," + deviceId(this) + "," + b64(body.toString());
     }
 
     private void syncLoop() {
@@ -426,6 +451,40 @@ public class VestService extends Service {
         String[] p = line.split(",", 4);
         if (p.length < 4 || !(p[0].equals("CG") || p[0].equals("CS"))) return;
         String fam = familyCode(this);
+        if (isPhc()) {
+            // health centre: every household is ours to watch; forward everything to the dashboard
+            if (p[2].equals(deviceId(this)) || p[1].isEmpty()) return;
+            long now = System.currentTimeMillis();
+            peers.put(p[2], from);
+            peerSeen.put(p[2], now);
+            famSeen.put(p[1], now);
+            if (p[0].equals("CG")) {
+                try {
+                    String w = new JSONObject(unb64(p[3])).optString("wearer", "");
+                    if (!w.isEmpty()) famName.put(p[1], w);
+                } catch (Exception ignored) { }
+            }
+            if (p[0].equals("CS")) {
+                try {
+                    JSONObject body = new JSONObject(unb64(p[3]));
+                    String t = body.optString("t");
+                    String key = "sync:" + p[1] + ":" + body.optString("uid", t + body.optString("alert", ""));
+                    synchronized (seen) {
+                        if (seen.contains(key)) return;
+                        seen.add(key);
+                        while (seen.size() > 300) seen.remove(seen.iterator().next());
+                    }
+                    if ("fall".equals(t) || "sos".equals(t)) phcAlert(p[1], body, now);
+                    else if ("res".equals(t)) Alarm.stop();
+                } catch (Exception e) { return; }
+                JSONObject ev = new JSONObject();
+                try { ev.put("line", line); ev.put("ts", now); } catch (Exception ignored) { }
+                storePending(ev);
+            }
+            Listener l = listener;
+            if (l != null) l.onLine(line, now);
+            return;
+        }
         if (fam.isEmpty() || !fam.equals(p[1]) || p[2].equals(deviceId(this))) return;   // other families / my own echo
         peers.put(p[2], from);
         peerSeen.put(p[2], System.currentTimeMillis());
@@ -461,15 +520,53 @@ public class VestService extends Service {
     /** presence + vest discovery, once a second from tick() */
     private void familyTick(long now) {
         String fam = familyCode(this);
+        if (isPhc()) {
+            // say hello to every household heard in the last minute, so their phones show "health centre connected"
+            if (now - lastPresence > 3000) {
+                lastPresence = now;
+                JSONObject me = new JSONObject();
+                try {
+                    me.put("name", config(this).optString("me", "Health centre"));
+                    me.put("role", "phc");
+                    me.put("kind", "phc");
+                    me.put("vest", false);
+                } catch (Exception ignored) { }
+                DatagramSocket s = syncSock;
+                for (java.util.Map.Entry<String, Long> e : famSeen.entrySet()) {
+                    if (now - e.getValue() > 60000) { famSeen.remove(e.getKey()); continue; }
+                    String line = syncLineFor(e.getKey(), "CG", me);
+                    for (InetAddress a : peers.values()) sendTo(s, a, SYNC_PORT, line);
+                    for (InetAddress a : broadcastAddrs()) sendTo(s, a, SYNC_PORT, line);
+                }
+            }
+            for (java.util.Map.Entry<String, Long> e : peerSeen.entrySet()) {
+                if (now - e.getValue() > 60000) { peers.remove(e.getKey()); peerSeen.remove(e.getKey()); peerKind.remove(e.getKey()); }
+            }
+            return;                                   // no vest of its own: no discovery shouting
+        }
         if (!fam.isEmpty() && now - lastPresence > 3000) {
             lastPresence = now;
             JSONObject me = new JSONObject();
             try {
                 JSONObject cfg = config(this);
+                boolean vestOn = lastRx > 0 && now - lastRx < ONLINE_MS;
                 me.put("name", cfg.optString("me", ""));
                 me.put("role", cfg.optString("meRole", "family"));
                 me.put("kind", role());
-                me.put("vest", lastRx > 0 && now - lastRx < ONLINE_MS);
+                me.put("vest", vestOn);
+                // household card for the health centre (only on the local network; same as the family already shares)
+                me.put("wearer", cfg.optString("wearer", ""));
+                if (cfg.has("wearerAge")) me.put("age", cfg.optInt("wearerAge", 0));
+                me.put("home", cfg.optString("homeLabel", ""));
+                if (cfg.optDouble("lat", 0) != 0) { me.put("lat", cfg.optDouble("lat", 0)); me.put("lon", cfg.optDouble("lon", 0)); }
+                JSONArray cs = cfg.optJSONArray("contacts");
+                if (cs != null && cs.length() > 0 && cs.optJSONObject(0) != null) {
+                    me.put("cname", cs.optJSONObject(0).optString("name", ""));
+                    me.put("cphone", cs.optJSONObject(0).optString("phone", ""));
+                }
+                if (vestOn && batPct >= 0) { me.put("bat", batPct); me.put("chg", batChg); }
+                if (vestOn) me.put("act", lastAct);
+                if (alertId != null && !alertAcked) me.put("alert", alertId);
             } catch (Exception ignored) { }
             String line = syncLine("CG", me);
             DatagramSocket s = syncSock;
@@ -554,7 +651,17 @@ public class VestService extends Service {
                 Log.w(TAG, "event", e);
             }
             if (!line.contains(",ACT,") && !(research && line.startsWith("F,"))) storePending(ev);
-            if (line.contains(",RECOVER")) wearerUp();
+            if (line.contains(",RECOVER")) {
+                wearerUp();
+                // other phones (and the health centre) learn the wearer got back up by themselves
+                if (!research) {
+                    try {
+                        JSONObject b = new JSONObject();
+                        b.put("t", "up"); b.put("alert", alertId == null ? "" : alertId); b.put("uid", "up" + id);
+                        broadcastSync(syncLine("CS", b));
+                    } catch (Exception ignored) { }
+                }
+            }
         } else if (line.startsWith("H,")) {
             // firmware 3.7+: battery %, warn once at 20 % and again at 10 % (even with the app closed)
             String[] p = line.split(",");
@@ -562,6 +669,7 @@ public class VestService extends Service {
                 try {
                     int pct = Integer.parseInt(p[8].trim());
                     boolean chg = p.length > 9 && "1".equals(p[9].trim());
+                    batPct = pct; batChg = chg;
                     if (pct >= 0) {
                         int lvl = pct <= 10 ? 10 : pct <= 20 ? 20 : 0;
                         if (lvl > 0 && !chg && lvl < batWarned) {

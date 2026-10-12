@@ -396,3 +396,22 @@ Object.assign(window.I18N.en, { bat_row: 'Vest battery', bat_row_d: '{n}% · the
 Object.assign(window.I18N.hi, { bat_row: 'वेस्ट की बैटरी', bat_row_d: '{n}% · वेस्ट {v} V माप रही है', bat_cal: 'कैलिब्रेट', bat_cal_t: 'बैटरी रीडिंग कैलिब्रेट करें',
   bat_cal_q: 'वेस्ट चालू रखकर मल्टीमीटर से सेल (TP4056 OUT+ से GND) मापें और वोल्ट लिखें', bat_cal_go: 'वेस्ट को भेजें',
   bat_cal_sent: 'भेज दिया। नया % लगभग 5 सेकंड में दिखेगा।', toast_batcal_ok: 'बैटरी रीडिंग कैलिब्रेट हो गई', toast_batcal_bad: 'कैलिब्रेशन नहीं हुआ: संख्या और तार जाँचें' });
+/* ---- v2.7: health centre (PHC / ASHA) ---- */
+Object.assign(window.I18N.en, {
+  st_phc_ack: '{who} has seen the alert', st_phc_asha: '{who} sent ASHA worker {asha}', st_phc_ambulance: '{who} sent an ambulance',
+  st_phc_reached: 'Help from {who} has reached', st_phc_closed: '{who} closed the case', st_phc_eta: 'about {n} min',
+  phc_ack: '{who} has seen the alert', phc_asha: '{who} sent ASHA worker {asha}', phc_ambulance: '{who} sent an ambulance',
+  phc_reached: 'Help from {who} has reached', phc_closed: '{who} closed the case',
+  phc_open: 'Health centre dashboard', phc_open_d: 'For a PHC, sub-centre or ASHA desk: every household with a vest, live alerts, ambulance and follow-ups.',
+  ob_role_phc_t: 'Health centre / ASHA desk', ob_role_phc_d: 'See all households with a vest nearby, get their alerts, send help.',
+  role_phc: 'Health centre',
+});
+Object.assign(window.I18N.hi, {
+  st_phc_ack: '{who} ने सूचना देख ली', st_phc_asha: '{who} ने आशा कार्यकर्ता {asha} को भेजा', st_phc_ambulance: '{who} ने एम्बुलेंस भेजी',
+  st_phc_reached: '{who} की मदद पहुँच गई', st_phc_closed: '{who} ने केस बंद किया', st_phc_eta: 'लगभग {n} मिनट',
+  phc_ack: '{who} ने सूचना देख ली', phc_asha: '{who} ने आशा कार्यकर्ता {asha} को भेजा', phc_ambulance: '{who} ने एम्बुलेंस भेजी',
+  phc_reached: '{who} की मदद पहुँच गई', phc_closed: '{who} ने केस बंद किया',
+  phc_open: 'हेल्थ सेंटर डैशबोर्ड', phc_open_d: 'PHC, उप-केंद्र या आशा डेस्क के लिए: वेस्ट वाले सभी घर, लाइव सूचनाएँ, एम्बुलेंस और फ़ॉलो-अप।',
+  ob_role_phc_t: 'हेल्थ सेंटर / आशा डेस्क', ob_role_phc_d: 'आसपास वेस्ट वाले सभी घर देखें, उनकी सूचनाएँ पाएँ, मदद भेजें।',
+  role_phc: 'हेल्थ सेंटर',
+});

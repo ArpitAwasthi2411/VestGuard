@@ -1,0 +1,758 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#16233A">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<title>VestGuard Health Desk</title>
+<style>
+@font-face{font-family:"Atkinson";src:url(vendor/fonts/atkinson-hyperlegible-latin-400-normal.woff2) format("woff2");font-weight:400;font-display:swap}
+@font-face{font-family:"Atkinson";src:url(vendor/fonts/atkinson-hyperlegible-latin-700-normal.woff2) format("woff2");font-weight:700;font-display:swap}
+:root{
+  --bg:#EEF2F5; --surface:#fff; --sunk:#F4F6F9; --ink:#16233A; --ink2:#4A5872; --ink3:#727F95; --line:#DCE2E9;
+  --pine:#1D7A5F; --pine-soft:#E2F1EB; --amber:#B87500; --amber-soft:#FBF0D8; --red:#D2263B; --red-soft:#FBE4E7; --blue:#2F6FD0; --blue-soft:#E4EDFB;
+  --shadow:0 1px 2px rgba(22,35,58,.06),0 6px 18px -10px rgba(22,35,58,.18);
+  --font:"Atkinson",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --sat:env(safe-area-inset-top,0px); --sab:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#0C1420; --surface:#141F31; --sunk:#101929; --ink:#E9EEF5; --ink2:#AEB9CA; --ink3:#8491A6; --line:#233149;
+  --pine-soft:#11342B; --amber:#F2B544; --amber-soft:#372A0C; --red-soft:#3B1219; --blue-soft:#14284A; --shadow:0 1px 2px rgba(0,0,0,.3)}}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.4 var(--font);-webkit-text-size-adjust:100%}
+button{font:inherit;color:inherit;cursor:pointer}
+a{color:var(--blue)}
+.top{position:sticky;top:0;z-index:20;background:#16233A;color:#fff;padding:calc(10px + var(--sat)) 16px 10px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.top .brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:18px;min-width:0}
+.top .brand small{display:block;font-weight:400;font-size:13px;color:#AEB9CA;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.top .sp{flex:1}
+.chip{display:inline-flex;align-items:center;gap:6px;border-radius:99px;padding:4px 10px;font-size:13px;font-weight:700;white-space:nowrap}
+.chip i{width:8px;height:8px;border-radius:50%;background:currentColor;display:inline-block}
+.link-live{background:#1D7A5F;color:#fff}.link-off{background:#4A5872;color:#fff}
+.tbtn{background:rgba(255,255,255,.12);border:0;color:#fff;border-radius:10px;padding:8px 12px;font-size:14px}
+.tbtn:hover{background:rgba(255,255,255,.2)}
+.clock{font-variant-numeric:tabular-nums;color:#AEB9CA;font-size:14px}
+.wrap{max-width:1440px;margin:0 auto;padding:16px 16px calc(24px + var(--sab))}
+.kpis{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin-bottom:16px}
+.kpi{background:var(--surface);border-radius:14px;padding:12px 14px;box-shadow:var(--shadow);min-width:0}
+.kpi b{display:block;font-size:28px;line-height:1.1;font-variant-numeric:tabular-nums}
+.kpi span{color:var(--ink2);font-size:13px}
+.kpi.alert b{color:var(--red)}
+.grid{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(0,1fr);gap:16px;align-items:start}
+.col{display:flex;flex-direction:column;gap:16px;min-width:0}
+.card{background:var(--surface);border-radius:16px;box-shadow:var(--shadow);padding:14px 16px;min-width:0}
+.card h2{font-size:17px;margin:0 0 10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.card h2 .aside{margin-left:auto;font-weight:400;font-size:13px;color:var(--ink3);display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.muted{color:var(--ink2)}.faint{color:var(--ink3);font-size:13px}
+.empty{color:var(--ink3);padding:14px 4px;text-align:center}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:8px 12px;font-size:14px;font-weight:700;white-space:nowrap}
+.btn:hover{border-color:var(--ink3)}
+.btn.pri{background:var(--pine);border-color:var(--pine);color:#fff}
+.btn.red{background:var(--red);border-color:var(--red);color:#fff}
+.btn.amb{background:var(--amber-soft);border-color:var(--amber);color:var(--ink)}
+.btn.sm{padding:5px 9px;font-size:13px;border-radius:8px}
+.btn[disabled]{opacity:.45;cursor:default}
+/* alerts */
+.alert{border:2px solid var(--line);border-radius:14px;padding:12px 14px;margin-top:10px;background:var(--surface)}
+.alert.p-action{border-color:var(--red);animation:pulse 1.6s ease-in-out infinite}
+.alert.p-family,.alert.p-ringing,.alert.p-asking{border-color:var(--amber)}
+.alert.p-up,.alert.p-help{border-color:var(--pine)}
+@keyframes pulse{50%{box-shadow:0 0 0 6px rgba(210,38,59,.18)}}
+.ahead{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.prio{font-weight:700;font-size:13px;border-radius:8px;padding:3px 8px;letter-spacing:.02em;text-transform:uppercase}
+.prio.p-action{background:var(--red);color:#fff}.prio.p-family,.prio.p-ringing,.prio.p-asking{background:var(--amber-soft);color:var(--amber)}
+.prio.p-up,.prio.p-help{background:var(--pine-soft);color:var(--pine)}
+.elapsed{margin-left:auto;font-size:26px;font-weight:700;font-variant-numeric:tabular-nums}
+.who{font-size:20px;font-weight:700;margin:6px 0 2px}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:6px 14px;margin:8px 0;font-size:14px}
+.facts div span{display:block;color:var(--ink3);font-size:12px}
+.ev{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0}
+.ev span{background:var(--sunk);border-radius:8px;padding:3px 8px;font-size:13px}
+.steps{list-style:none;margin:8px 0;padding:0;border-left:2px solid var(--line)}
+.steps li{position:relative;padding:2px 0 6px 14px;font-size:14px}
+.steps li::before{content:"";position:absolute;left:-6px;top:7px;width:10px;height:10px;border-radius:50%;background:var(--line)}
+.steps li.done::before{background:var(--pine)}.steps li.now::before{background:var(--amber);box-shadow:0 0 0 3px var(--amber-soft)}
+.steps li.bad::before{background:var(--red)}
+.steps li time{color:var(--ink3);font-size:12px;margin-left:6px}
+.suggest{background:var(--blue-soft);border-radius:10px;padding:8px 10px;font-size:14px;margin:8px 0}
+.suggest b{color:var(--blue)}
+.acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.demo-b{background:var(--blue-soft);color:var(--blue);font-size:12px;font-weight:700;border-radius:6px;padding:2px 6px}
+.live-b{background:var(--red);color:#fff;font-size:12px;font-weight:700;border-radius:6px;padding:2px 6px}
+/* households */
+.filters{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+.fchip{border:1px solid var(--line);background:var(--surface);border-radius:99px;padding:4px 10px;font-size:13px}
+.fchip.on{background:var(--ink);border-color:var(--ink);color:var(--surface)}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{text-align:left;color:var(--ink3);font-weight:400;font-size:12px;padding:6px 6px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:8px 6px;border-bottom:1px solid var(--line);vertical-align:middle}
+tr.livehh td{background:var(--pine-soft)}
+tr.off td{opacity:.55}
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--ink3)}
+.dot.ok{background:var(--pine)}.dot.warn{background:var(--amber)}.dot.bad{background:var(--red)}
+.bat{display:inline-flex;align-items:center;gap:4px;font-variant-numeric:tabular-nums}
+.bat i{display:inline-block;width:22px;height:10px;border:1.5px solid currentColor;border-radius:2px;position:relative}
+.bat i b{position:absolute;left:1px;top:1px;bottom:1px;background:currentColor;border-radius:1px}
+.bat.low{color:var(--red)}
+.sw{position:relative;width:44px;height:26px;border-radius:99px;border:0;background:var(--line);padding:0;flex:none}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:left .15s;box-shadow:0 1px 2px rgba(0,0,0,.2)}
+.sw.on{background:var(--pine)}.sw.on::after{left:21px}
+.hh-cards{display:none}
+.nm b{display:block}.nm span{color:var(--ink3);font-size:12px}
+/* map */
+.map{width:100%;height:auto;display:block;background:var(--sunk);border-radius:12px}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--ink2);margin-top:6px}
+.legend span{display:inline-flex;align-items:center;gap:5px}
+/* lists */
+.li{display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--line)}
+.li:last-child{border-bottom:0}
+.li .grow{flex:1;min-width:0}
+.li .grow b{display:block;font-size:14px}
+.li .grow span{font-size:13px;color:var(--ink2)}
+.tag{font-size:11px;font-weight:700;border-radius:6px;padding:2px 6px;background:var(--sunk);color:var(--ink2);white-space:nowrap}
+.tag.due{background:var(--red-soft);color:var(--red)}
+.stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.stats div{background:var(--sunk);border-radius:10px;padding:8px 10px}
+.stats b{display:block;font-size:20px;font-variant-numeric:tabular-nums}
+.stats span{font-size:12px;color:var(--ink2)}
+.log{max-height:320px;overflow:auto;font-size:13px}
+.log div{padding:4px 0;border-bottom:1px dashed var(--line)}
+.log time{color:var(--ink3);font-variant-numeric:tabular-nums;margin-right:6px}
+/* modal */
+.modal{position:fixed;inset:0;background:rgba(10,16,28,.55);display:none;align-items:center;justify-content:center;z-index:50;padding:16px}
+.modal.on{display:flex}
+.sheet{background:var(--surface);border-radius:16px;max-width:520px;width:100%;max-height:90vh;overflow:auto;padding:18px}
+.sheet h3{margin:0 0 12px}
+.sheet label{display:block;font-size:13px;color:var(--ink2);margin:10px 0 4px}
+.sheet input,.sheet select{width:100%;font:inherit;padding:9px 10px;border:1px solid var(--line);border-radius:10px;background:var(--sunk);color:var(--ink)}
+.sheet .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.sheet .foot{display:flex;gap:8px;justify-content:flex-end;margin-top:16px;flex-wrap:wrap}
+.toast{position:fixed;left:50%;bottom:calc(20px + var(--sab));transform:translateX(-50%);background:#16233A;color:#fff;border-radius:12px;padding:10px 16px;font-size:14px;z-index:60;opacity:0;transition:opacity .2s;pointer-events:none;max-width:90vw}
+.toast.on{opacity:1}
+.banner{background:var(--amber-soft);border:1px solid var(--amber);border-radius:12px;padding:10px 14px;margin-bottom:12px;font-size:14px;display:none}
+.banner.on{display:block}
+@media (max-width:1100px){.kpis{grid-template-columns:repeat(3,minmax(0,1fr))}.grid{grid-template-columns:1fr}}
+@media (max-width:700px){
+  .kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .kpi b{font-size:22px}
+  .hh-table{display:none}.hh-cards{display:block}
+  .elapsed{font-size:22px}
+  .top .clock{display:none}
+}
+.hhc{display:flex;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
+.hhc.livehh{background:var(--pine-soft);border-radius:10px;padding:10px}
+.hhc.off{opacity:.55}
+.hhc .grow{flex:1;min-width:0}
+.hhc .grow b{display:block}.hhc .grow span{font-size:13px;color:var(--ink2)}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="brand"><svg width="34" height="34" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="16" fill="#1D7A5F"/><path d="M32 13 17 19v11c0 10 6.4 17.2 15 20 8.6-2.8 15-10 15-20V19z" fill="none" stroke="#fff" stroke-width="3.5" stroke-linejoin="round"/><path d="M27 31h10M32 26v10" stroke="#fff" stroke-width="3.5" stroke-linecap="round"/></svg>
+    <div style="min-width:0">VestGuard Health Desk<small id="facility">—</small></div></div>
+  <span class="sp"></span>
+  <span class="chip link-off" id="link"><i></i>Offline</span>
+  <span class="clock" id="clock"></span>
+  <button class="tbtn" id="bSound" hidden>Enable sound</button>
+  <button class="tbtn" id="bDemo">Demo fall</button>
+  <button class="tbtn" id="bSettings">Settings</button>
+  <button class="tbtn" id="bFamily" hidden>Family app</button>
+</header>
+<main class="wrap">
+  <div class="banner" id="banner"></div>
+  <section class="kpis" id="kpis"></section>
+  <div class="grid">
+    <div class="col">
+      <section class="card" id="alertsCard"><h2>Live alerts <span class="aside" id="alertsAside"></span></h2><div id="alerts"></div></section>
+      <section class="card"><h2>Households with a vest <span class="aside"><span>Demo households</span><button class="sw" id="swDemo" aria-label="Show demo households"></button></span></h2>
+        <div class="filters" id="filters"></div>
+        <div class="hh-table"><table><thead><tr><th></th><th>Wearer</th><th>Village</th><th>Vest</th><th>Battery</th><th>Last seen</th><th>ASHA</th><th>Falls 30 d</th><th>On</th><th></th></tr></thead><tbody id="hhRows"></tbody></table></div>
+        <div class="hh-cards" id="hhCards"></div>
+      </section>
+    </div>
+    <div class="col">
+      <section class="card"><h2>Catchment area <span class="aside" id="mapAside"></span></h2><div id="map"></div>
+        <div class="legend"><span><span class="dot ok"></span>vest worn</span><span><span class="dot"></span>not worn / off</span><span><span class="dot bad"></span>alert</span><span>◆ health centre</span></div></section>
+      <section class="card"><h2>ASHA follow-ups <span class="aside" id="fuAside"></span></h2><div id="followups"></div></section>
+      <section class="card"><h2>This month</h2><div class="stats" id="stats"></div><p class="faint" style="margin:8px 0 0">"Cancelled by the wearer" = the home phone asked first and the person said they were fine: no ambulance, no family panic.</p></section>
+      <section class="card"><h2>Activity log <span class="aside"><button class="btn sm" id="bExport">Export CSV</button></span></h2><div class="log" id="log"></div></section>
+    </div>
+  </div>
+</main>
+
+<div class="modal" id="modal"><div class="sheet" id="sheet"></div></div>
+<div class="toast" id="toast"></div>
+
+<script src="vendor/capacitor.js" onerror="void 0"></script>
+<script>
+'use strict';
+/* =====================================================================
+   VestGuard Health Desk: the primary health centre / sub-centre / ASHA view.
+   Same page in the APK (role "phc": the phone hears every household on the network)
+   and on a PC browser (through tools/phc_server.py, which bridges the Wi-Fi to this page).
+
+   What the households send (local Wi-Fi, UDP 4212, already used between family phones):
+     CG,<family>,<device>,<b64 json>   presence every 3 s: wearer, age, home, vest on/off, battery, contact
+     CS,<family>,<device>,<b64 json>   events: fall (with the vest's evidence), sos, resp (family going),
+                                       res (family closed it), up (wearer got up), call (hub called someone), profile
+   What the desk sends back to one household:
+     CS {t:'phc', alert, status: ack|asha|ambulance|reached|closed, who, eta, asha}  -> shown on the family's alert screen
+   ===================================================================== */
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const nowS = () => Date.now() / 1000;
+const load = (k, d) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } };
+const save = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
+const unb64 = t => { try { return JSON.parse(decodeURIComponent(escape(atob(t)))); } catch { return null; } };
+const rid = () => Math.random().toString(36).slice(2, 10);
+const hhmm = ts => new Date(ts * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+const mmss = s => { s = Math.max(0, Math.floor(s)); const m = Math.floor(s / 60); return m >= 60 ? `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, '0')}m` : `${m}:${String(s % 60).padStart(2, '0')}`; };
+const ago = ts => { if (!ts) return '—'; const s = nowS() - ts; return s < 15 ? 'now' : s < 3600 ? `${Math.floor(s / 60) || '<1'} min ago` : s < 86400 ? `${Math.floor(s / 3600)} h ago` : `${Math.floor(s / 86400)} d ago`; };
+
+/* ---------------- rules (the business logic, in one place) ---------------- */
+const RULE = {
+  ASK_S: 30,            // home phone asks the wearer first
+  ACTION_S: 90,         // no family member responding within 90 s of a fall -> the desk must act
+  SOFT_ACTION_S: 60,    // slow collapse and still lying: act sooner
+  FOLLOWUP_H: 48,       // every fall gets an ASHA home visit within 48 h (falls predict falls)
+  NOT_WORN_H: 24,       // vest not seen for a day -> ASHA asks why on the next visit
+  LOW_BAT: 20,
+  REFER_FALLS: 2,       // 2+ falls in 30 days -> refer to the medical officer for a fall-risk check
+  ROAD: 1.4, KMH: 30, DISPATCH_MIN: 5,   // hill roads: straight-line distance x 1.4 at 30 km/h, +5 min to leave
+};
+
+/* ---------------- state ---------------- */
+const DEF_SET = { name: 'PHC Bandla', area: 'Sadar block, Bilaspur (HP)', lat: 31.3395, lon: 76.7570, amb: '108', demo: true, sound: true };
+let SET = Object.assign({}, DEF_SET, load('vgphc_set', {}));
+const DEV = load('vgphc_dev', null) || (() => { const d = 'phc' + rid(); save('vgphc_dev', d); return d; })();
+
+const ASHAS = [
+  { name: 'Sunita Thakur', phone: '+91 90000 00011' }, { name: 'Reena Kumari', phone: '+91 90000 00012' },
+  { name: 'Anjana Sharma', phone: '+91 90000 00013' }, { name: 'Meera Devi', phone: '+91 90000 00014' },
+];
+function demoHouseholds() {
+  const H = (wearer, age, village, dLat, dLon, cname, asha, extra = {}) => Object.assign({
+    id: 'd' + rid(), demo: true, on: true, wearer, age, village, home: village + ', Bilaspur',
+    lat: +(SET.lat + dLat).toFixed(4), lon: +(SET.lon + dLon).toFixed(4), cname, cphone: '+91 90000 001' + String(Math.floor(Math.random() * 90) + 10),
+    asha: ASHAS[asha].name, ashaPhone: ASHAS[asha].phone, enrolled: nowS() - 86400 * (20 + Math.floor(Math.random() * 60)),
+    bat: 35 + Math.floor(Math.random() * 60), seen: nowS() - Math.random() * 40, falls: [],
+  }, extra);
+  return [
+    H('Shanti Devi', 78, 'Ghumarwin', 0.088, -0.072, 'Rakesh (son)', 0, { falls: [nowS() - 86400 * 9] }),
+    H('Bhagat Ram', 81, 'Kot', -0.041, 0.055, 'Neelam (daughter)', 1),
+    H('Kaushalya Devi', 74, 'Barmana', 0.021, -0.118, 'Ajay (son)', 0, { bat: 14 }),
+    H('Prem Chand', 69, 'Namhol', -0.072, -0.031, 'Sushma (wife)', 2),
+    H('Leela Devi', 83, 'Markand', 0.046, 0.032, 'Vikas (grandson)', 1, { falls: [nowS() - 86400 * 4, nowS() - 86400 * 21] }),
+    H('Rattan Lal', 77, 'Berthin', 0.121, 0.081, 'Pooja (daughter-in-law)', 3, { on: false, seen: nowS() - 86400 * 1.6 }),
+    H('Sarla Kumari', 72, 'Swarghat', -0.113, -0.096, 'Mohan (husband)', 2),
+    H('Hem Raj', 85, 'Jukhala', -0.058, 0.104, 'Kiran (daughter)', 3),
+    H('Kamla Sharma', 79, 'Ghagas', -0.135, -0.162, 'Sanjay (son)', 2),
+    H('Durga Dass', 76, 'Kandrour', 0.062, -0.019, 'Anita (daughter)', 0),
+    H('Bimla Devi', 80, 'Talai', 0.152, -0.021, 'Deepak (son)', 3, { on: false, seen: nowS() - 3600 * 5 }),
+  ];
+}
+let HH = load('vgphc_hh', null);
+if (!HH) { HH = demoHouseholds(); save('vgphc_hh', HH); }
+let CASES = load('vgphc_cases', []);
+let FU = load('vgphc_fu', []);            // follow-up tasks
+let LOG = load('vgphc_log', []);
+const LIVE = {};                          // family code -> { devices:{id:{name,kind,ts,vest}}, ts }
+let filter = 'all', link = 'off', soundReady = false;
+
+function persist() { save('vgphc_hh', HH); save('vgphc_cases', CASES.slice(-300)); save('vgphc_fu', FU.slice(-300)); save('vgphc_log', LOG.slice(-400)); }
+function log(text, hh) { LOG.push({ ts: nowS(), text, hh: hh || null }); if (LOG.length > 400) LOG.shift(); }
+function toast(t) { const el = $('#toast'); el.textContent = t; el.classList.add('on'); clearTimeout(toast.h); toast.h = setTimeout(() => el.classList.remove('on'), 2600); }
+
+/* ---------------- transport: APK (native) or PC (bridge) ---------------- */
+const CAP = window.Capacitor;
+const NAT = CAP && CAP.isNativePlatform && CAP.isNativePlatform() ? CAP.Plugins.VestNative : null;
+async function sendTo(family, body) {
+  body = Object.assign({ uid: rid(), ts: nowS() }, body);
+  try {
+    if (NAT) await NAT.syncSendTo({ family, body });
+    else if (link === 'pc') await fetch('/send', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ family, body }) });
+  } catch (e) { toast('Could not reach the household: ' + e.message); }
+}
+function nativeConfig() {
+  if (!NAT) return;
+  NAT.setConfig({ kind: 'phc', family: '', device: DEV, me: SET.name, meRole: 'phc', lang: 'en' }).catch(() => {});
+}
+async function startTransport() {
+  if (NAT) {
+    nativeConfig();
+    try { await NAT.start(); } catch {}
+    NAT.addListener('line', e => onLine(e.line, e.ts));
+    NAT.addListener('resume', drain);
+    drain();
+    link = 'apk';
+    $('#bFamily').hidden = false;
+    return;
+  }
+  if (location.protocol.startsWith('http')) {
+    try {
+      const es = new EventSource('/events');
+      es.onmessage = m => { try { const d = JSON.parse(m.data); if (d.line) onLine(d.line, d.ts); if (d.hello) link = 'pc'; } catch {} };
+      es.onopen = () => { link = 'pc'; fetch('/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: SET.name }) }).catch(() => {}); render(); };
+      es.onerror = () => { link = 'off'; render(); };
+    } catch { link = 'off'; }
+  }
+  $('#bSound').hidden = false;
+}
+async function drain() {
+  if (!NAT) return;
+  try { const r = await NAT.drain(); (r.events || []).forEach(e => e.line && onLine(e.line, e.ts)); } catch {}
+}
+
+/* ---------------- households from the network ---------------- */
+function liveHH(fam) {
+  let h = HH.find(x => x.family === fam);
+  if (!h) {
+    h = { id: 'f' + fam, family: fam, demo: false, on: true, wearer: 'Household ' + fam, age: null, village: '', home: '', lat: null, lon: null,
+      cname: '', cphone: '', asha: ASHAS[0].name, ashaPhone: ASHAS[0].phone, enrolled: nowS(), bat: null, seen: nowS(), falls: [] };
+    HH.unshift(h);
+    log(`New household joined the network: ${fam}`, h.id);
+  }
+  return h;
+}
+function onLine(line, tsMs) {
+  const p = line.split(','); if (p.length < 4 || (p[0] !== 'CG' && p[0] !== 'CS')) return;
+  const fam = p[1], dev = p[2], b = unb64(p[3]); if (!b || !fam || dev === DEV) return;
+  const ts = tsMs ? tsMs / 1000 : nowS();
+  if (b.kind === 'phc' || b.role === 'phc') return;               // another health desk
+  const h = liveHH(fam), L = LIVE[fam] = LIVE[fam] || { devices: {} };
+  if (p[0] === 'CG') {
+    L.devices[dev] = { name: b.name || '?', kind: b.kind || 'caregiver', ts, vest: !!b.vest };
+    h.seen = Math.max(h.seen || 0, ts);
+    if (b.wearer) h.wearer = b.wearer;
+    if (b.age) h.age = b.age;
+    if (b.home) { h.home = b.home; if (!h.village) h.village = b.home.split(',')[1]?.trim() || b.home.split(',')[0]; }
+    if (b.lat) { h.lat = b.lat; h.lon = b.lon; }
+    if (b.cname) h.cname = b.cname;
+    if (b.cphone) h.cphone = b.cphone;
+    if (b.vest) { h.vestTs = ts; if (b.bat != null) { h.bat = b.bat; h.chg = !!b.chg; } if (b.act) h.act = b.act; }
+    return;
+  }
+  // CS: something happened in this household
+  const aid = b.alert || '';
+  const c = aid ? CASES.find(x => x.fam === fam && x.alertId === aid && x.status !== 'closed')
+    : (b.t === 'up' ? CASES.filter(x => x.fam === fam && x.status !== 'closed').pop() : null);
+  const known = aid && CASES.some(x => x.fam === fam && x.alertId === aid && Math.abs(x.ts - (b.ts || ts)) < 3600);   // replays after a reload
+  switch (b.t) {
+    case 'fall': {
+      if (c || known) return;
+      let ev = null;
+      if (b.line && b.line.startsWith('F,')) {
+        const f = b.line.split(','), n = i => { const v = parseFloat(f[i]); return Number.isFinite(v) && v >= 0 ? v : null; };
+        ev = { sev: +f[2] || 2, peak: n(3), turn: n(4), after: n(5), lying: f[6] === '1', soft: f[12] === '1' };
+      }
+      openCase(h, { kind: 'fall', alertId: aid, ts: b.ts || ts, sev: ev ? ev.sev : (+b.sev || 3), ev, lat: b.lat, lon: b.lon, demo: !!b.demo });
+      break;
+    }
+    case 'sos':
+      if (!c && !known) openCase(h, { kind: 'sos', alertId: aid, ts: b.ts || ts, sev: 3, who: b.who, demo: false });
+      break;
+    case 'resp':
+      if (c && !c.family.some(r => r.who === b.who)) { c.family.push({ who: b.who || 'Family', role: b.role || '', ts: b.ts || ts }); log(`${h.wearer}: ${b.who} is going`, h.id); }
+      break;
+    case 'up':
+      if (c && !c.up) { c.up = b.ts || ts; log(`${h.wearer} got up by themselves`, h.id); }
+      break;
+    case 'call':
+      if (c) { c.calls = c.calls || []; c.calls.push({ who: b.who, ts: b.ts || ts }); }
+      break;
+    case 'res':
+      if (c) {
+        c.familyClosed = { by: b.who, res: b.res, ts: b.ts || ts };
+        log(`${h.wearer}: family closed the alert (${resLabel(b.res)})`, h.id);
+        if (!c.phc.length || c.status === 'new') closeCase(c, b.res === 'false_alarm' ? 'false_alarm' : b.res === 'ems' ? 'hospital' : 'home', 'family');
+      }
+      break;
+    case 'profile':
+      if (b.profile?.wearer?.name) { h.wearer = b.profile.wearer.name; if (b.profile.wearer.age) h.age = b.profile.wearer.age; }
+      if (b.profile?.home) { h.home = b.profile.home.label || h.home; if (b.profile.home.lat) { h.lat = +b.profile.home.lat; h.lon = +b.profile.home.lon; } }
+      if (b.profile?.contacts?.[0]) { h.cname = b.profile.contacts[0].name; h.cphone = b.profile.contacts[0].phone; }
+      break;
+  }
+  persist(); render();
+}
+const resLabel = r => ({ false_alarm: 'false alarm', ems: 'sent to hospital', wearer_ok: 'wearer OK', assisted: 'helped at home' }[r] || r || 'closed');
+
+/* ---------------- cases ---------------- */
+function openCase(h, o) {
+  // fam = the household's family code (null for demo); family = family members who said they are going
+  const c = Object.assign({ id: rid(), hh: h.id, fam: h.family || null, status: 'new', phc: [], family: [], up: null, calls: [], hub: hubOnline(h) }, o);
+  CASES.push(c);
+  h.falls = (h.falls || []).concat([c.ts]);
+  log(`${c.kind === 'sos' ? 'SOS' : 'Fall'} alert from ${h.wearer}, ${h.village || h.home}${c.demo ? ' (demo)' : ''}`, h.id);
+  if (nowS() - c.ts < 120) ring();
+  persist();
+  return c;
+}
+function hhOf(c) { return HH.find(h => h.id === c.hh) || { wearer: '?', village: '' }; }
+function hubOnline(h) { const L = h.family && LIVE[h.family]; if (!L) return !!h.demo; return Object.values(L.devices).some(d => d.kind === 'hub' && nowS() - d.ts < 15); }
+
+/** where a case stands, and what the desk should do next */
+function triage(c) {
+  const age = nowS() - c.ts, last = c.phc[c.phc.length - 1];
+  if (c.status === 'closed') return { p: 'closed', label: 'Closed', next: '' };
+  if (last && last.s === 'reached') return { p: 'help', label: 'Help reached', next: 'Record the outcome and close the case. An ASHA home visit is added automatically.' };
+  if (last && last.s === 'ambulance') return { p: 'help', label: 'Ambulance on the way', next: `Keep the family on the phone. Mark "Help reached" when the team arrives.` };
+  if (last && last.s === 'asha') return { p: 'help', label: 'ASHA on the way', next: `If ${hhOf(c).asha} finds an injury, send the ambulance from here.` };
+  if (c.up && c.kind !== 'sos') return { p: 'up', label: 'Wearer got up', next: 'Got up without help. Call the family to confirm; an ASHA visit within 48 h is enough unless there is pain.' };
+  if (c.kind === 'sos') return { p: 'action', label: 'SOS: act now', next: 'The person pressed SOS. Call the household now; send the ASHA or the ambulance.' };
+  if (c.family.length) return { p: 'family', label: 'Family responding', next: `${c.family.map(f => f.who).join(', ')} going. Watch; step in if they ask for an ambulance.` };
+  const lim = c.ev && c.ev.soft ? RULE.SOFT_ACTION_S : RULE.ACTION_S;
+  if (age >= lim) return { p: 'action', label: 'No family response: act now', next: `Nobody in the family has responded in ${Math.round(lim / 60 * 10) / 10} min. Call the household, then send ${hhOf(c).asha} (ASHA) or the ambulance.` };
+  if (c.hub && age < RULE.ASK_S) return { p: 'asking', label: 'Home phone asking the wearer', next: `Wait ${Math.ceil(RULE.ASK_S - age)} s: if the wearer says they are fine, the family is not even disturbed.` };
+  return { p: 'ringing', label: 'Family being alerted', next: `Family phones are ringing. The desk takes over in ${mmss(lim - age)} if nobody responds.` };
+}
+function eta(h) {
+  if (h.lat == null || h.lon == null) return null;
+  const R = 6371, dLat = (h.lat - SET.lat) * Math.PI / 180, dLon = (h.lon - SET.lon) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(SET.lat * Math.PI / 180) * Math.cos(h.lat * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
+  const km = 2 * R * Math.asin(Math.sqrt(a)) * RULE.ROAD;
+  return { km: Math.round(km * 10) / 10, min: Math.round(RULE.DISPATCH_MIN + km / RULE.KMH * 60) };
+}
+function act(c, s) {
+  const h = hhOf(c);
+  if (c.status === 'closed') return;
+  const e = { s, ts: nowS(), by: SET.name };
+  if (s === 'ambulance') { const t = eta(h); e.eta = t ? t.min : null; }
+  if (s === 'asha') e.asha = h.asha;
+  c.phc.push(e); c.status = s;
+  stopRing();
+  const txt = { ack: 'seen by the desk', asha: `ASHA ${h.asha} sent`, ambulance: `ambulance sent${e.eta ? ` (ETA ~${e.eta} min)` : ''}`, reached: 'help reached the house' }[s];
+  log(`${h.wearer}: ${txt}`, h.id);
+  if (c.fam && !c.demo) sendTo(c.fam, { t: 'phc', alert: c.alertId, status: s, who: SET.name, eta: e.eta || null, asha: e.asha || '' });
+  if (c.demo) demoReply(c, s);
+  persist(); render();
+}
+function closeCase(c, outcome, by = 'desk') {
+  const h = hhOf(c);
+  c.status = 'closed'; c.outcome = outcome; c.closed = nowS(); c.closedBy = by;
+  stopRing();
+  log(`${h.wearer}: case closed (${OUTCOME[outcome]})${by === 'family' ? ' by the family' : ''}`, h.id);
+  if (by === 'desk' && c.fam && !c.demo) sendTo(c.fam, { t: 'phc', alert: c.alertId, status: 'closed', who: SET.name });
+  // follow-ups: every real fall gets a home visit; repeated falls get a medical-officer referral
+  if (outcome !== 'false_alarm') addFU(h, 'visit', `Post-fall home visit by ${h.asha}`, nowS() + RULE.FOLLOWUP_H * 3600);
+  const f30 = (h.falls || []).filter(t => nowS() - t < 30 * 86400).length;
+  if (f30 >= RULE.REFER_FALLS) addFU(h, 'refer', `${f30} falls in 30 days: fall-risk check by the medical officer`, nowS() + 7 * 86400);
+  persist(); render();
+}
+const OUTCOME = { false_alarm: 'false alarm', home: 'treated at home', hospital: 'taken to hospital', wearer_ok: 'wearer OK, no injury' };
+function addFU(h, kind, text, due) {
+  if (FU.some(f => f.hh === h.id && f.kind === kind && !f.done)) return;
+  FU.push({ id: rid(), hh: h.id, kind, text, due, created: nowS(), done: null });
+}
+
+/* ---------------- demo: a believable household on the other end ---------------- */
+function simulateFall(h, scenario) {
+  h = h || (() => { const on = HH.filter(x => x.demo && x.on); return on[Math.floor(Math.random() * on.length)]; })();
+  if (!h) { toast('Switch on at least one demo household'); return; }
+  scenario = scenario || ['up', 'family', 'none'][Math.floor(Math.random() * 3)];
+  const soft = scenario === 'none' && Math.random() < 0.35;
+  const c = openCase(h, { kind: 'fall', alertId: 'demo' + rid(), ts: nowS(), sev: soft ? 2 : 3, demo: true, scenario,
+    ev: soft ? { sev: 2, peak: 1.4, turn: 71, after: 78, lying: true, soft: true } : { sev: 3, peak: +(3 + Math.random() * 3).toFixed(1), turn: Math.round(60 + Math.random() * 30), after: Math.round(70 + Math.random() * 18), lying: true, soft: false } });
+  if (scenario === 'up') setTimeout(() => { if (c.status !== 'closed' && !c.up) { c.up = nowS(); log(`${h.wearer} got up by themselves (demo)`, h.id); persist(); render(); } }, 14000);
+  if (scenario === 'family') setTimeout(() => { if (c.status !== 'closed' && !c.family.length) { c.family.push({ who: h.cname || 'Family', ts: nowS() }); log(`${h.wearer}: ${h.cname} is going (demo)`, h.id); persist(); render(); } }, 42000);
+  render();
+}
+function demoReply(c, s) {
+  const h = hhOf(c);
+  if (s === 'asha') setTimeout(() => { if (c.status !== 'closed') { c.phc.push({ s: 'reached', ts: nowS(), by: h.asha }); c.status = 'reached'; log(`${h.wearer}: ASHA ${h.asha} reached (demo)`, h.id); persist(); render(); } }, 25000);
+  if (s === 'ambulance') setTimeout(() => { if (c.status !== 'closed') { c.phc.push({ s: 'reached', ts: nowS(), by: 'Ambulance' }); c.status = 'reached'; log(`${h.wearer}: ambulance reached (demo)`, h.id); persist(); render(); } }, 30000);
+}
+// demo households look alive: heartbeat + slow battery drain
+setInterval(() => {
+  for (const h of HH) if (h.demo && h.on) { h.seen = nowS() - Math.random() * 5; h.vestTs = h.seen; if (Math.random() < 0.02 && h.bat > 5) h.bat -= 1; }
+}, 5000);
+
+/* ---------------- sound ---------------- */
+let actx = null, ringTimer = null;
+function ring() {
+  if (NAT) return;                 // the APK rings natively (works with the screen off)
+  if (!SET.sound || !actx) return;
+  stopRing();
+  const beep = () => {
+    const t = actx.currentTime;
+    [[880, 0], [1175, .18], [1480, .36]].forEach(([f, d]) => {
+      const o = actx.createOscillator(), g = actx.createGain();
+      o.type = 'sine'; o.frequency.value = f; g.gain.setValueAtTime(0, t + d); g.gain.linearRampToValueAtTime(.25, t + d + .02); g.gain.exponentialRampToValueAtTime(.001, t + d + .5);
+      o.connect(g).connect(actx.destination); o.start(t + d); o.stop(t + d + .55);
+    });
+  };
+  beep(); ringTimer = setInterval(beep, 2500);
+  setTimeout(stopRing, 60000);
+}
+function stopRing() {
+  if (ringTimer) { clearInterval(ringTimer); ringTimer = null; }
+  if (NAT) NAT.stopAlarm().catch(() => {});
+}
+
+/* ---------------- derived ---------------- */
+function vestState(h) {
+  if (h.demo) return h.on ? 'worn' : 'off';
+  return h.vestTs && nowS() - h.vestTs < 15 ? 'worn' : 'off';
+}
+function visibleHH() { return HH.filter(h => !h.demo || SET.demo); }
+function openCases() { return CASES.filter(c => c.status !== 'closed' && (!c.demo || SET.demo)); }
+function autoFollowups() {
+  // standing checks for the ASHA visit list (recomputed, not stored)
+  const out = [];
+  for (const h of visibleHH()) {
+    const st = vestState(h), offH = h.demo ? (h.on ? 0 : (nowS() - (h.seen || 0)) / 3600) : (nowS() - (h.vestTs || h.seen || nowS())) / 3600;
+    if (st === 'off' && offH >= RULE.NOT_WORN_H) out.push({ auto: true, hh: h.id, kind: 'notworn', text: `Vest not worn for ${Math.floor(offH)} h: ask why, help put it on`, due: null });
+    else if (st === 'off' && h.demo) out.push({ auto: true, hh: h.id, kind: 'notworn', text: `Vest switched off today (${Math.floor(offH) || '<1'} h)`, due: null, soft: true });
+    if (st === 'worn' && h.bat != null && h.bat <= RULE.LOW_BAT && !h.chg) out.push({ auto: true, hh: h.id, kind: 'battery', text: `Battery ${h.bat}%: remind the family to charge tonight`, due: null });
+  }
+  return out;
+}
+
+/* ---------------- render ---------------- */
+function render() {
+  $('#facility').textContent = `${SET.name} · ${SET.area}`;
+  const lk = $('#link');
+  const L = { apk: ['link-live', 'Listening (this phone)'], pc: ['link-live', 'Listening (Wi-Fi bridge)'], off: ['link-off', 'Not connected: demo only'] }[link];
+  lk.className = 'chip ' + L[0]; lk.innerHTML = `<i></i>${L[1]}`;
+  $('#swDemo').classList.toggle('on', !!SET.demo);
+  renderKpis(); renderAlerts(); renderHH(); renderMap(); renderFU(); renderStats(); renderLog();
+  const live = HH.filter(h => !h.demo);
+  const b = $('#banner');
+  if (!live.length && link !== 'off') { b.classList.add('on'); b.innerHTML = '<b>Waiting for a live vest.</b> Join this device to the same Wi-Fi / hotspot as the household phones. The household appears here within a few seconds.'; }
+  else if (link === 'off' && !NAT) { b.classList.add('on'); b.innerHTML = '<b>Not connected to any household.</b> On the PC run <code>python3 tools/phc_server.py</code> and open the address it prints. Demo households still work.'; }
+  else b.classList.remove('on');
+}
+function renderKpis() {
+  const hs = visibleHH(), worn = hs.filter(h => vestState(h) === 'worn').length, open = openCases();
+  const action = open.filter(c => triage(c).p === 'action').length;
+  const m = monthCases(), resp = m.map(firstResponse).filter(x => x != null).sort((a, b) => a - b);
+  const med = resp.length ? resp[Math.floor(resp.length / 2)] : null;
+  const live = hs.filter(h => !h.demo).length;
+  $('#kpis').innerHTML = [
+    [hs.length, `households enrolled${live ? ` (${live} live)` : ''}`],
+    [worn, 'vests worn now'],
+    [open.length, 'open alerts', open.length ? 'alert' : ''],
+    [action, 'need the desk now', action ? 'alert' : ''],
+    [m.filter(c => c.kind === 'fall').length, 'falls this month'],
+    [med == null ? '—' : mmss(med), 'median time to first help'],
+  ].map(([v, l, c]) => `<div class="kpi ${c || ''}"><b>${v}</b><span>${l}</span></div>`).join('');
+}
+function firstResponse(c) {
+  const t = [c.up, c.family[0]?.ts, c.phc.find(x => x.s !== 'ack')?.ts].filter(Boolean);
+  return t.length ? Math.min(...t) - c.ts : null;
+}
+function monthCases() { const d = new Date(); const m0 = new Date(d.getFullYear(), d.getMonth(), 1).getTime() / 1000; return CASES.filter(c => c.ts >= m0 && (!c.demo || SET.demo)); }
+function renderAlerts() {
+  const open = openCases().sort((a, b) => prioRank(triage(a).p) - prioRank(triage(b).p) || a.ts - b.ts);
+  $('#alertsAside').textContent = open.length ? `${open.length} open` : '';
+  if (!open.length) { $('#alerts').innerHTML = `<div class="empty">No open alerts. Every household with a vest is listed below.</div>`; return; }
+  $('#alerts').innerHTML = open.map(alertHtml).join('');
+}
+const prioRank = p => ({ action: 0, ringing: 1, asking: 2, family: 3, up: 4, help: 5 }[p] ?? 9);
+function alertHtml(c) {
+  const h = hhOf(c), tr = triage(c), age = nowS() - c.ts, ev = c.ev || {};
+  const ph = s => c.phc.some(x => x.s === s);
+  const steps = [];
+  steps.push([ 'done', c.kind === 'sos' ? `SOS pressed${c.who ? ' by ' + esc(c.who) : ''}` : ev.soft ? 'Slow collapse detected (no impact, lying still)' : 'Fall detected by the vest', c.ts ]);
+  if (c.kind !== 'sos' && c.hub) steps.push(age < RULE.ASK_S && !c.up ? ['now', 'Home phone asking: "Are you okay?"', null] : ['done', 'Home phone asked the wearer', c.ts + Math.min(age, RULE.ASK_S)]);
+  if (c.up) steps.push(['done', 'Wearer got up by themselves', c.up]);
+  else if (c.kind !== 'sos' && (!c.hub || age >= RULE.ASK_S)) steps.push([c.family.length ? 'done' : 'now', 'Family phones ringing', c.ts + (c.hub ? RULE.ASK_S : 0)]);
+  (c.calls || []).forEach(x => steps.push(['done', `Home phone called ${esc(x.who)}`, x.ts]));
+  c.family.forEach(f => steps.push(['done', `${esc(f.who)} is going`, f.ts]));
+  c.phc.forEach(x => steps.push([x.s === 'reached' ? 'done' : x.s === 'ack' ? 'done' : 'now', { ack: 'Seen by the health desk', asha: `ASHA ${esc(x.asha || h.asha)} sent`, ambulance: `Ambulance sent${x.eta ? ` · ETA ~${x.eta} min` : ''}`, reached: `${esc(x.by === SET.name ? 'Help' : x.by)} reached the house` }[x.s], x.ts]));
+  if (tr.p === 'action') steps.push(['bad', 'Nobody has taken charge yet', null]);
+  const t = eta(h);
+  const map = (c.lat || h.lat) ? `https://maps.google.com/?q=${c.lat || h.lat},${c.lon || h.lon}` : null;
+  const evs = c.kind === 'sos' ? '' : `<div class="ev">${ev.peak != null ? `<span>Impact ${ev.peak} g</span>` : ''}${ev.turn != null ? `<span>Body turned ${Math.round(ev.turn)}°</span>` : ''}${ev.after != null ? `<span>${ev.after >= 60 ? 'Lying on the floor' : 'Upright after'} (${Math.round(ev.after)}°)</span>` : ''}${ev.soft ? '<span>No impact: slow collapse</span>' : ''}<span>Severity ${['', 'low', 'medium', 'high'][c.sev] || c.sev}</span></div>`;
+  return `<div class="alert p-${tr.p}" data-case="${c.id}">
+    <div class="ahead"><span class="prio p-${tr.p}">${esc(tr.label)}</span>${c.demo ? '<span class="demo-b">DEMO</span>' : '<span class="live-b">LIVE</span>'}<span class="elapsed" title="since the alert">${mmss(age)}</span></div>
+    <div class="who">${esc(h.wearer)}${h.age ? `, ${h.age}` : ''}</div>
+    <div class="muted">${esc(h.home || h.village || '—')}${t ? ` · ${t.km} km from ${esc(SET.name)}` : ''}</div>
+    ${evs}
+    <div class="facts">
+      <div><span>Family contact</span>${h.cphone ? `<a href="tel:${esc(h.cphone.replace(/\s/g, ''))}">${esc(h.cname || 'Call')} · ${esc(h.cphone)}</a>` : esc(h.cname || '—')}</div>
+      <div><span>ASHA worker</span>${h.ashaPhone ? `<a href="tel:${esc(h.ashaPhone.replace(/\s/g, ''))}">${esc(h.asha)}</a>` : esc(h.asha || '—')}</div>
+      <div><span>Ambulance</span>${t ? `~${t.min} min · ` : ''}<a href="tel:${esc(SET.amb)}">${esc(SET.amb)}</a></div>
+      <div><span>Location</span>${map ? `<a href="${map}" target="_blank" rel="noopener">Open map</a>` : '—'}</div>
+    </div>
+    <ul class="steps">${steps.map(([k, txt, ts]) => `<li class="${k}">${txt}${ts ? `<time>${hhmm(ts)}</time>` : ''}</li>`).join('')}</ul>
+    <div class="suggest"><b>Next:</b> ${esc(tr.next)}</div>
+    <div class="acts">
+      <button class="btn" data-act="ack" ${ph('ack') ? 'disabled' : ''}>${ph('ack') ? 'Seen ✓' : 'Acknowledge'}</button>
+      <button class="btn amb" data-act="asha" ${ph('asha') ? 'disabled' : ''}>Send ASHA</button>
+      <button class="btn red" data-act="ambulance" ${ph('ambulance') ? 'disabled' : ''}>Send ambulance${t ? ` (~${t.min} min)` : ''}</button>
+      <button class="btn" data-act="reached" ${ph('reached') || !(ph('asha') || ph('ambulance')) ? 'disabled' : ''}>Help reached</button>
+      <button class="btn pri" data-act="close">Close case</button>
+    </div></div>`;
+}
+function renderHH() {
+  const counts = { all: 0, worn: 0, off: 0, bat: 0, falls: 0 };
+  const hs = visibleHH();
+  const tag = h => { const st = vestState(h), f30 = (h.falls || []).filter(t => nowS() - t < 30 * 86400).length; return { st, f30, low: st === 'worn' && h.bat != null && h.bat <= RULE.LOW_BAT && !h.chg }; };
+  hs.forEach(h => { const g = tag(h); counts.all++; counts[g.st === 'worn' ? 'worn' : 'off']++; if (g.low) counts.bat++; if (g.f30) counts.falls++; });
+  $('#filters').innerHTML = [['all', 'All'], ['worn', 'Vest worn'], ['off', 'Not worn / off'], ['bat', 'Low battery'], ['falls', 'Fell in 30 d']]
+    .map(([k, l]) => `<button class="fchip ${filter === k ? 'on' : ''}" data-filter="${k}">${l} · ${counts[k]}</button>`).join('');
+  const openBy = new Set(openCases().map(c => c.hh));
+  let rows = hs.filter(h => { const g = tag(h); return filter === 'all' || (filter === 'worn' && g.st === 'worn') || (filter === 'off' && g.st !== 'worn') || (filter === 'bat' && g.low) || (filter === 'falls' && g.f30); });
+  rows.sort((a, b) => (a.demo - b.demo) || (openBy.has(b.id) - openBy.has(a.id)) || a.wearer.localeCompare(b.wearer));   // the live vest first
+  const liveFirst = !HH.some(h => !h.demo) && link !== 'off'
+    ? `<tr class="livehh"><td><span class="dot warn"></span></td><td colspan="9"><b>Live vest</b> <span class="faint">waiting for the household phones on this Wi-Fi…</span></td></tr>` : '';
+  const dotC = (h, g) => openBy.has(h.id) ? 'bad' : g.st === 'worn' ? (g.low ? 'warn' : 'ok') : '';
+  const bat = (h, g) => h.bat == null || g.st !== 'worn' ? '<span class="faint">—</span>' : `<span class="bat ${g.low ? 'low' : ''}"><i><b style="width:${Math.max(2, Math.min(18, h.bat * .18))}px"></b></i>${h.bat}%${h.chg ? ' ⚡' : ''}</span>`;
+  const vest = (h, g) => g.st === 'worn' ? `Worn${h.act && !h.demo ? ` · ${esc(h.act)}` : ''}` : h.demo && !h.on ? 'Switched off' : 'Not seen';
+  $('#hhRows').innerHTML = liveFirst + rows.map(h => { const g = tag(h); return `<tr class="${h.demo ? '' : 'livehh'} ${g.st !== 'worn' ? 'off' : ''}">
+    <td><span class="dot ${dotC(h, g)}"></span></td>
+    <td class="nm"><b>${esc(h.wearer)}${h.age ? `, ${h.age}` : ''} ${h.demo ? '' : '<span class="live-b">LIVE</span>'}</b><span>${esc(h.cname || '')}${h.family ? ` · code ${esc(h.family)}` : ''}</span></td>
+    <td>${esc(h.village || h.home || '—')}</td><td>${vest(h, g)}</td><td>${bat(h, g)}</td><td>${h.demo && h.on ? 'now' : ago(h.vestTs || h.seen)}</td>
+    <td>${esc(h.asha || '—')}</td><td>${g.f30 || '—'}</td>
+    <td>${h.demo ? `<button class="sw ${h.on ? 'on' : ''}" data-toggle="${h.id}" aria-label="Vest on/off"></button>` : '<span class="faint">live</span>'}</td>
+    <td style="white-space:nowrap">${h.demo && h.on ? `<button class="btn sm" data-sim="${h.id}">Simulate fall</button> ` : ''}<button class="btn sm" data-edit="${h.id}">Edit</button></td></tr>`; }).join('');
+  $('#hhCards').innerHTML = (liveFirst ? `<div class="hhc livehh"><span class="dot warn"></span><div class="grow"><b>Live vest</b><span>waiting for the household phones on this Wi-Fi…</span></div></div>` : '') +
+    rows.map(h => { const g = tag(h); return `<div class="hhc ${h.demo ? '' : 'livehh'} ${g.st !== 'worn' ? 'off' : ''}"><span class="dot ${dotC(h, g)}"></span>
+    <div class="grow"><b>${esc(h.wearer)}${h.age ? `, ${h.age}` : ''} ${h.demo ? '' : '<span class="live-b">LIVE</span>'}</b><span>${esc(h.village || h.home || '—')} · ${vest(h, g)} · ${bat(h, g)} · ASHA ${esc(h.asha || '—')}</span>
+    <div style="margin-top:6px;display:flex;gap:6px">${h.demo && h.on ? `<button class="btn sm" data-sim="${h.id}">Simulate fall</button>` : ''}<button class="btn sm" data-edit="${h.id}">Edit</button></div></div>
+    ${h.demo ? `<button class="sw ${h.on ? 'on' : ''}" data-toggle="${h.id}" aria-label="Vest on/off"></button>` : ''}</div>`; }).join('');
+}
+function renderMap() {
+  const hs = visibleHH().filter(h => h.lat != null && h.lon != null);
+  const pts = hs.map(h => [h.lat, h.lon]).concat([[SET.lat, SET.lon]]);
+  let la0 = Math.min(...pts.map(p => p[0])), la1 = Math.max(...pts.map(p => p[0])), lo0 = Math.min(...pts.map(p => p[1])), lo1 = Math.max(...pts.map(p => p[1]));
+  const padLa = Math.max(.02, (la1 - la0) * .12), padLo = Math.max(.02, (lo1 - lo0) * .12);
+  la0 -= padLa; la1 += padLa; lo0 -= padLo; lo1 += padLo;
+  const W = 400, Hh = 260, x = lo => (lo - lo0) / (lo1 - lo0) * W, y = la => Hh - (la - la0) / (la1 - la0) * Hh;
+  const openBy = new Set(openCases().map(c => c.hh));
+  const rings = [5, 10, 15].map(km => { const r = km / 111 / (la1 - la0) * Hh; return `<circle cx="${x(SET.lon)}" cy="${y(SET.lat)}" r="${r}" fill="none" stroke="currentColor" stroke-opacity=".15" stroke-dasharray="3 4"/><text x="${x(SET.lon) + r * .72}" y="${y(SET.lat) - r * .72}" font-size="9" fill="currentColor" fill-opacity=".45">${km} km</text>`; }).join('');
+  const dots = hs.map(h => { const a = openBy.has(h.id), on = vestState(h) === 'worn';
+    return `<g><title>${esc(h.wearer)}, ${esc(h.village || '')}</title>${a ? `<circle cx="${x(h.lon)}" cy="${y(h.lat)}" r="12" fill="#D2263B" opacity=".25"><animate attributeName="r" values="8;16;8" dur="1.4s" repeatCount="indefinite"/></circle>` : ''}
+      <circle cx="${x(h.lon)}" cy="${y(h.lat)}" r="${h.demo ? 5 : 7}" fill="${a ? '#D2263B' : on ? '#1D7A5F' : '#8491A6'}" stroke="#fff" stroke-width="1.5"/>
+      <text x="${x(h.lon) + 8}" y="${y(h.lat) + 3}" font-size="10" fill="currentColor" fill-opacity=".75">${esc((h.village || h.wearer).slice(0, 14))}</text></g>`; }).join('');
+  const phc = `<g><rect x="${x(SET.lon) - 7}" y="${y(SET.lat) - 7}" width="14" height="14" transform="rotate(45 ${x(SET.lon)} ${y(SET.lat)})" fill="#2F6FD0" stroke="#fff" stroke-width="1.5"/><text x="${x(SET.lon) + 11}" y="${y(SET.lat) - 8}" font-size="11" font-weight="700" fill="currentColor">${esc(SET.name)}</text></g>`;
+  $('#map').innerHTML = `<svg class="map" viewBox="0 0 ${W} ${Hh}" style="color:var(--ink)">${rings}${dots}${phc}</svg>`;
+  const nloc = visibleHH().length - hs.length;
+  $('#mapAside').textContent = nloc ? `${nloc} without location` : 'positions are approximate';
+}
+function renderFU() {
+  const auto = autoFollowups(), man = FU.filter(f => !f.done && (HH.find(h => h.id === f.hh)?.demo ? SET.demo : true));
+  const all = man.map(f => Object.assign({}, f)).concat(auto).sort((a, b) => (a.due || 9e12) - (b.due || 9e12));
+  $('#fuAside').textContent = all.length ? `${all.length} to do` : '';
+  if (!all.length) { $('#followups').innerHTML = '<div class="empty">Nothing pending. Falls, unworn vests and low batteries appear here for the ASHA visit list.</div>'; return; }
+  $('#followups').innerHTML = all.map(f => { const h = HH.find(x => x.id === f.hh) || {}; const over = f.due && f.due < nowS();
+    const due = f.due ? `<span class="tag ${over ? 'due' : ''}">${over ? 'overdue' : 'by ' + new Date(f.due * 1000).toLocaleDateString([], { day: 'numeric', month: 'short' })}</span>` : `<span class="tag">${f.kind === 'battery' ? 'today' : 'next visit'}</span>`;
+    return `<div class="li"><div class="grow"><b>${esc(h.wearer || '?')} · ${esc(h.village || '')}</b><span>${esc(f.text)}</span><br><span class="faint">ASHA: ${esc(h.asha || '—')}</span></div>${due}${f.auto ? '' : `<button class="btn sm" data-fudone="${f.id}">Done</button>`}</div>`; }).join('');
+}
+function renderStats() {
+  const m = monthCases().filter(c => c.kind === 'fall' || c.kind === 'sos');
+  const closed = m.filter(c => c.status === 'closed');
+  const n = f => m.filter(f).length;
+  const resp = m.map(firstResponse).filter(x => x != null).sort((a, b) => a - b);
+  $('#stats').innerHTML = [
+    [m.length, 'alerts (falls + SOS)'],
+    [n(c => c.up), 'cancelled by the wearer (got up)'],
+    [n(c => c.family.length && !c.phc.some(x => x.s === 'asha' || x.s === 'ambulance')), 'handled by the family'],
+    [n(c => c.phc.some(x => x.s === 'asha')), 'ASHA sent'],
+    [n(c => c.phc.some(x => x.s === 'ambulance')), 'ambulance sent'],
+    [closed.filter(c => c.outcome === 'hospital').length, 'taken to hospital'],
+    [resp.length ? mmss(resp[Math.floor(resp.length / 2)]) : '—', 'median time to first help'],
+    [resp.length ? mmss(resp[resp.length - 1]) : '—', 'longest wait'],
+  ].map(([v, l]) => `<div><b>${v}</b><span>${l}</span></div>`).join('');
+}
+function renderLog() {
+  const L = LOG.filter(e => { const h = HH.find(x => x.id === e.hh); return !h || !h.demo || SET.demo; }).slice(-80).reverse();
+  $('#log').innerHTML = L.length ? L.map(e => `<div><time>${new Date(e.ts * 1000).toLocaleString([], { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</time>${esc(e.text)}</div>`).join('') : '<div class="empty">No activity yet.</div>';
+}
+
+/* ---------------- modals ---------------- */
+function modal(html) { $('#sheet').innerHTML = html; $('#modal').classList.add('on'); }
+function closeModal() { $('#modal').classList.remove('on'); }
+function closeDialog(c) {
+  const h = hhOf(c);
+  modal(`<h3>Close the case: ${esc(h.wearer)}</h3><p class="muted">What happened? This goes into the monthly report and decides the follow-up.</p>
+    <label>Outcome</label><select id="mOut">${Object.entries(OUTCOME).map(([k, v]) => `<option value="${k}" ${c.up && k === 'wearer_ok' ? 'selected' : ''}>${v}</option>`).join('')}</select>
+    <p class="faint">Anything except "false alarm" adds a post-fall home visit by ${esc(h.asha)} within ${RULE.FOLLOWUP_H} h.</p>
+    <div class="foot"><button class="btn" data-m="cancel">Back</button><button class="btn pri" data-m="close" data-case="${c.id}">Close case</button></div>`);
+}
+function editDialog(h) {
+  modal(`<h3>Household</h3>
+    <label>Wearer</label><input id="eW" value="${esc(h.wearer)}">
+    <div class="row2"><div><label>Age</label><input id="eA" type="number" value="${esc(h.age ?? '')}"></div><div><label>Village</label><input id="eV" value="${esc(h.village || '')}"></div></div>
+    <label>Address / landmark</label><input id="eH" value="${esc(h.home || '')}">
+    <div class="row2"><div><label>Family contact</label><input id="eCN" value="${esc(h.cname || '')}"></div><div><label>Phone</label><input id="eCP" value="${esc(h.cphone || '')}"></div></div>
+    <div class="row2"><div><label>ASHA worker</label><input id="eAN" value="${esc(h.asha || '')}" list="ashas"></div><div><label>ASHA phone</label><input id="eAP" value="${esc(h.ashaPhone || '')}"></div></div>
+    <datalist id="ashas">${ASHAS.map(a => `<option value="${esc(a.name)}">`).join('')}</datalist>
+    <div class="row2"><div><label>Latitude</label><input id="eLa" value="${esc(h.lat ?? '')}"></div><div><label>Longitude</label><input id="eLo" value="${esc(h.lon ?? '')}"></div></div>
+    ${h.family ? `<p class="faint">Live household, family code ${esc(h.family)}. Name, contact and home update automatically from the family's phones.</p>` : '<p class="faint">Demo household.</p>'}
+    <div class="foot">${h.demo ? `<button class="btn" data-m="del" data-hh="${h.id}">Remove</button>` : ''}<button class="btn" data-m="cancel">Cancel</button><button class="btn pri" data-m="savehh" data-hh="${h.id}">Save</button></div>`);
+}
+function settingsDialog() {
+  modal(`<h3>Health desk settings</h3>
+    <label>Facility name (shown to families)</label><input id="sN" value="${esc(SET.name)}">
+    <label>Area</label><input id="sA" value="${esc(SET.area)}">
+    <div class="row2"><div><label>Facility latitude</label><input id="sLa" value="${SET.lat}"></div><div><label>Facility longitude</label><input id="sLo" value="${SET.lon}"></div></div>
+    <label>Ambulance number</label><input id="sAmb" value="${esc(SET.amb)}">
+    <label><input type="checkbox" id="sSnd" ${SET.sound ? 'checked' : ''} style="width:auto"> Sound on new alerts</label>
+    <p class="faint">Rules: home phone asks the wearer ${RULE.ASK_S} s · desk acts if no family response in ${RULE.ACTION_S} s (slow collapse ${RULE.SOFT_ACTION_S} s) · ASHA visit within ${RULE.FOLLOWUP_H} h of a fall · referral after ${RULE.REFER_FALLS} falls in 30 days · ambulance ETA = distance × ${RULE.ROAD} at ${RULE.KMH} km/h + ${RULE.DISPATCH_MIN} min.</p>
+    <div class="foot"><button class="btn" data-m="resetdemo">Reset demo data</button><button class="btn" data-m="cancel">Cancel</button><button class="btn pri" data-m="saveset">Save</button></div>`);
+}
+
+/* ---------------- events ---------------- */
+document.addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  const card = b.closest('[data-case]'), c = card ? CASES.find(x => x.id === card.dataset.case) : null;
+  if (b.dataset.act && c) { if (b.dataset.act === 'close') closeDialog(c); else act(c, b.dataset.act); return; }
+  if (b.dataset.filter) { filter = b.dataset.filter; render(); return; }
+  if (b.dataset.toggle) { const h = HH.find(x => x.id === b.dataset.toggle); if (h) { h.on = !h.on; if (!h.on) h.seen = nowS(); log(`${h.wearer}: vest switched ${h.on ? 'on' : 'off'} (demo)`, h.id); persist(); render(); } return; }
+  if (b.dataset.sim) { simulateFall(HH.find(x => x.id === b.dataset.sim)); return; }
+  if (b.dataset.edit) { editDialog(HH.find(x => x.id === b.dataset.edit)); return; }
+  if (b.dataset.fudone) { const f = FU.find(x => x.id === b.dataset.fudone); if (f) { f.done = nowS(); const h = HH.find(x => x.id === f.hh); log(`${h?.wearer || '?'}: follow-up done: ${f.text}`, f.hh); persist(); render(); } return; }
+  switch (b.dataset.m) {
+    case 'cancel': closeModal(); return;
+    case 'close': { const cc = CASES.find(x => x.id === b.dataset.case); if (cc) closeCase(cc, $('#mOut').value); closeModal(); return; }
+    case 'savehh': { const h = HH.find(x => x.id === b.dataset.hh); if (h) {
+      const v = id => $('#' + id).value.trim(), num = id => { const x = parseFloat(v(id)); return Number.isFinite(x) ? x : null; };
+      Object.assign(h, { wearer: v('eW') || h.wearer, age: num('eA'), village: v('eV'), home: v('eH'), cname: v('eCN'), cphone: v('eCP'), asha: v('eAN'), ashaPhone: v('eAP'), lat: num('eLa'), lon: num('eLo') });
+      persist(); render(); } closeModal(); return; }
+    case 'del': HH = HH.filter(x => x.id !== b.dataset.hh); persist(); render(); closeModal(); return;
+    case 'saveset': {
+      const v = id => $('#' + id).value.trim();
+      SET = Object.assign(SET, { name: v('sN') || DEF_SET.name, area: v('sA'), lat: parseFloat(v('sLa')) || DEF_SET.lat, lon: parseFloat(v('sLo')) || DEF_SET.lon, amb: v('sAmb') || '108', sound: $('#sSnd').checked });
+      save('vgphc_set', SET); nativeConfig();
+      if (link === 'pc') fetch('/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: SET.name }) }).catch(() => {});
+      render(); closeModal(); return; }
+    case 'resetdemo':
+      HH = HH.filter(h => !h.demo).concat(demoHouseholds()); CASES = CASES.filter(c => !c.demo); FU = FU.filter(f => HH.some(h => h.id === f.hh && !h.demo));
+      LOG = LOG.filter(e => { const h = HH.find(x => x.id === e.hh); return h && !h.demo; }); persist(); render(); closeModal(); toast('Demo data reset'); return;
+  }
+  switch (b.id) {
+    case 'bSettings': settingsDialog(); return;
+    case 'bDemo': simulateFall(null); return;
+    case 'swDemo': SET.demo = !SET.demo; save('vgphc_set', SET); render(); return;
+    case 'bSound':
+      try { actx = actx || new (window.AudioContext || window.webkitAudioContext)(); actx.resume(); soundReady = true; b.hidden = true; toast('Sound on for new alerts'); } catch { toast('This browser cannot play sound'); }
+      return;
+    case 'bFamily': try { localStorage.removeItem('vg_mode'); } catch {} location.href = 'index.html'; return;
+    case 'bExport': exportCsv(); return;
+  }
+});
+$('#modal').addEventListener('click', e => { if (e.target.id === 'modal') closeModal(); });
+function exportCsv() {
+  const rows = [['case', 'household', 'village', 'kind', 'demo', 'time', 'impact_g', 'turn_deg', 'soft', 'wearer_up_s', 'family_first_s', 'desk_ack_s', 'asha_s', 'ambulance_s', 'reached_s', 'outcome', 'closed_by']];
+  for (const c of CASES) {
+    const h = hhOf(c), rel = t => t ? Math.round(t - c.ts) : '', s = k => rel(c.phc.find(x => x.s === k)?.ts);
+    rows.push([c.id, h.wearer, h.village || '', c.kind, c.demo ? 1 : 0, new Date(c.ts * 1000).toISOString(), c.ev?.peak ?? '', c.ev?.turn ?? '', c.ev?.soft ? 1 : 0,
+      rel(c.up), rel(c.family[0]?.ts), s('ack'), s('asha'), s('ambulance'), s('reached'), c.outcome || '', c.closedBy || '']);
+  }
+  const csv = rows.map(r => r.map(x => /[",\n]/.test(String(x)) ? `"${String(x).replace(/"/g, '""')}"` : x).join(',')).join('\n');
+  const name = `vestguard_phc_${new Date().toISOString().slice(0, 10)}.csv`;
+  if (NAT && NAT.saveFile) { NAT.saveFile({ name, text: csv, mime: 'text/csv', share: true }).then(r => toast('Saved to ' + r.path)).catch(err => toast(err.message)); return; }
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' })); a.download = name; a.click();
+}
+
+/* ---------------- go ---------------- */
+setInterval(() => { $('#clock').textContent = new Date().toLocaleTimeString(); renderKpis(); renderAlerts(); }, 1000);
+setInterval(render, 5000);
+startTransport().then(render);
+render();
+</script>
+</body>
+</html>
