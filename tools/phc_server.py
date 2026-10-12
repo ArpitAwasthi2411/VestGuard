@@ -199,9 +199,16 @@ class Handler(SimpleHTTPRequestHandler):
 def main():
     ap = argparse.ArgumentParser(description='VestGuard Health Desk bridge')
     ap.add_argument('--port', type=int, default=8090)
+    ap.add_argument('--www', help='folder that contains phc.html')
     args = ap.parse_args()
-    if not os.path.exists(os.path.join(WWW, 'phc.html')):
-        sys.exit(f'phc.html not found in {WWW}')
+    global WWW
+    here = os.path.dirname(os.path.abspath(__file__))
+    for d in [args.www, os.path.join(here, '..', 'app', 'www'), here, os.getcwd()]:
+        if d and os.path.exists(os.path.join(d, 'phc.html')):
+            WWW = os.path.normpath(d)
+            break
+    else:
+        sys.exit('phc.html not found. Put phc.html in the same folder as this script, or pass --www <folder>.')
 
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
