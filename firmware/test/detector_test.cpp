@@ -39,6 +39,11 @@ int main(int argc, char** argv) {
     for (int k = 0; k < 12; k++) s.v[k] = strtof(c[8 + k].c_str(), 0);
     rows.push_back(s);
   }
+  // calibration = mean of the first second of trial 1 (standing still), taken BEFORE any reversal,
+  // so a reversed recording that starts lying down does not become the 'upright' reference
+  float u1[3] = {0}, u2[3] = {0}; int n = 0;
+  for (auto& r : rows) { if (r.trial != rows[0].trial || r.t - rows[0].t > 1000) break; for (int k = 0; k < 3; k++) { u1[k] += r.v[k]; u2[k] += r.v[6 + k]; } n++; }
+  for (int k = 0; k < 3; k++) { u1[k] /= n; u2[k] /= n; }
   if (reverse) {
     std::vector<S> out; size_t a = 0;
     while (a < rows.size()) {
@@ -81,10 +86,6 @@ int main(int argc, char** argv) {
     }
     rows.swap(out);
   }
-  // calibration = mean of the first second of trial 1 (standing still)
-  float u1[3] = {0}, u2[3] = {0}; int n = 0;
-  for (auto& r : rows) { if (r.trial != rows[0].trial || r.t - rows[0].t > 1000) break; for (int k = 0; k < 3; k++) { u1[k] += r.v[k]; u2[k] += r.v[6 + k]; } n++; }
-  for (int k = 0; k < 3; k++) { u1[k] /= n; u2[k] /= n; }
 
   int tp = 0, fn = 0, fp = 0, tn = 0;
   size_t i = 0;
