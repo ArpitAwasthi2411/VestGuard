@@ -112,8 +112,10 @@ public class VestService extends Service {
     private final java.util.concurrent.ConcurrentHashMap<String, String> peerKind = new java.util.concurrent.ConcurrentHashMap<>();
 
     /** a Home Hub phone of this family was heard in the last 15 s */
+    private volatile long hubHintUntil = 0;
     boolean hubOnline() {
         long now = System.currentTimeMillis();
+        if (now < hubHintUntil) return true;          // a fall came over the internet from a Home Hub, which asks first
         for (java.util.Map.Entry<String, String> e : peerKind.entrySet()) {
             Long seenAt = peerSeen.get(e.getKey());
             if ("hub".equals(e.getValue()) && seenAt != null && now - seenAt < 15000) return true;
@@ -121,6 +123,27 @@ public class VestService extends Service {
         return false;
     }
     private long lastPresence = 0, lastDiscover = 0;
+    // ---- internet relay (optional; config "net": true) ----
+    NetRelay net;
+    boolean netEnabled() { return config(this).optBoolean("net", false); }
+    /** families whose internet topic this phone listens to: its own, or every enrolled household on the health desk */
+    java.util.Set<String> netFamilies() {
+        java.util.Set<String> out = new java.util.HashSet<>();
+        if (!netEnabled()) return out;
+        if (isPhc()) {
+            out.addAll(famSeen.keySet());
+            org.json.JSONArray a = config(this).optJSONArray("phcFamilies");
+            if (a != null) for (int i = 0; i < a.length(); i++) { String f = a.optString(i, "").trim().toUpperCase(Locale.US); if (!f.isEmpty()) out.add(f); }
+        } else {
+            String f = familyCode(this);
+            if (!f.isEmpty()) out.add(f);
+        }
+        return out;
+    }
+    /** a line that arrived over the internet: handled exactly like one from the Wi-Fi */
+    void onNetLine(String line) {
+        try { handleSync(line, null); } catch (Exception e) { Log.w(TAG, "net line", e); }
+    }
     private volatile int batPct = -1;
     private volatile boolean batChg = false;
     /** health-centre phone: family codes heard recently (it listens to every household) */
@@ -192,6 +215,7 @@ public class VestService extends Service {
             LocationManager lm = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
             if (lm != null && locListener != null) lm.removeUpdates(locListener);
         } catch (Exception ignored) { }
+        if (net != null) net.stop();
         if (exec != null) exec.shutdownNow();
         if (sock != null) sock.close();
         sock = null;
@@ -330,6 +354,7 @@ public class VestService extends Service {
         }
         exec = Executors.newSingleThreadScheduledExecutor();
         exec.scheduleWithFixedDelay(this::everySecond, 1, 1, TimeUnit.SECONDS);
+        net = new NetRelay(this);
     }
 
     private void receiveLoop() {
@@ -397,6 +422,8 @@ public class VestService extends Service {
 
     /** send a family line to every other phone (known peers + broadcast). Any thread. */
     void broadcastSync(String line) {
+        NetRelay nr = net;
+        if (nr != null) nr.publish(line);
         ScheduledExecutorService e = exec;
         if (e == null || e.isShutdown()) return;
         e.execute(() -> {
@@ -455,7 +482,7 @@ public class VestService extends Service {
             // health centre: every household is ours to watch; forward everything to the dashboard
             if (p[2].equals(deviceId(this)) || p[1].isEmpty()) return;
             long now = System.currentTimeMillis();
-            peers.put(p[2], from);
+            if (from != null) peers.put(p[2], from);
             peerSeen.put(p[2], now);
             famSeen.put(p[1], now);
             if (p[0].equals("CG")) {
@@ -486,7 +513,7 @@ public class VestService extends Service {
             return;
         }
         if (fam.isEmpty() || !fam.equals(p[1]) || p[2].equals(deviceId(this))) return;   // other families / my own echo
-        peers.put(p[2], from);
+        if (from != null) peers.put(p[2], from);
         peerSeen.put(p[2], System.currentTimeMillis());
         long now = System.currentTimeMillis();
         if (p[0].equals("CG")) {
@@ -506,7 +533,9 @@ public class VestService extends Service {
                 case "resp": remoteResponded(aid, body.optString("who", "")); break;
                 case "res": clearAlert(aid); break;
                 case "sos": raiseSos(aid, body.optString("who"), now); break;
-                case "fall": raiseRemoteFall(aid, body.optInt("sev", 3), body.optBoolean("demo"), now); break;
+                case "fall":
+                    if (body.optBoolean("ask")) hubHintUntil = now + 20000;
+                    raiseRemoteFall(aid, body.optInt("sev", 3), body.optBoolean("demo"), now); break;
                 default: break;
             }
             JSONObject ev = new JSONObject();
@@ -569,6 +598,8 @@ public class VestService extends Service {
                 if (alertId != null && !alertAcked) me.put("alert", alertId);
             } catch (Exception ignored) { }
             String line = syncLine("CG", me);
+            NetRelay nr = net;
+            if (nr != null) nr.publish(line);
             DatagramSocket s = syncSock;
             for (InetAddress a : peers.values()) sendTo(s, a, SYNC_PORT, line);
             for (InetAddress a : broadcastAddrs()) sendTo(s, a, SYNC_PORT, line);
@@ -642,7 +673,7 @@ public class VestService extends Service {
                     try {
                         JSONObject b = new JSONObject();
                         b.put("t", "fall"); b.put("alert", id); b.put("sev", sev); b.put("uid", "fall" + id);
-                        b.put("line", line);
+                        b.put("line", line); b.put("ask", isHub());
                         if (loc != null) { b.put("lat", loc.getLatitude()); b.put("lon", loc.getLongitude()); }
                         broadcastSync(syncLine("CS", b));
                     } catch (Exception ignored) { }
@@ -698,6 +729,8 @@ public class VestService extends Service {
 
     private void tick() {
         long now = System.currentTimeMillis();
+        NetRelay nr = net;
+        if (nr != null) { if (netEnabled()) { nr.start(); nr.check(); } else nr.stop(); }
         sendToVest(research ? "P" : "PH");
         familyTick(now);
         boolean online = lastRx > 0 && now - lastRx < ONLINE_MS;
@@ -1162,6 +1195,8 @@ public class VestService extends Service {
             o.put("vestIp", vestAddr != null ? vestAddr.getHostAddress() : JSONObject.NULL);
             o.put("ringing", Alarm.isRinging());
             o.put("alertId", alertId != null ? alertId : JSONObject.NULL);
+            o.put("net", net != null && netEnabled());
+            o.put("netOk", net != null && net.connected());
         } catch (Exception ignored) { }
         return o;
     }

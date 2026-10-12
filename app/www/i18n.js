@@ -415,3 +415,8 @@ Object.assign(window.I18N.hi, {
   ob_role_phc_t: 'हेल्थ सेंटर / आशा डेस्क', ob_role_phc_d: 'आसपास वेस्ट वाले सभी घर देखें, उनकी सूचनाएँ पाएँ, मदद भेजें।',
   role_phc: 'हेल्थ सेंटर',
 });
+/* ---- v2.8: internet relay ---- */
+Object.assign(window.I18N.en, { p_net: 'Alerts over the internet', p_net_d: 'Also send and receive alerts through the internet, so family members and the health centre far away get them too. Every phone of the family must turn this on.',
+  net_on: 'Alerts now also go over the internet', net_off: 'Alerts stay on this Wi-Fi only' });
+Object.assign(window.I18N.hi, { p_net: 'इंटरनेट से सूचना', p_net_d: 'सूचनाएँ इंटरनेट से भी भेजें और पाएँ, ताकि दूर रहने वाले परिवार और हेल्थ सेंटर को भी मिलें। परिवार के हर फ़ोन पर इसे चालू करें।',
+  net_on: 'अब सूचनाएँ इंटरनेट से भी जाएँगी', net_off: 'सूचनाएँ सिर्फ़ इसी वाई-फ़ाई पर रहेंगी' });

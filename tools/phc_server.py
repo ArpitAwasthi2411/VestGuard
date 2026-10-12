@@ -9,11 +9,15 @@ ambulance sent, ...) go back to that household's phones.
     python3 tools/phc_server.py            # then open the address it prints
     python3 tools/phc_server.py --port 8090
 
-The PC must be on the same Wi-Fi / phone hotspot as the household phones.
+On the Wi-Fi: the PC must be on the same Wi-Fi / phone hotspot as the household phones.
+Over the internet: turn on "Also receive alerts over the internet" in the dashboard settings and list
+the families' codes; each family turns on "Alerts over the internet" in their app (relay: ntfy.sh).
 On Windows, allow Python through the firewall (private networks) when asked.
 """
 import argparse
 import base64
+import hashlib
+import urllib.request
 import json
 import os
 import queue
@@ -29,12 +33,69 @@ SYNC_PORT = 4212
 WWW = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'app', 'www'))
 DEVICE = 'phcpc' + ''.join(random.choice(string.ascii_lowercase + string.digits) for _ in range(6))
 
-state = {'name': 'Health centre'}
+state = {'name': 'Health centre', 'net': False, 'families': [], 'net_ok': False}
+NTFY = os.environ.get('VG_NTFY', 'https://ntfy.sh/')
+net_wake = threading.Event()
 clients = []                 # one queue per open dashboard
 clients_lock = threading.Lock()
 recent = []                  # last lines, replayed to a dashboard that (re)connects
 families = {}                # family code -> last heard (s)
 peers = {}                   # sender ip -> last heard (s)
+
+
+def topic(fam):
+    """same topic name as the app (NetRelay.topic): vg + first 13 bytes of sha256, hex"""
+    return 'vg' + hashlib.sha256(('vestguard-v1:' + fam.strip().upper()).encode()).hexdigest()[:26]
+
+
+def net_publish(line):
+    p = line.split(',', 3)
+    if not state['net'] or len(p) < 4 or p[0] != 'CS' or not p[1]:
+        return
+    def go():
+        try:
+            req = urllib.request.Request(NTFY + topic(p[1]), data=line.encode('utf-8'), method='POST', headers={'Content-Type': 'text/plain; charset=utf-8'})
+            urllib.request.urlopen(req, timeout=8).read()
+        except Exception as e:
+            print('internet publish failed:', e)
+    threading.Thread(target=go, daemon=True).start()
+
+
+def net_loop():
+    """follow every enrolled household's internet topic; lines go to the dashboard like Wi-Fi lines"""
+    last_time = 0
+    while True:
+        fams = sorted(set(state['families']) | set(families.keys())) if state['net'] else []
+        if not fams:
+            state['net_ok'] = False
+            net_wake.wait(3); net_wake.clear()
+            continue
+        topics = ','.join(sorted(topic(f) for f in fams))
+        since = str(last_time) if last_time and time.time() - last_time < 600 else '120s'
+        try:
+            with urllib.request.urlopen(f'{NTFY}{topics}/json?since={since}', timeout=100) as r:
+                state['net_ok'] = True
+                publish({'netOk': True})
+                for raw in r:
+                    if net_wake.is_set():           # family list changed: reconnect with the new topics
+                        net_wake.clear()
+                        break
+                    try:
+                        m = json.loads(raw.decode('utf-8'))
+                    except ValueError:
+                        continue
+                    if m.get('event') != 'message':
+                        continue
+                    last_time = m.get('time', last_time)
+                    line = str(m.get('message', '')).strip()
+                    p = line.split(',', 3)
+                    if len(p) == 4 and p[0] in ('CS', 'CG') and p[2] != DEVICE:
+                        publish({'line': line, 'ts': int(time.time() * 1000)})
+        except Exception as e:
+            state['net_ok'] = False
+            publish({'netOk': False})
+            print('internet stream:', e)
+            time.sleep(10)
 
 
 def b64(obj):
@@ -150,7 +211,7 @@ class Handler(SimpleHTTPRequestHandler):
         with clients_lock:
             clients.append(q)
         try:
-            self.wfile.write(b'data: {"hello":1}\n\n')
+            self.wfile.write(('data: ' + json.dumps({'hello': 1, 'netOk': state['net_ok']}) + '\n\n').encode())
             for item in list(recent):
                 self.wfile.write(('data: ' + json.dumps(item) + '\n\n').encode())
             self.wfile.flush()
@@ -185,12 +246,20 @@ class Handler(SimpleHTTPRequestHandler):
             fam = str(m.get('family', '')).strip().upper()
             body = m.get('body') or {}
             if fam and isinstance(body, dict):
-                send_line(self.sock, f'CS,{fam},{DEVICE},{b64(body)}')
+                line = f'CS,{fam},{DEVICE},{b64(body)}'
+                send_line(self.sock, line)
+                net_publish(line)
             return self.ok()
         if self.path == '/config':
             m = self.read_json()
             if m.get('name'):
                 state['name'] = str(m['name'])[:60]
+            if 'net' in m:
+                was = (state['net'], tuple(state['families']))
+                state['net'] = bool(m['net'])
+                state['families'] = [str(f).strip().upper() for f in (m.get('families') or []) if str(f).strip()][:30]
+                if was != (state['net'], tuple(state['families'])):
+                    net_wake.set()
             return self.ok()
         self.send_response(404)
         self.end_headers()
@@ -225,6 +294,7 @@ def main():
     Handler.sock = sock
     threading.Thread(target=udp_loop, args=(sock,), daemon=True).start()
     threading.Thread(target=presence_loop, args=(sock,), daemon=True).start()
+    threading.Thread(target=net_loop, daemon=True).start()
 
     httpd = ThreadingHTTPServer(('0.0.0.0', args.port), Handler)
     httpd.daemon_threads = True

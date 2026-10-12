@@ -1032,6 +1032,8 @@ function protectionHtml() {
         <button class="switch" role="switch" aria-checked="${S.snap?.autoCall !== false && !!P.calls}" aria-label="${t('p_calls')}" id="pAutoCall"></button></div>` : ''}
       <div class="row"><div style="flex:1"><div class="t">${t('p_sms')}</div><div class="d">${t('p_sms_d')}</div></div>
         <button class="switch" role="switch" aria-checked="${sms && P.sms}" aria-label="${t('p_sms')}" id="pSms"></button></div>
+      <div class="row"><div style="flex:1"><div class="t">${t('p_net')}</div><div class="d">${t('p_net_d')}</div></div>
+        <button class="switch" role="switch" aria-checked="${!!S.snap?.net}" aria-label="${t('p_net')}" id="pNet"></button></div>
     </div></div>`;
 }
 function wifiSheet() {
@@ -1330,6 +1332,12 @@ document.addEventListener('click', e => {
       const want = b.getAttribute('aria-checked') !== 'true';
       if (want && S.perms && !S.perms.sms) { VN.requestPermission({ name: 'sms' }).catch(() => {}); setTimeout(refreshPerms, 1500); }
       send({ t: 'settings', autoSms: want }, false); if (S.snap) S.snap.autoSms = want; b.setAttribute('aria-checked', want && (!S.perms || S.perms.sms));
+      return;
+    }
+    case 'pNet': {
+      const want = b.getAttribute('aria-checked') !== 'true';
+      send({ t: 'settings', net: want }, false); if (S.snap) S.snap.net = want; b.setAttribute('aria-checked', want);
+      toast(t(want ? 'net_on' : 'net_off'));
       return;
     }
     case 'pTest': if (VN) { VN.testAlarm().catch(() => {}); return; } unlockAudio(); alarmOnce(); if (navigator.vibrate) navigator.vibrate([300, 150, 300]); return;

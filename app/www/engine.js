@@ -55,6 +55,8 @@
       this.autoSms = !!st.autoSms;
       this.autoCall = st.autoCall !== false;
       this.alarmSound = st.alarmSound === 'phone' ? 'phone' : 'chime';
+      this.net = !!st.net;                 // also send / receive family messages over the internet
+      this.hubHint = 0;
       this.peers = {};                   // other phones of this family: device -> {name, role, kind, ts, vest}
 
       this.lastRx = 0; this.everConnected = !!st.ever; this.wasOnline = false;
@@ -77,7 +79,7 @@
     _save() {
       save('vge_state', { profile: this.profile, alerts: this.alerts.slice(-200), feed: this.feed.slice(-400), steps: this.steps,
         stumbles: this.stumbles, seenEv: this.seenEv.slice(-300), calib: this.calib, vestWifi: this.vestWifi, fw: this.fw,
-        ever: this.everConnected, autoSms: this.autoSms, autoCall: this.autoCall, lastBoot: this.lastBoot, alarmSound: this.alarmSound });
+        ever: this.everConnected, autoSms: this.autoSms, autoCall: this.autoCall, lastBoot: this.lastBoot, alarmSound: this.alarmSound, net: this.net });
       save('vge_actmin', this.actMin.slice(-7 * 24 * 60));
       this.persistDirty = false; this.lastSave = now();
     }
@@ -92,6 +94,7 @@
     hubPresent() {
       if (this.me && this.me.kind === 'hub') return true;
       const t = now();
+      if (t < this.hubHint) return true;     // a fall relayed over the internet from a Home Hub (it asks first)
       for (const k in this.peers) if (this.peers[k].kind === 'hub' && t - this.peers[k].ts < 15) return true;
       return false;
     }
@@ -316,7 +319,7 @@
     caregivers() {
       const t = now(), out = [];
       if (this.me) out.push({ id: this.me.id, name: this.me.name, role: this.me.role, kind: this.me.kind || 'caregiver', me: true });
-      for (const k in this.peers) if (t - this.peers[k].ts < 15) out.push(this.peers[k]);
+      for (const k in this.peers) if (t - this.peers[k].ts < (this.net ? 100 : 15)) out.push(this.peers[k]);   // internet presence comes every 90 s
       return out;
     }
     _sync(line, ts) {
@@ -338,6 +341,7 @@
           this.createAlert(3, 0, 0, null, false, b.alert, b.ts || ts, null, 'sos', b.who || '?');
           break;
         case 'fall':
+          if (b.ask) this.hubHint = now() + 20;
           if (!a) {
             if (b.line && b.line.startsWith('F,')) this._fall(b.line.split(','), b.ts || ts, b.lat != null ? { lat: b.lat, lon: b.lon } : {});
             else this.createAlert(+b.sev || 3, 5.2, 88, 92, !!b.demo, b.alert, b.ts || ts);
@@ -507,7 +511,7 @@
       return {
         t: 'snapshot', profile: this.profile, alerts: this.alerts.slice(-100), feed: this.feed.slice(-150), sleep: this.sleep,
         calib: this.calib, caregivers: this.caregivers(),
-        autoSms: this.autoSms, autoCall: this.autoCall, alarmSound: this.alarmSound, live: this.live(),
+        autoSms: this.autoSms, autoCall: this.autoCall, alarmSound: this.alarmSound, net: this.net, live: this.live(),
       };
     }
     series(range) {
@@ -598,6 +602,7 @@
           if ('autoSms' in m) { this.autoSms = !!m.autoSms; this.pushConfig(); }
           if ('autoCall' in m) { this.autoCall = !!m.autoCall; this.pushConfig(); }
           if ('alarmSound' in m) { this.alarmSound = m.alarmSound === 'phone' ? 'phone' : 'chime'; this.pushConfig(); }
+          if ('net' in m) { this.net = !!m.net; this.pushConfig(); }
           break;
         case 'series':
           this.emit(this.series(m.range || '24h'));
@@ -625,7 +630,7 @@
         autoSms: this.autoSms, lat: +this.profile.home.lat || 0, lon: +this.profile.home.lon || 0, homeLabel: this.profile.home.label,
         me: this.me ? this.me.name : '', meRole: this.me ? this.me.role : 'family',
         kind: this.me ? (this.me.kind || 'caregiver') : 'caregiver', family: this.me ? (this.me.family || '') : '',
-        device: this.me ? this.me.id : '', autoCall: this.autoCall, alarmSound: this.alarmSound,
+        device: this.me ? this.me.id : '', autoCall: this.autoCall, alarmSound: this.alarmSound, net: this.net,
       }).catch(() => {});
     }
   }

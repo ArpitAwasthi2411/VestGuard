@@ -262,7 +262,7 @@ const RULE = {
 };
 
 /* ---------------- state ---------------- */
-const DEF_SET = { name: 'PHC Bandla', area: 'Sadar block, Bilaspur (HP)', lat: 31.3395, lon: 76.7570, amb: '108', demo: true, sound: true };
+const DEF_SET = { name: 'PHC Bandla', area: 'Sadar block, Bilaspur (HP)', lat: 31.3395, lon: 76.7570, amb: '108', demo: true, sound: true, net: false, fams: '' };
 let SET = Object.assign({}, DEF_SET, load('vgphc_set', {}));
 const DEV = load('vgphc_dev', null) || (() => { const d = 'phc' + rid(); save('vgphc_dev', d); return d; })();
 
@@ -313,9 +313,19 @@ async function sendTo(family, body) {
     else if (link === 'pc') await fetch('/send', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ family, body }) });
   } catch (e) { toast('Could not reach the household: ' + e.message); }
 }
+function netFamilies() {
+  const set = new Set(HH.filter(h => !h.demo && h.family).map(h => h.family.toUpperCase()));
+  String(SET.fams || '').split(/[\s,]+/).map(x => x.trim().toUpperCase()).filter(x => /^[A-Z0-9]{4,10}$/.test(x)).forEach(x => set.add(x));
+  return [...set];
+}
+function pushBridge() {
+  if (link !== 'pc') return;
+  fetch('/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: SET.name, net: !!SET.net, families: netFamilies() }) }).catch(() => {});
+}
+let netOk = false;
 function nativeConfig() {
   if (!NAT) return;
-  NAT.setConfig({ kind: 'phc', family: '', device: DEV, me: SET.name, meRole: 'phc', lang: 'en' }).catch(() => {});
+  NAT.setConfig({ kind: 'phc', family: '', device: DEV, me: SET.name, meRole: 'phc', lang: 'en', net: !!SET.net, phcFamilies: netFamilies() }).catch(() => {});
 }
 async function startTransport() {
   if (NAT) {
@@ -331,8 +341,8 @@ async function startTransport() {
   if (location.protocol.startsWith('http')) {
     try {
       const es = new EventSource('/events');
-      es.onmessage = m => { try { const d = JSON.parse(m.data); if (d.line) onLine(d.line, d.ts); if (d.hello) link = 'pc'; } catch {} };
-      es.onopen = () => { link = 'pc'; fetch('/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: SET.name }) }).catch(() => {}); render(); };
+      es.onmessage = m => { try { const d = JSON.parse(m.data); if (d.line) onLine(d.line, d.ts); if (d.hello) link = 'pc'; if ('netOk' in d) { netOk = d.netOk; } } catch {} };
+      es.onopen = () => { link = 'pc'; pushBridge(); render(); };
       es.onerror = () => { link = 'off'; render(); };
     } catch { link = 'off'; }
   }
@@ -350,7 +360,8 @@ function liveHH(fam) {
     h = { id: 'f' + fam, family: fam, demo: false, on: true, wearer: 'Household ' + fam, age: null, village: '', home: '', lat: null, lon: null,
       cname: '', cphone: '', asha: ASHAS[0].name, ashaPhone: ASHAS[0].phone, enrolled: nowS(), bat: null, seen: nowS(), falls: [] };
     HH.unshift(h);
-    log(`New household joined the network: ${fam}`, h.id);
+    log(`New household joined: ${fam}`, h.id);
+    setTimeout(() => { nativeConfig(); pushBridge(); }, 0);
   }
   return h;
 }
@@ -552,7 +563,8 @@ function autoFollowups() {
 function render() {
   $('#facility').textContent = `${SET.name}, ${SET.area}`;
   const lk = $('#link');
-  const L = { apk: [true, 'Listening on this phone'], pc: [true, 'Listening on Wi-Fi'], off: [false, 'Not connected, demo only'] }[link];
+  const via = SET.net ? (netOk ? ' and the internet' : ', internet connecting…') : '';
+  const L = { apk: [true, 'Listening on this phone' + (SET.net ? (netOk ? ' and the internet' : ', internet connecting…') : '')], pc: [true, 'Listening on Wi-Fi' + via], off: [false, 'Not connected, demo only'] }[link];
   lk.className = 'link' + (L[0] ? ' on' : ''); lk.innerHTML = `<i></i>${L[1]}`;
   $('#swDemo').classList.toggle('on', !!SET.demo);
   renderKpis(); renderAlerts(); renderHH(); renderMap(); renderFU(); renderStats(); renderLog();
@@ -757,6 +769,9 @@ function settingsDialog() {
     <div class="row2"><div><label>Facility latitude</label><input id="sLa" value="${SET.lat}"></div><div><label>Facility longitude</label><input id="sLo" value="${SET.lon}"></div></div>
     <label>Ambulance number</label><input id="sAmb" value="${esc(SET.amb)}">
     <label><input type="checkbox" id="sSnd" ${SET.sound ? 'checked' : ''} style="width:auto"> Sound on new alerts</label>
+    <label><input type="checkbox" id="sNet" ${SET.net ? 'checked' : ''} style="width:auto"> Also receive alerts over the internet</label>
+    <label>Households to follow over the internet (family codes, separated by commas)</label><input id="sFams" value="${esc(SET.fams || '')}" placeholder="for example KM42AB, TR77QX">
+    <p class="faint">Households found on this Wi-Fi are followed automatically. Each family must also turn on "Alerts over the internet" in their app.</p>
     <p class="faint">Rules: home phone asks the wearer ${RULE.ASK_S} s · desk acts if no family response in ${RULE.ACTION_S} s (slow collapse ${RULE.SOFT_ACTION_S} s) · ASHA visit within ${RULE.FOLLOWUP_H} h of a fall · referral after ${RULE.REFER_FALLS} falls in 30 days · ambulance ETA = distance × ${RULE.ROAD} at ${RULE.KMH} km/h + ${RULE.DISPATCH_MIN} min.</p>
     <div class="foot"><button class="btn" data-m="resetdemo">Reset demo data</button><button class="btn" data-m="cancel">Cancel</button><button class="btn pri" data-m="saveset">Save</button></div>`);
 }
@@ -781,9 +796,8 @@ document.addEventListener('click', e => {
     case 'del': HH = HH.filter(x => x.id !== b.dataset.hh); persist(); render(); closeModal(); return;
     case 'saveset': {
       const v = id => $('#' + id).value.trim();
-      SET = Object.assign(SET, { name: v('sN') || DEF_SET.name, area: v('sA'), lat: parseFloat(v('sLa')) || DEF_SET.lat, lon: parseFloat(v('sLo')) || DEF_SET.lon, amb: v('sAmb') || '108', sound: $('#sSnd').checked });
-      save('vgphc_set', SET); nativeConfig();
-      if (link === 'pc') fetch('/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: SET.name }) }).catch(() => {});
+      SET = Object.assign(SET, { name: v('sN') || DEF_SET.name, area: v('sA'), lat: parseFloat(v('sLa')) || DEF_SET.lat, lon: parseFloat(v('sLo')) || DEF_SET.lon, amb: v('sAmb') || '108', sound: $('#sSnd').checked, net: $('#sNet').checked, fams: v('sFams') });
+      save('vgphc_set', SET); nativeConfig(); pushBridge();
       render(); closeModal(); return; }
     case 'resetdemo':
       HH = HH.filter(h => !h.demo).concat(demoHouseholds()); CASES = CASES.filter(c => !c.demo); FU = FU.filter(f => HH.some(h => h.id === f.hh && !h.demo));
@@ -816,7 +830,7 @@ function exportCsv() {
 
 /* ---------------- go ---------------- */
 setInterval(() => { $('#clock').textContent = new Date().toLocaleTimeString(); renderKpis(); renderAlerts(); }, 1000);
-setInterval(render, 5000);
+setInterval(() => { if (NAT) NAT.getState().then(st => { netOk = !!st.netOk; }).catch(() => {}); render(); }, 5000);
 startTransport().then(render);
 render();
 </script>
