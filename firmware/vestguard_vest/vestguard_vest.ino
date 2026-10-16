@@ -4,6 +4,11 @@
    ESP32-S3 + 2x BMI323   ->   phone app (or laptop)
   ============================================================
 
+  WHAT'S NEW IN 3.9
+    * Lying down on purpose (on a bed, a mat) no longer raises a soft-fall alert. A soft fall now needs an
+      uncontrolled descent: a dip below 0.7 g, the trunk turning faster than 200 deg/s, or a knock
+      (>= 2.5 g) in the 3 s before going down. Hard-fall detection (Path A) is unchanged.
+
   WHAT'S NEW IN 3.8
     * Battery calibration from the app (command B<volts>, e.g. B3.82 = "my multimeter reads 3.82 V").
       Saved in the vest. Readings also compensate for the voltage the cell loses while powering the vest.
@@ -91,7 +96,7 @@ const int NETWORK_COUNT = sizeof(NETWORKS) / sizeof(NETWORKS[0]);
 const char* DEFAULT_SSID = NETWORKS[0].ssid;
 // ============================================================
 
-#define FW_VERSION  "3.8"
+#define FW_VERSION  "3.9"
 #define DATA_PORT   4210
 #define CMD_PORT    4211
 #define I2C_SDA     8
@@ -519,7 +524,16 @@ void readBattery() {
   if (BAT_CHG_PIN >= 0) batChg = digitalRead(BAT_CHG_PIN) == LOW ? 1 : 0;
 }
 
+uint32_t shownDownSeq = 0;
 void handleDetectorEvents() {
+  // 3.9: one line each time the wearer goes from upright to lying (Serial Monitor + laptop log):
+  // I,DOWN,<dip g>,<spin deg/s>,<peak g>,<seconds>,<knock 0/1>,calm|watch
+  // "calm" = treated as lying down on purpose (no soft-fall alert); "watch" = will alert after 30 s still
+  if (det.downSeq != shownDownSeq) {
+    shownDownSeq = det.downSeq;
+    emitInfo("I,DOWN,%.2f,%.0f,%.2f,%.1f,%d,%s", det.lastDownDip, det.lastDownSpin, det.lastDownPeak, det.lastDownMs / 1000.0f,
+             det.lastDownJolt ? 1 : 0, det.lastDownCalm ? "calm" : "watch");
+  }
   vg::Event e;
   while (det.pop(e)) {
     switch (e.kind) {

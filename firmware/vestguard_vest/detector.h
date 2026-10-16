@@ -13,7 +13,8 @@
              from bed / floor): a real fall always ends further from upright.
     SOFT     3.6 (Path B, from the 2026 project report's "System 2", simplified): a collapse with NO hard
              impact. Upright (< 30 deg) -> lying (>= 60 deg) within 3 s, then lying and completely
-             still (movement sd < 0.01 g) for 30 s. Getting back up (< 45 deg) cancels it; small
+             still (movement sd < 0.01 g) for 30 s. 3.9: only if the descent was uncontrolled (a dip
+             below 0.7 g or the trunk turning faster than 200 deg/s); lying down on purpose is ignored. Getting back up (< 45 deg) cancels it; small
              movements restart the 30 s. Skipped if Path A already reported this fall.
     UPRIGHT  3.6: the "standing straight" reference slowly follows the vest while the wearer is clearly
              upright and moving (walking), so a vest that shifts during the day stays accurate.
@@ -187,7 +188,14 @@ class Detector {
   static constexpr uint32_t SOFT_STILL_MS = 30000;   // then still for this long
   static constexpr uint32_t SOFT_WATCH_MS = 180000;  // give up watching after 3 min of restless lying
   static constexpr float SOFT_STILL_SD = 0.01f;      // g; lying still is ~0.002, adjusting a pillow > 0.02
+  // 3.9: lying down on purpose is a controlled movement. A collapse drops the body (a dip below 1 g on a
+  // sensor) or spins the trunk fast. Without either, the descent was controlled -> not a soft fall.
+  static constexpr float SOFT_DIP_G = 0.7f;          // g; lying down on a bed stays above ~0.8
+  static constexpr float SOFT_SPIN_DPS = 200.f;      // deg/s, upper sensor; lying down is ~60-150
+  static constexpr uint32_t SOFT_JOLT_MS = 3000;     // an impact >= 2.5 g this long before going down also counts
   bool softEnabled = true;
+  // 3.9 diagnostics: every time the trunk goes from upright to lying, what Path B measured (read by the .ino)
+  uint32_t downSeq = 0; float lastDownDip = 0, lastDownSpin = 0, lastDownPeak = 0, lastDownMs = 0; bool lastDownJolt = false, lastDownCalm = false;
 
   // Data stopped (vest lost both sensors) -> forget the window so stale data can't trigger anything.
   void reset() { count = 0; head = 0; st = IDLE; hasData = false; }
@@ -280,8 +288,8 @@ class Detector {
   uint32_t lastFallT = 0; bool anyFall = false;
 
   // ---- Path B: soft collapse ----
-  enum { S_IDLE, S_DOWN, S_DONE } sst = S_IDLE;
-  uint32_t lastUprightT = 0, downAt = 0, stillSince = 0; bool haveUpright = false; float downMs = 0, downPeak = 0;
+  enum { S_IDLE, S_DOWN, S_DONE, S_CALM } sst = S_IDLE;
+  uint32_t lastUprightT = 0, downAt = 0, stillSince = 0, lastJoltT = 0; bool haveUpright = false, haveJolt = false; float downMs = 0, downPeak = 0, downDip = 9, downSpin = 0;
   void softTick(uint32_t now, float sd) {
     if (!softEnabled || !calibrated || tilt < 0) { sst = S_IDLE; return; }
     if (tilt < 30) { lastUprightT = now; haveUpright = true; }
@@ -289,9 +297,24 @@ class Detector {
       case S_IDLE:
         if (posture == POST_LYING && haveUpright && now - lastUprightT <= SOFT_DOWN_MS) {
           sst = S_DOWN; downAt = now; stillSince = 0; downMs = (float)(now - lastUprightT);
-          downPeak = 0;
-          for (int i = 0; i < count; i++) { const Row& r = at(i); if (after(r.t, lastUprightT - 500)) downPeak = fmaxf(downPeak, fmaxf(r.m1, r.m2)); }
+          downPeak = 0; downDip = 9; downSpin = 0;
+          for (int i = 0; i < count; i++) {
+            const Row& r = at(i);
+            if (after(r.t, lastUprightT - 500)) {
+              downPeak = fmaxf(downPeak, fmaxf(r.m1, r.m2));
+              downDip = fminf(downDip, fminf(r.m1, r.m2));
+              downSpin = fmaxf(downSpin, r.w1);
+            }
+          }
+          bool jolt = haveJolt && after(lastJoltT, lastUprightT - SOFT_JOLT_MS);         // a knock just before going down
+          bool calm = downDip >= SOFT_DIP_G && downSpin < SOFT_SPIN_DPS && !jolt;
+          if (calm) sst = S_CALM;                                                         // 3.9: lay down on purpose
+          lastDownDip = downDip; lastDownSpin = downSpin; lastDownPeak = downPeak; lastDownMs = downMs;
+          lastDownJolt = jolt; lastDownCalm = calm; downSeq++;
         }
+        break;
+      case S_CALM:
+        if (tilt < 45) sst = S_IDLE;                                                      // up again: watch afresh
         break;
       case S_DOWN:
         if (tilt < 45 || now - downAt > SOFT_WATCH_MS) { sst = S_IDLE; break; }          // got up / restless rest
@@ -326,6 +349,7 @@ class Detector {
     if (st == IDLE) {
       if ((coolSet && !after(t, cool)) || fmaxf(r.m1, r.m2) < IMPACT_G) return;
       c.t = t; c.p1 = r.m1; c.p2 = r.m2; c.w = r.w1;
+      lastJoltT = t; haveJolt = true;                                   // 3.9: remembered for Path B
       c.hasPre1 = meanVec(1, t - 1500, t - 400, c.pre1);
       c.hasPre2 = meanVec(2, t - 1500, t - 400, c.pre2);
       st = ANALYZING;
