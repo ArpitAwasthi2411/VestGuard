@@ -1,176 +1,153 @@
 <div align="center">
 
-# ⚡ VestGuard
-### Intelligent Dual-Mode Fall Detection Wearable System
+<img src="images/logo.png" width="180" alt="VestGuard logo"/>
 
-<p align="center">
-  <img src="https://img.shields.io/badge/Status-Active%20Research-brightgreen?style=for-the-badge&logo=github"/>
-  <img src="https://img.shields.io/badge/Platform-Embedded%20AI-blue?style=for-the-badge&logo=arduino"/>
-  <img src="https://img.shields.io/badge/Domain-Healthcare%20IoT-red?style=for-the-badge&logo=heart"/>
-  <img src="https://img.shields.io/badge/License-Research%20Only-orange?style=for-the-badge"/>
-</p>
+# VestGuard
 
-<p align="center">
-  <b>A smart wearable vest for real-time intelligent fall detection using torso-mounted inertial sensing.</b><br/>
-  Designed for elderly care · Remote patient monitoring · Industrial worker safety
-</p>
+### A smart vest that detects falls on its own and calls for help — built for elders living alone in the Himalayan hills
 
----
+![Status](https://img.shields.io/badge/status-pilot%20in%20preparation-2E8B57)
+![Patent](https://img.shields.io/badge/patent-pending%20(IN%20202611122870)-17375E)
+![Award](https://img.shields.io/badge/State%20Level%20Smart%20Hackathon%202026-1st%20Prize-E39A2D)
+![Platform](https://img.shields.io/badge/ESP32--S3%20%7C%20Android%20%7C%20Python-1F6FD1)
 
 </div>
 
-## 🎯 The Problem
-
-Falls are the **second leading cause of unintentional injury deaths** globally, with approximately **684,000 fatal falls** occurring every year (WHO, 2024). For elderly individuals and people living alone, the real danger isn't just the fall — it's the delay before help arrives.
-
-Existing wrist-worn and smartphone-based systems fail because:
-- ❌ High false alarm rates from unrelated hand movements
-- ❌ Unable to detect slow collapses and fainting events
-- ❌ Cannot distinguish intentional lying from a genuine fall
-- ❌ Dependent on cloud infrastructure or fixed cameras
-
-**VestGuard solves this** with a torso-mounted architecture that captures the body's true center of mass — delivering reliable, real-time detection where it matters most.
-
 ---
 
-## 🧠 How It Works
+## Why
 
-VestGuard runs **two independent detection pipelines simultaneously**:
+About **one in three** older adults falls every year. The fall is often not the worst part — the **wait** is. An elder who lives alone, hurt or confused on the floor, may not be found for hours. In hill villages, where houses are far apart and children work in the cities, that wait is longer.
 
-| System | Target | Approach |
-|--------|--------|----------|
-| **System 1** | Abrupt hard-impact falls | Multi-vote impact confirmation |
-| **System 2** | Slow collapses & fainting | Five-state posture transition machine |
+Panic buttons need the person to press them. Smartwatches sit on the wrist, which moves all day, and miss slow collapses.
 
-The dual-mode architecture ensures both sudden falls and gradual collapses are reliably detected — something no single-threshold system can achieve.
+## The vest
 
----
+<div align="center"><img src="images/fig_vest.png" width="85%" alt="VestGuard Himachali-style vest, front and back"/></div>
+<div align="center"><sub>VestGuard V2 — a Himachali-style vest with the electronics hidden inside. Two motion sensors sit on the spine.</sub></div>
 
-## 🦺 The Prototype
+## What VestGuard does
 
-> The VestGuard prototype — front and back view. A torso-mounted wearable designed for stable, reliable body-motion capture with minimal interference from daily activity.
+VestGuard is a familiar sleeveless vest with **two motion sensors on the spine**. The vest decides **on board, in real time**, whether a fall has happened — no button, no cloud — and then raises the alarm in layers:
+
+1. **Fall detected on the vest** — sudden falls *and* slow collapses (fainting, sliding down a wall)
+2. **120 dB buzzer** sounds at once — works with no network at all
+3. **"Are you OK?"** on the home phone — 30 seconds to cancel a false alarm
+4. **Every family phone rings** with the location; the phone then calls the first contact
+5. **Health-centre desk** — at scale, alerts reach the nearest PHC and its ASHA workers
+
+<div align="center"><img src="images/fig_arch.png" width="92%" alt="VestGuard system architecture"/></div>
+
+## Results
+
+295 real-time trials with the V2 prototype — every decision made **by the vest itself**:
+
+<div align="center"><img src="images/results.png" width="80%" alt="On-vest results"/></div>
+
+| Test set | Trials | Correct | Rate |
+|---|---|---|---|
+| Falls detected (12 fall types) | 150 | 142 | **94.7%** |
+| Daily activities correctly ignored (10 activities) | 145 | 140 | **96.6%** |
+| **Overall** | **295** | **282** | **95.6%** |
+
+A separate offline machine-learning study (CatBoost / gradient boosting, validated with GroupKFold by trial) reached **95.3% accuracy, AUC 0.984**. Details: [docs/TESTING.md](docs/TESTING.md).
+
+## Hardware
+
+| Part | Role |
+|---|---|
+| ESP32-S3 | Reads both sensors at 50 Hz, runs the detection engine, drives the buzzer, Wi-Fi link |
+| 2 × Bosch BMI323 (6-axis IMU) | Upper back (thoracic) and lower back (lumbar) |
+| 120 dB buzzer | Local alarm that needs no network |
+| Li-ion battery | All-day wear, charged at night |
+| Himachali-style vest | Something elders already wear every day |
+
+Prototype bill of materials: **₹4,204** — about **₹3,000** at volume. More in [docs/HARDWARE.md](docs/HARDWARE.md).
+
+## Testing
+
+Every trial was done by young volunteers, with falls only onto safety mats.
 
 <div align="center">
-<img src="images/prototype.png" width="85%" alt="VestGuard Prototype Front and Back View"/>
+<img src="images/adl_activities.png" width="90%" alt="Daily activities used to test for false alarms"/>
+<br/><sub>Daily activities — the vest must stay quiet</sub>
+<br/><br/>
+<img src="images/falls.png" width="90%" alt="Fall types tested on mats"/>
+<br/><sub>Falls — forward, backward and to each side, onto mats</sub>
 </div>
 
----
-
-## 📊 Performance Results
-
-Evaluated across **135 experimental trials** covering falls, daily activities, and high-intensity movements:
+## Demo
 
 <div align="center">
-
-| Metric | Result |
-|--------|--------|
-| 🎯 Hard Fall Detection | **86.6%** sensitivity |
-| 🫀 Soft Fall / Faint Detection | **76.0%** sensitivity |
-| ✅ False Alarm Specificity | **88.3%** across ADL |
-| ⚡ Forward Fall Detection | **100%** detection rate |
-
+<img src="images/qrcode.png" width="180" alt="Demo video QR code"/>
+<br/><sub>Scan to watch VestGuard working</sub>
 </div>
 
----
-
-## 📸 System in Action
-
-### Wearable Prototype — Activities of Daily Living Testing
-
-> The vest was tested across situps, sleeping, sitting, walking and many more daily activities to ensure minimal false alarms during normal use.
+## App and health-centre desk
 
 <div align="center">
-<img src="images/adl_activities.png" width="90%" alt="ADL Activities"/>
+<img src="images/app_setup.png" width="70%" alt="App setup screens"/>
+<br/><sub>Setup — choose how the phone is used, join the family with a code</sub>
+<br/><br/>
+<img src="images/app_alert.png" width="70%" alt="App during a fall"/>
+<br/><sub>During a fall — the elder's home phone, a family phone, a health worker responding</sub>
 </div>
 
----
+- **Android app** (Capacitor + native Java): full-screen alarm, "Are you OK?" countdown, family alerts with map, "I'm going" coordination, English and Hindi.
+- **Health-centre desk** (this repo, [`health-desk/`](health-desk/)): a browser dashboard for a PHC showing households, live alerts, and help-on-the-way routes. Runs on any PC with Python 3 standard library only.
 
-### Simulated Fall Scenarios
+## Tech stack
 
-> Hard falls, sideward falls, backward falls, and soft collapses were evaluated under controlled safety conditions.
+| Layer | Technology |
+|---|---|
+| Firmware | C++ (Arduino framework, ESP32 core), I²C, Wi-Fi/UDP |
+| Mobile app | Capacitor (HTML/CSS/JS) + native Android (Java), Leaflet + OpenStreetMap |
+| Internet relay | ntfy push topics, one per family |
+| Health desk | Python 3 (stdlib) + HTML/JS dashboard, Leaflet |
+| Data and ML | Python, pandas, NumPy, scikit-learn, CatBoost, Jupyter |
 
-<div align="center">
-<img src="images/falls.png" width="90%" alt="Fall Testing Scenarios"/>
-</div>
+## What's in this repository
 
----
+```
+firmware/sensor-daq/   ESP32-S3 firmware: dual-BMI323 driver + 50 Hz UDP streaming (data collection)
+health-desk/           PHC dashboard (phc.html) + Python bridge server (phc_server.py)
+docs/                  Architecture, hardware, testing protocol and results, roadmap
+images/                Figures and app screenshots
+```
 
-### Live Research Dashboard
+### What is not published
 
-> A browser-based research dashboard enabled real-time sensor visualisation, posture monitoring, and threshold tuning. The dashboard was also used to record complete experimental sessions — capturing raw motion data and derived features that were later analysed to identify the most separable detection parameters for the dual-mode algorithm.
+The fall-detection method, the vest's production firmware, the Android app source, the test data and the trained models are **not** in this repository. They are part of a patent application and stay private until the patent process is complete. Happy to walk through the work in an interview or under NDA.
 
-<div align="center">
-<img src="images/dashboard.png" width="90%" alt="Research Dashboard"/>
-</div>
+## Patent
 
----
+| | |
+|---|---|
+| **Status** | Patent pending (provisional application filed) |
+| **Application No.** | 202611122870 |
+| **Filed** | October 2026, Indian Patent Office |
+| **Title** | *Smart Garment for Automatic Fall Detection using Dual Trunk Inertial Sensors and Method Thereof* |
 
-### Caregiver Mobile Application
+## Recognition
 
-> Emergency alerts with live motion data sent instantly to caregivers when a fall is confirmed.
+- 🥇 **1st Prize — State Level Smart Hackathon 2026**, Himachal Pradesh (department, college and state rounds)
+- Invited to apply to the **Himachal Pradesh State Innovation Fund** to take VestGuard from prototype to pilot
 
-<div align="center">
-<img src="images/app_alert.png" width="300" alt="Emergency Alert Interface"/>
-</div>
+## Roadmap
 
----
+4G (LTE Cat-1) SMS and calls from the vest itself · detachable, washable electronics strip · extra sensing to cut false alarms · supervised pilot with a primary health centre. See [docs/ROADMAP.md](docs/ROADMAP.md).
 
-## 🎬 See It Working
+## Team SilverShield
 
-<div align="center">
+| Member | Role |
+|---|---|
+| **Arpit Awasthi** (team lead) | Firmware and detection, app, system design, patent |
+| **Yogit** | Hardware, vest building and testing |
+| **Shagun Sharma** | Health partnerships and documentation |
+| **Rashi** | Components, sourcing and budget |
 
-### Scan to watch the live demo
-
-<img src="images/qrcode.png" width="200" alt="Demo Video QR Code"/>
-
-*Real-time fall detection · Dashboard monitoring · Emergency alert demo*
-
-</div>
-
----
-
-## 🔬 Key Innovations
-
-- **Dual-mode detection** — handles both hard impacts and gradual collapses
-- **Cancel-gate mechanism** — distinguishes intentional lying from genuine falls
-- **Transition fingerprint scoring** — weighted analysis of posture change patterns
-- **Adaptive posture reference** — compensates for gradual vest displacement during wear
-- **Edge deployment** — all processing on-device, no cloud dependency
-- **Real-time caregiver app** — instant emergency notification pipeline
-
----
-
-## 🔭 What's Next
-
-- [ ] TinyML integration for improved soft-fall classification
-- [ ] Heart rate & SpO₂ monitoring for medical emergency detection
-- [ ] Hardware miniaturisation with custom PCB design
-- [ ] Multi-subject clinical validation
-- [ ] Offline emergency communication via GSM / LoRaWAN
-- [ ] Cloud-based long-term mobility analytics
+Mentor: **Dr. Ravi Kumar**
 
 ---
 
-## 👥 Team
-
-**Arpit Awasthi · Abhishek Kumar · Ashutosh Sharma · Neelaksh Thakur · Yogit**
-
-Supervised by **Er. Ravi Kumar**, Assistant Professor  
-Government Hydro Engineering College, Bilaspur, Himachal Pradesh
-
----
-
-## ⚠️ Important Notice
-
-> This is an **active research project**. Source code, circuit designs, firmware, and technical implementation details are **not publicly available** as the work is currently under research review and intellectual property protection proceedings.
->
-> For research collaborations or inquiries, contact: [awasthiarpit24@gmail.com](mailto:awasthiarpit24@gmail.com)
-
----
-
-<div align="center">
-
-**VestGuard** · Government Hydro Engineering College Bilaspur · 2026  
-Made with dedication for safer lives 🛡️
-
-</div>
+<sub>© 2026 Team SilverShield. All rights reserved. This repository is shared for demonstration only; no licence is granted to use, copy or modify the code or designs. See [LICENSE](LICENSE).</sub>
