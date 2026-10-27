@@ -139,12 +139,13 @@ The fall-detection method, the vest's production firmware, the Android app sourc
 
 ## Team SilverShield
 
-| Member | Role |
-|---|---|
-| **Arpit Awasthi** (team lead) | Firmware and detection, app, system design, patent |
-| **Yogit** | Hardware, vest building and testing |
-| **Shagun Sharma** | Health partnerships and documentation |
-| **Rashi** | Components, sourcing and budget |
+| Member | Role | GitHub |
+|---|---|---|
+| **Arpit Awasthi** (team lead) | Firmware and detection, app, system design, patent | [@ArpitAwasthi2411](https://github.com/ArpitAwasthi2411) |
+| **Yogit** | Hardware, vest building and testing | |
+| **Shagun Sharma** | Health partnerships and documentation | [@ShagunSharma-rk](https://github.com/ShagunSharma-rk) |
+| **Rashi** | Components, sourcing and budget | [@rashiguleria](https://github.com/rashiguleria) |
+| **Neelaksh Thakur** | Early prototype development and testing | [@neelakshthakur566-art](https://github.com/neelakshthakur566-art) |
 
 Mentor: **Dr. Ravi Kumar**
 
