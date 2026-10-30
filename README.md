@@ -67,7 +67,6 @@ The design, firmware, app, data and detection method are **not published** and r
 ## Recognition
 
 - 🥇 **1st Prize — State Level Smart Hackathon 2026**, Himachal Pradesh
-- Invited to apply to the **Himachal Pradesh State Innovation Fund**
 
 ## Team SilverShield
 
